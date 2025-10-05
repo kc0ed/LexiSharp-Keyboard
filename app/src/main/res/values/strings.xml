@@ -18,5 +18,14 @@
     <string name="btn_enable">启用键盘</string>
     <string name="btn_choose">选择键盘</string>
     <string name="btn_grant_mic">授予麦克风权限</string>
+    <!-- Material UI additions -->
+    <string name="settings_title">ASR 键盘设置</string>
+    <string name="volc_section_title">Volcano Engine 鉴权参数</string>
+    <string name="label_app_key">X-Api-App-Key</string>
+    <string name="label_access_key">X-Api-Access-Key</string>
+    <string name="label_resource_id">X-Api-Resource-Id（默认: volc.bigasr.sauc.duration）</string>
+    <string name="label_endpoint">Endpoint（默认: bigmodel_async）</string>
+    <string name="btn_save">保存</string>
+    <string name="section_recognition_mode_title">识别模式</string>
+    <string name="continuous_mode_desc">连续模式：停顿后自动断句，持续聆听</string>
 </resources>
-

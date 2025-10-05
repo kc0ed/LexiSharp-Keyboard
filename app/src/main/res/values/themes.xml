@@ -5,6 +5,13 @@
         <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
     </style>
 
+    <!-- IME window uses AppCompat-based MaterialComponents theme to satisfy ThemeEnforcement
+         in certain Material widgets when inflated from a Service context. -->
+    <style name="Theme.ASRKeyboard.Ime" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:navigationBarColor" tools:targetApi="o_mr1">@color/keyboard_bg</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
+    </style>
+
     <style name="Theme.ASRKeyboard.Transparent" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>

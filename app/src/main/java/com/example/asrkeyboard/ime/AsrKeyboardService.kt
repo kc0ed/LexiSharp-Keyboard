@@ -8,9 +8,11 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Vibrator
 import android.view.LayoutInflater
+import android.view.ContextThemeWrapper
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.content.ContextCompat
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.asr.StreamingAsrEngine
@@ -30,7 +32,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private lateinit var asrEngine: StreamingAsrEngine
     private lateinit var prefs: Prefs
 
-    private var btnMic: ImageButton? = null
+    private var btnMic: FloatingActionButton? = null
     private var btnSettings: ImageButton? = null
     private var btnGrant: ImageButton? = null
     private var txtStatus: TextView? = null
@@ -54,7 +56,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     }
 
     override fun onCreateInputView(): View {
-        val view = LayoutInflater.from(this).inflate(R.layout.keyboard_view, null)
+        val themed = ContextThemeWrapper(this, R.style.Theme_ASRKeyboard_Ime)
+        val view = LayoutInflater.from(themed).inflate(R.layout.keyboard_view, null)
         btnMic = view.findViewById(R.id.btnMic)
         btnSettings = view.findViewById(R.id.btnSettings)
         btnGrant = view.findViewById(R.id.btnGrant)

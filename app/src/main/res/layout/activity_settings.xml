@@ -1,114 +1,153 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:orientation="vertical">
 
-    <TextView
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/topAppBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/settings_instructions"
-        android:textSize="16sp"
-        android:paddingBottom="12dp"/>
+        android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
+        app:title="@string/settings_title" />
 
-    <Button
-        android:id="@+id/btnEnable"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/btn_enable" />
+        android:layout_height="match_parent">
 
-    <Button
-        android:id="@+id/btnChoose"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/btn_choose" />
-
-    <Button
-        android:id="@+id/btnMicPermission"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/btn_grant_mic" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="12dp"
-        android:background="#30FFFFFF" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Volcano Engine 访问配置"
-        android:textStyle="bold" />
-
-    <EditText
-        android:id="@+id/etAppKey"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="X-Api-App-Key"
-        android:inputType="text" />
-
-    <EditText
-        android:id="@+id/etAccessKey"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="X-Api-Access-Key"
-        android:inputType="textPassword" />
-
-    <EditText
-        android:id="@+id/etResourceId"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="X-Api-Resource-Id (默认: volc.bigasr.sauc.duration)"
-        android:inputType="text" />
-
-    <EditText
-        android:id="@+id/etEndpoint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Endpoint (默认: bigmodel_async)"
-        android:inputType="textUri" />
-
-    <Button
-        android:id="@+id/btnSaveKeys"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="保存配置" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="12dp"
-        android:background="#30FFFFFF" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="识别行为" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingTop="6dp">
-
-        <TextView
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="连续输入模式（停顿自动分句，继续聆听）" />
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <Switch
-            android:id="@+id/swContinuous"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_instructions"
+                android:textSize="14sp"
+                android:paddingBottom="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEnable"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/btn_enable" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnChoose"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/btn_choose" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMicPermission"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/btn_grant_mic" />
+
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/volc_section_title"
+                android:textStyle="bold" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/label_app_key">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etAppKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/label_access_key">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etAccessKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPassword" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/label_resource_id">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etResourceId"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/label_endpoint">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etEndpoint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textUri" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSaveKeys"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/btn_save" />
+
+            <com.google.android.material.divider.MaterialDivider
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/section_recognition_mode_title"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="6dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/continuous_mode_desc" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swContinuous"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
 
 </LinearLayout>

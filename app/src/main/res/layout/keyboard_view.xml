@@ -1,46 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@color/keyboard_bg"
     android:orientation="vertical"
     android:padding="8dp">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <ImageButton
-            android:id="@+id/btnMic"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@drawable/rounded_button_bg"
-            android:contentDescription="@string/cd_mic"
-            android:padding="10dp"
-            android:src="@drawable/ic_mic" />
+        android:layout_height="56dp">
 
         <TextView
             android:id="@+id/txtStatus"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_weight="1"
+            android:ellipsize="end"
             android:maxLines="1"
             android:text="@string/status_idle"
             android:textColor="@android:color/white"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btnMic"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_goneMarginEnd="8dp"
+            android:paddingEnd="8dp" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnMic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/cd_mic"
+            app:srcCompat="@drawable/ic_mic"
+            app:backgroundTint="@color/mic_bg"
+            app:tint="@android:color/white"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
         <ImageButton
             android:id="@+id/btnGrant"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_marginEnd="8dp"
             android:background="@android:color/transparent"
             android:contentDescription="@string/cd_grant"
             android:padding="6dp"
-            android:src="@drawable/ic_lock" />
+            android:src="@drawable/ic_lock"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btnSettings"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_goneMarginEnd="8dp" />
 
         <ImageButton
             android:id="@+id/btnSettings"
@@ -49,18 +61,20 @@
             android:background="@android:color/transparent"
             android:contentDescription="@string/cd_settings"
             android:padding="6dp"
-            android:src="@drawable/ic_settings" />
+            android:src="@drawable/ic_settings"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <TextView
         android:id="@+id/txtHint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="8dp"
         android:text="@string/hint_press_mic"
         android:textColor="#B3FFFFFF"
         android:textSize="13sp" />
 
 </LinearLayout>
-
