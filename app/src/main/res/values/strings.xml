@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">ASR Keyboard</string>
+    <string name="subtype_generic">通用</string>
+
+    <string name="cd_mic">麦克风</string>
+    <string name="cd_settings">设置</string>
+    <string name="cd_grant">授予麦克风权限</string>
+
+    <string name="status_idle">就绪</string>
+    <string name="status_listening">正在聆听…</string>
+    <string name="hint_press_mic">点击麦克风开始语音输入</string>
+    <string name="hint_need_permission">需要麦克风权限以进行语音输入</string>
+
+    <string name="settings_instructions">首次使用步骤：
+1) 点击“启用键盘”，在系统设置中启用 ASR Keyboard
+2) 点击“选择键盘”，切换到 ASR Keyboard
+3) 授予麦克风权限后，回到任意输入框，点击键盘上的麦克风按钮即可体验（目前为占位识别结果）</string>
+    <string name="btn_enable">启用键盘</string>
+    <string name="btn_choose">选择键盘</string>
+    <string name="btn_grant_mic">授予麦克风权限</string>
+</resources>
+

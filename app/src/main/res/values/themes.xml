@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.ASRKeyboard" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:navigationBarColor" tools:targetApi="o_mr1">@color/keyboard_bg</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.ASRKeyboard.Transparent" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDimAmount">0.0</item>
+    </style>
+</resources>
+

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_instructions"
+        android:textSize="16sp"
+        android:paddingBottom="12dp"/>
+
+    <Button
+        android:id="@+id/btnEnable"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_enable" />
+
+    <Button
+        android:id="@+id/btnChoose"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/btn_choose" />
+
+    <Button
+        android:id="@+id/btnMicPermission"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/btn_grant_mic" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="12dp"
+        android:background="#30FFFFFF" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Volcano Engine 访问配置"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/etAppKey"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="X-Api-App-Key"
+        android:inputType="text" />
+
+    <EditText
+        android:id="@+id/etAccessKey"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="X-Api-Access-Key"
+        android:inputType="textPassword" />
+
+    <EditText
+        android:id="@+id/etResourceId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="X-Api-Resource-Id (默认: volc.bigasr.sauc.duration)"
+        android:inputType="text" />
+
+    <EditText
+        android:id="@+id/etEndpoint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Endpoint (默认: bigmodel_async)"
+        android:inputType="textUri" />
+
+    <Button
+        android:id="@+id/btnSaveKeys"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="保存配置" />
+
+</LinearLayout>
