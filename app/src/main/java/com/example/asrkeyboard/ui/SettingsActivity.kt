@@ -8,6 +8,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import android.widget.Switch
 import androidx.activity.ComponentActivity
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.store.Prefs
@@ -47,6 +48,12 @@ class SettingsActivity : ComponentActivity() {
             prefs.resourceId = etResourceId.text?.toString()?.ifBlank { Prefs.DEFAULT_RESOURCE } ?: Prefs.DEFAULT_RESOURCE
             prefs.endpoint = etEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_ENDPOINT } ?: Prefs.DEFAULT_ENDPOINT
             Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
+        }
+
+        val swContinuous = findViewById<Switch>(R.id.swContinuous)
+        swContinuous.isChecked = prefs.continuousMode
+        swContinuous.setOnCheckedChangeListener { _, isChecked ->
+            prefs.continuousMode = isChecked
         }
     }
 }

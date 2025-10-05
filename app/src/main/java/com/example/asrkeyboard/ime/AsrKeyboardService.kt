@@ -28,16 +28,18 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private lateinit var asrEngine: StreamingAsrEngine
+    private lateinit var prefs: Prefs
 
     private var btnMic: ImageButton? = null
     private var btnSettings: ImageButton? = null
     private var btnGrant: ImageButton? = null
     private var txtStatus: TextView? = null
     private var txtHint: TextView? = null
+    private var committedStableLen: Int = 0
 
     override fun onCreate() {
         super.onCreate()
-        val prefs = Prefs(this)
+        prefs = Prefs(this)
         asrEngine = if (prefs.hasVolcKeys()) {
             VolcStreamAsrEngine(this, serviceScope, prefs, this)
         } else {
@@ -90,6 +92,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             updateUiIdle()
         } else {
             updateUiListening()
+            committedStableLen = 0
             asrEngine.start()
         }
     }
@@ -137,15 +140,32 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         }
     }
     // StreamingAsrEngine.Listener
-    override fun onPartial(text: String) {
-        currentInputConnection?.setComposingText(text, 1)
+    override fun onPartial(stableText: String, unstableText: String) {
+        // Commit newly stabilized prefix
+        if (stableText.length > committedStableLen) {
+            val newPart = stableText.substring(committedStableLen)
+            currentInputConnection?.commitText(newPart, 1)
+            committedStableLen = stableText.length
+        }
+        // Show remaining unstable as composing
+        currentInputConnection?.setComposingText(unstableText, 1)
     }
 
     override fun onFinal(text: String) {
+        val remainder = if (text.length > committedStableLen) text.substring(committedStableLen) else ""
         currentInputConnection?.finishComposingText()
-        currentInputConnection?.commitText(text, 1)
+        if (remainder.isNotEmpty()) {
+            currentInputConnection?.commitText(remainder, 1)
+        }
         vibrateTick()
-        // keep listening until user stops; if engine stops itself, UI updates in stop()
+        committedStableLen = 0
+        if (prefs.continuousMode && asrEngine.isRunning) {
+            // Stay in listening state for next utterance
+            txtStatus?.text = getString(R.string.status_listening)
+            btnMic?.isSelected = true
+        } else {
+            updateUiIdle()
+        }
     }
 
     override fun onError(message: String) {

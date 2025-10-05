@@ -22,9 +22,11 @@ class FakeAsrEngine(
     override fun start() {
         if (job != null) return
         job = scope.launch {
-            delay(600)
-            listener.onPartial("你好，这")
-            delay(600)
+            delay(500)
+            listener.onPartial("", "你好，这")
+            delay(500)
+            listener.onPartial("你好，这是", "示例语音文本")
+            delay(400)
             listener.onFinal("你好，这是示例语音文本")
             job = null
         }

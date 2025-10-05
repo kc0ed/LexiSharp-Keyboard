@@ -26,6 +26,10 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_CONNECT_ID, UUID.randomUUID().toString()) ?: UUID.randomUUID().toString()
         set(value) = sp.edit().putString(KEY_CONNECT_ID, value).apply()
 
+    var continuousMode: Boolean
+        get() = sp.getBoolean(KEY_CONTINUOUS, false)
+        set(value) = sp.edit().putBoolean(KEY_CONTINUOUS, value).apply()
+
     fun hasVolcKeys(): Boolean = appKey.isNotBlank() && accessKey.isNotBlank()
 
     companion object {
@@ -34,9 +38,9 @@ class Prefs(context: Context) {
         private const val KEY_RESOURCE_ID = "resource_id"
         private const val KEY_ENDPOINT = "endpoint"
         private const val KEY_CONNECT_ID = "connect_id"
+        private const val KEY_CONTINUOUS = "continuous"
 
         const val DEFAULT_RESOURCE = "volc.bigasr.sauc.duration"
         const val DEFAULT_ENDPOINT = "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async"
     }
 }
-

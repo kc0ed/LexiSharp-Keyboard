@@ -36,7 +36,7 @@ class VolcStreamAsrEngine(
     private val client: OkHttpClient = OkHttpClient.Builder().build()
     private var webSocket: WebSocket? = null
     private var audioJob: Job? = null
-    private var running = AtomicBoolean(false)
+    private var running = AtomicBoolean(false) // user session is active
 
     private val sampleRate = 16000
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
@@ -66,9 +66,7 @@ class VolcStreamAsrEngine(
         } catch (_: Throwable) {}
         audioJob?.cancel()
         audioJob = null
-        try {
-            webSocket?.close(1000, "stop")
-        } catch (_: Throwable) {}
+        try { webSocket?.close(1000, "stop") } catch (_: Throwable) {}
         webSocket = null
     }
 
@@ -121,8 +119,7 @@ class VolcStreamAsrEngine(
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                // Server closing
-                running.set(false)
+                // Server closing; keep running if in continuous mode; session restarts after final handling.
             }
         }
 
@@ -148,11 +145,35 @@ class VolcStreamAsrEngine(
             }
             recorder.startRecording()
             val buf = ByteArray(chunkBytes)
+            var silenceMs = 0
+            var hadVoice = false
             try {
                 while (running.get()) {
                     val read = recorder.read(buf, 0, buf.size)
                     if (read > 0) {
                         val chunk = if (read == buf.size) buf else buf.copyOf(read)
+                        // VAD: compute RMS and update silence window
+                        if (isVoiced(chunk)) {
+                            hadVoice = true
+                            silenceMs = 0
+                        } else {
+                            silenceMs += CHUNK_MS
+                            if (hadVoice && silenceMs >= END_WINDOW_MS) {
+                                // End of utterance: send last frame and stop this recording loop
+                                try {
+                                    val finalFrame = buildFrame(
+                                        messageType = MSG_TYPE_AUDIO_ONLY,
+                                        flags = FLAGS_LAST_NOSEQ,
+                                        serialization = SERIAL_NONE,
+                                        compression = COMP_GZIP,
+                                        payload = byteArrayOf()
+                                    )
+                                    webSocket?.send(finalFrame.toByteString())
+                                } catch (_: Throwable) {}
+                                break
+                            }
+                        }
+
                         val compressed = gzip(chunk)
                         val frame = buildFrame(
                             messageType = MSG_TYPE_AUDIO_ONLY,
@@ -175,11 +196,11 @@ class VolcStreamAsrEngine(
     }
 
     private fun buildFullClientRequestJson(): String {
-        val user = JSONObject().apply {
-            put("uid", UUID.randomUUID().toString())
-            put("platform", "Android")
-            put("app_version", "1.0")
-        }
+            val user = JSONObject().apply {
+                put("uid", UUID.randomUUID().toString())
+                put("platform", "Android")
+                put("app_version", "1.0")
+            }
         val audio = JSONObject().apply {
             put("format", "pcm")
             put("codec", "raw")
@@ -189,8 +210,10 @@ class VolcStreamAsrEngine(
         }
         val request = JSONObject().apply {
             put("model_name", "bigmodel")
+            put("enable_nonstream", true) // 开启二遍识别
             put("enable_itn", true)
             put("enable_punc", true)
+            put("show_utterances", true)
         }
         val root = JSONObject().apply {
             put("user", user)
@@ -223,12 +246,21 @@ class VolcStreamAsrEngine(
                 if (payloadEnd > bytes.size) return
                 val payload = bytes.copyOfRange(payloadStart, payloadEnd)
                 val data = if (compression == COMP_GZIP) gunzip(payload) else payload
-                val text = parseResultText(String(data))
+                val (text, stable) = parseResultTextAndStable(String(data))
                 if (text != null) {
                     if (flags == FLAGS_LAST_RESULT) {
                         listener.onFinal(text)
+                        try { webSocket.close(1000, "final") } catch (_: Throwable) {}
+                        // Continuous mode: restart a new session automatically
+                        if (prefs.continuousMode && running.get()) {
+                            openWebSocketAndStart()
+                        } else {
+                            running.set(false)
+                        }
                     } else {
-                        listener.onPartial(text)
+                        val stableText = stable ?: ""
+                        val unstable = if (text.startsWith(stableText)) text.substring(stableText.length) else text
+                        listener.onPartial(stableText, unstable)
                     }
                 }
             }
@@ -249,15 +281,29 @@ class VolcStreamAsrEngine(
         }
     }
 
-    private fun parseResultText(json: String): String? {
+    private fun parseResultTextAndStable(json: String): Pair<String?, String?> {
         return try {
             val obj = JSONObject(json)
-            if (obj.has("result")) {
-                val result = obj.getJSONObject("result")
-                result.optString("text", null)
-            } else null
+            if (!obj.has("result")) return Pair(null, null)
+            val result = obj.getJSONObject("result")
+            val fullText = result.optString("text", null)
+            var stableText: String? = null
+            if (result.has("utterances")) {
+                val arr = result.getJSONArray("utterances")
+                val sb = StringBuilder()
+                for (i in 0 until arr.length()) {
+                    val u = arr.getJSONObject(i)
+                    val definite = u.optBoolean("definite", false)
+                    val utext = u.optString("text", "")
+                    if (definite) {
+                        sb.append(utext)
+                    }
+                }
+                stableText = sb.toString()
+            }
+            Pair(fullText, stableText)
         } catch (t: Throwable) {
-            null
+            Pair(null, null)
         }
     }
 
@@ -308,6 +354,25 @@ class VolcStreamAsrEngine(
         return bos.toByteArray()
     }
 
+    private fun isVoiced(chunk: ByteArray): Boolean {
+        // Compute RMS over 16-bit samples
+        var sumSq = 0.0
+        var samples = 0
+        var i = 0
+        while (i + 1 < chunk.size) {
+            val lo = chunk[i].toInt() and 0xFF
+            val hi = chunk[i + 1].toInt()
+            val v = (hi shl 8) or lo
+            val s = if (v and 0x8000 != 0) v - 0x10000 else v // sign extend
+            sumSq += (s * s).toDouble()
+            samples++
+            i += 2
+        }
+        if (samples == 0) return false
+        val rms = Math.sqrt(sumSq / samples)
+        return rms >= VAD_RMS_THRESHOLD
+    }
+
     companion object {
         private const val TAG = "VolcStreamAsr"
 
@@ -329,6 +394,9 @@ class VolcStreamAsrEngine(
 
         private const val COMP_NONE = 0x0
         private const val COMP_GZIP = 0x1
+
+        private const val CHUNK_MS = 200
+        private const val END_WINDOW_MS = 800
+        private const val VAD_RMS_THRESHOLD = 800.0 // heuristic; tune per device
     }
 }
-
