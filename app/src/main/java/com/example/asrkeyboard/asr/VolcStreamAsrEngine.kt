@@ -250,7 +250,7 @@ class VolcStreamAsrEngine(
                 if (text != null) {
                     if (flags == FLAGS_LAST_RESULT) {
                         listener.onFinal(text)
-                        try { webSocket.close(1000, "final") } catch (_: Throwable) {}
+                        try { webSocket?.close(1000, "final") } catch (_: Throwable) {}
                         // Continuous mode: restart a new session automatically
                         if (prefs.continuousMode && running.get()) {
                             openWebSocketAndStart()

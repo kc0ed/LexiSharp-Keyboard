@@ -8,7 +8,6 @@
     <style name="Theme.ASRKeyboard.Transparent" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowDimAmount">0.0</item>
+        <item name="android:backgroundDimAmount">0.0</item>
     </style>
 </resources>
-
