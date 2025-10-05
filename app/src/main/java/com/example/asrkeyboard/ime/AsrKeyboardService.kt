@@ -8,7 +8,6 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Vibrator
 import android.view.LayoutInflater
-import android.view.ContextThemeWrapper
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
@@ -56,8 +55,11 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     }
 
     override fun onCreateInputView(): View {
-        val themed = ContextThemeWrapper(this, R.style.Theme_ASRKeyboard_Ime)
-        val view = LayoutInflater.from(themed).inflate(R.layout.keyboard_view, null)
+        // IME context is forced to a framework DeviceDefault theme on many OS versions,
+        // which breaks Material attribute resolution in our layout/drawables.
+        // Inflate with our app's Material3 IME theme to ensure attrs like colorSurface resolve.
+        val themedContext = android.view.ContextThemeWrapper(this, R.style.Theme_ASRKeyboard_Ime)
+        val view = LayoutInflater.from(themedContext).inflate(R.layout.keyboard_view, null)
         btnMic = view.findViewById(R.id.btnMic)
         btnSettings = view.findViewById(R.id.btnSettings)
         btnGrant = view.findViewById(R.id.btnGrant)

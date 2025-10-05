@@ -3,13 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="?attr/colorSurface">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/topAppBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
+        app:titleCentered="true"
         app:title="@string/settings_title" />
 
     <ScrollView
@@ -26,6 +27,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_instructions"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="14sp"
                 android:paddingBottom="12dp" />
 
@@ -33,6 +35,7 @@
                 android:id="@+id/btnEnable"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                style="@style/Widget.Material3.Button"
                 android:text="@string/btn_enable" />
 
             <com.google.android.material.button.MaterialButton
@@ -40,6 +43,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:text="@string/btn_choose" />
 
             <com.google.android.material.button.MaterialButton
@@ -47,6 +51,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:text="@string/btn_grant_mic" />
 
             <com.google.android.material.divider.MaterialDivider
@@ -58,12 +63,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
+                android:textColor="?attr/colorOnSurface"
                 android:text="@string/volc_section_title"
                 android:textStyle="bold" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                app:boxBackgroundMode="outline"
                 android:hint="@string/label_app_key">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -76,6 +83,7 @@
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                app:boxBackgroundMode="outline"
                 android:hint="@string/label_access_key">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -88,6 +96,7 @@
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                app:boxBackgroundMode="outline"
                 android:hint="@string/label_resource_id">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -100,6 +109,7 @@
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                app:boxBackgroundMode="outline"
                 android:hint="@string/label_endpoint">
 
                 <com.google.android.material.textfield.TextInputEditText
@@ -114,6 +124,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                style="@style/Widget.Material3.Button"
                 android:text="@string/btn_save" />
 
             <com.google.android.material.divider.MaterialDivider
@@ -125,6 +136,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
+                android:textColor="?attr/colorOnSurface"
                 android:text="@string/section_recognition_mode_title"
                 android:textStyle="bold" />
 
@@ -139,6 +151,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:text="@string/continuous_mode_desc" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
