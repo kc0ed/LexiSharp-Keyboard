@@ -4,7 +4,6 @@
 
     <string name="cd_mic">麦克风</string>
     <string name="cd_settings">设置</string>
-    <string name="cd_grant">授予麦克风权限</string>
     <string name="cd_enter">回车</string>
     <string name="cd_backspace">退格</string>
     <string name="cd_switch_ime">切换输入法</string>
@@ -13,10 +12,8 @@
 
     <string name="status_idle">就绪</string>
     <string name="status_listening">正在聆听…</string>
-    <string name="status_processing">后处理中…</string>
     <string name="status_recognizing">识别中…</string>
     <string name="status_ai_processing">AI后处理中…</string>
-    <string name="hint_press_mic">长按麦克风开始录音，松开结束</string>
     <string name="hint_need_permission">需要麦克风权限以进行语音输入</string>
 
     <string name="settings_instructions">首次使用步骤：\n1. 点击“启用键盘”，在系统设置中启用 ASR Keyboard\n2. 点击“选择键盘”，切换到 ASR Keyboard\n3. 授予麦克风权限后，回到任意输入框，长按键盘上的麦克风按钮即可体验</string>
@@ -28,8 +25,8 @@
     <string name="volc_section_title">Volcano Engine 鉴权参数</string>
     <string name="label_app_key">X-Api-App-Key</string>
     <string name="label_access_key">X-Api-Access-Key</string>
-    <string name="label_resource_id">X-Api-Resource-Id（默认: volc.bigasr.sauc.duration）</string>
-    <string name="label_endpoint">Endpoint（默认: bigmodel_async）</string>
+    <string name="label_resource_id">X-Api-Resource-Id（默认: volc.bigasr.auc_turbo）</string>
+    <string name="label_endpoint">Endpoint（默认: recognize/flash）</string>
     <string name="btn_save">保存</string>
     <string name="label_trim_trailing_punct">完成后去除句末标点</string>
     <string name="label_show_ime_switcher">显示“切换输入法”按钮</string>
@@ -39,6 +36,6 @@
     <string name="label_llm_endpoint">OpenAI Endpoint（例如：https://api.openai.com/v1 或包含 /chat/completions）</string>
     <string name="label_llm_api_key">API Key</string>
     <string name="label_llm_model">Model Name（例如：gpt-4o-mini）</string>
-    <string name="label_llm_temperature">Temperature（0.0 - 2.0）</string>
+    <string name="label_llm_temperature">Temperature（0.0 – 2.0）</string>
     <string name="label_llm_prompt">后处理 Prompt（仅输出处理后的文本）</string>
 </resources>

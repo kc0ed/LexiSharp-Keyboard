@@ -25,12 +25,12 @@
             android:contentDescription="@string/cd_hide"
             android:padding="6dp"
             android:src="@drawable/ic_chevron_down"
-            android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            android:tint="?attr/colorOnSurface" />
 
         <ImageButton
             android:id="@+id/btnBackspace"
@@ -40,12 +40,12 @@
             android:contentDescription="@string/cd_backspace"
             android:padding="6dp"
             android:src="@drawable/ic_backspace"
-            android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            android:tint="?attr/colorOnSurface" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -62,12 +62,12 @@
             android:contentDescription="@string/cd_switch_ime"
             android:padding="6dp"
             android:src="@drawable/ic_keyboard"
-            android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toEndOf="@id/btnSettings"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            android:tint="?attr/colorOnSurface" />
 
         <ImageButton
             android:id="@+id/btnSettings"
@@ -77,12 +77,12 @@
             android:contentDescription="@string/cd_settings"
             android:padding="6dp"
             android:src="@drawable/ic_settings"
-            android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            android:tint="?attr/colorOnSurface" />
 
         <ImageButton
             android:id="@+id/btnEnter"
@@ -92,12 +92,12 @@
             android:contentDescription="@string/cd_enter"
             android:padding="6dp"
             android:src="@drawable/ic_enter"
-            android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            android:tint="?attr/colorOnSurface" />
 
         <ImageButton
             android:id="@+id/btnPostproc"
@@ -108,7 +108,6 @@
             android:foreground="?attr/selectableItemBackgroundBorderless"
             android:padding="6dp"
             android:src="@drawable/ic_magic"
-            android:tint="?attr/colorOnSurface"
             android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/btnEnter"
@@ -116,7 +115,8 @@
             app:layout_constraintStart_toEndOf="@id/btnImeSwitcher"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.0"
-            app:layout_goneMarginEnd="8dp" />
+            app:layout_goneMarginEnd="8dp"
+            android:tint="?attr/colorOnSurface" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -124,7 +124,6 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/micContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"

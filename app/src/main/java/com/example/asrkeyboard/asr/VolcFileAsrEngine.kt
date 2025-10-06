@@ -130,13 +130,19 @@ class VolcFileAsrEngine(
             }
 
             try {
-                val wav = pcmToWav(pcmBytes, sampleRate, 1, 16)
+                val wav = pcmToWav(pcmBytes)
                 val b64 = Base64.encodeToString(wav, Base64.NO_WRAP)
                 val json = buildRequestJson(b64)
                 val reqBody = json.toRequestBody("application/json; charset=utf-8".toMediaType())
                 val resourceId = selectFileResourceId(prefs.resourceId)
+                val endpointUrl = prefs.endpoint.let { raw ->
+                    val u = raw.trim()
+                    if (u.isEmpty()) Prefs.DEFAULT_ENDPOINT
+                    else if (u.startsWith("ws", ignoreCase = true) || u.contains("/sauc/") || u.contains("bigmodel_async")) Prefs.DEFAULT_ENDPOINT
+                    else u
+                }
                 val request = Request.Builder()
-                    .url(FILE_ENDPOINT)
+                    .url(endpointUrl)
                     .addHeader("X-Api-App-Key", prefs.appKey)
                     .addHeader("X-Api-Access-Key", prefs.accessKey)
                     .addHeader("X-Api-Resource-Id", resourceId)
@@ -148,7 +154,7 @@ class VolcFileAsrEngine(
                 resp.use { r ->
                     if (!r.isSuccessful) {
                         val msg = r.header("X-Api-Message") ?: r.message
-                        listener.onError("识别请求失败: HTTP ${r.code}${if (msg.isNullOrBlank()) "" else ": $msg"}")
+                        listener.onError("识别请求失败: HTTP ${r.code}${if (msg.isBlank()) "" else ": $msg"}")
                         return@launch
                     }
                     val bodyStr = r.body?.string() ?: ""
@@ -190,7 +196,9 @@ class VolcFileAsrEngine(
         return root.toString()
     }
 
-    private fun pcmToWav(pcm: ByteArray, sampleRate: Int, channels: Int, bitsPerSample: Int): ByteArray {
+    private fun pcmToWav(pcm: ByteArray): ByteArray {
+        val channels = 1
+        val bitsPerSample = 16
         val byteRate = sampleRate * channels * bitsPerSample / 8
         val headerSize = 44
         val dataSize = pcm.size
@@ -229,7 +237,6 @@ class VolcFileAsrEngine(
     }
 
     companion object {
-        private const val FILE_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
         private const val DEFAULT_FILE_RESOURCE = "volc.bigasr.auc_turbo"
     }
 

@@ -2,7 +2,6 @@ package com.example.asrkeyboard.store
 
 import android.content.Context
 import androidx.core.content.edit
-import java.util.UUID
 
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("asr_prefs", Context.MODE_PRIVATE)
@@ -22,10 +21,6 @@ class Prefs(context: Context) {
     var endpoint: String
         get() = sp.getString(KEY_ENDPOINT, DEFAULT_ENDPOINT) ?: DEFAULT_ENDPOINT
         set(value) = sp.edit { putString(KEY_ENDPOINT, value.trim()) }
-
-    var connectId: String
-        get() = sp.getString(KEY_CONNECT_ID, UUID.randomUUID().toString()) ?: UUID.randomUUID().toString()
-        set(value) = sp.edit { putString(KEY_CONNECT_ID, value) }
 
     var trimFinalTrailingPunct: Boolean
         get() = sp.getBoolean(KEY_TRIM_FINAL_TRAILING_PUNCT, false)
@@ -68,7 +63,6 @@ class Prefs(context: Context) {
         private const val KEY_ACCESS_KEY = "access_key"
         private const val KEY_RESOURCE_ID = "resource_id"
         private const val KEY_ENDPOINT = "endpoint"
-        private const val KEY_CONNECT_ID = "connect_id"
         private const val KEY_TRIM_FINAL_TRAILING_PUNCT = "trim_final_trailing_punct"
         private const val KEY_SHOW_IME_SWITCHER_BUTTON = "show_ime_switcher_button"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
@@ -78,8 +72,9 @@ class Prefs(context: Context) {
         private const val KEY_LLM_TEMPERATURE = "llm_temperature"
         private const val KEY_LLM_PROMPT = "llm_prompt"
 
-        const val DEFAULT_RESOURCE = "volc.bigasr.sauc.duration"
-        const val DEFAULT_ENDPOINT = "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async"
+        // Defaults now target non-streaming (file) recognition
+        const val DEFAULT_RESOURCE = "volc.bigasr.auc_turbo"
+        const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
 
         // Reasonable OpenAI-format defaults
         const val DEFAULT_LLM_ENDPOINT = "https://api.openai.com/v1"

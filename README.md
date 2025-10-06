@@ -5,8 +5,7 @@
 ## 功能特性
 
 - 🎤 **长按录音**: 通过长按麦克风按钮开始语音识别
-- 🔄 **实时转写**: 支持流式语音识别，实时显示识别结果
-- 🎯 **智能断句**: 基于VAD（语音活动检测）的自动端点检测，静音800ms后自动停止
+- ⚡ **文件极速识别**: 松开麦克风后整体上传音频并一次性返回结果
 - 🧠 **AI文本优化**: 集成LLM后处理，智能修正识别结果
 - 🔧 **多引擎支持**: 支持火山引擎等多种ASR服务
 - 📱 **简洁界面**: Material3设计风格，最小化界面干扰
@@ -18,7 +17,6 @@
 
 - **输入法服务** (`AsrKeyboardService.kt`): 继承自InputMethodService，管理键盘交互和文本输入
 - **ASR引擎接口** (`AsrEngine.kt`): 定义统一的ASR引擎接口
-- **流式ASR引擎** (`VolcStreamAsrEngine.kt`): 火山引擎流式识别实现
 - **文件式ASR引擎** (`VolcFileAsrEngine.kt`): 火山引擎文件识别实现
 - **LLM后处理器** (`LlmPostProcessor.kt`): 基于大语言模型的文本修正
 - **设置界面** (`SettingsActivity.kt`): 配置ASR服务和LLM参数
@@ -30,7 +28,7 @@
 - **最低SDK**: API 24 (Android 7.0)
 - **目标SDK**: API 34 (Android 14)
 - **编译SDK**: API 36
-- **网络通信**: OkHttp3 + WebSocket
+- **网络通信**: OkHttp3 (HTTP)
 - **UI框架**: Material3 + ViewBinding
 - **并发处理**: Kotlin Coroutines
 
@@ -78,7 +76,7 @@
 
 4. **语音输入**:
    - 在任何文本输入框中，长按麦克风按钮开始录音
-   - 松开按钮或静音800ms后自动停止
+   - 松开按钮后自动结束录音并发起识别
    - 识别结果将自动填入文本框
 
 ## 配置说明
@@ -90,7 +88,7 @@
 - **X-Api-App-Key**: 应用密钥
 - **X-Api-Access-Key**: 访问密钥
 - **X-Api-Resource-Id**: 资源ID
-- **服务端点**: 默认为 `wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async`
+- **服务端点**: 默认为 `https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash`
 
 ### LLM后处理配置
 
@@ -102,12 +100,9 @@
 - **温度参数**: 控制生成文本的随机性 (0-1)
 - **系统提示词**: 自定义修正指令
 
-## 音频协议
+## 识别方式
 
-- **音频格式**: PCM 16kHz, 16-bit, mono
-- **数据块大小**: 每200ms发送一次压缩数据
-- **压缩方式**: GZIP
-- **通信协议**: WebSocket + 自定义二进制协议
+- 非流式：本地录音为 PCM 16kHz/16-bit/mono，结束后封装为 WAV 一次性通过 HTTP 上传至 `recognize/flash` 接口并返回结果。
 
 ## 项目结构
 
@@ -117,7 +112,6 @@ app/src/main/java/com/example/asrkeyboard/
 │   └── AsrKeyboardService.kt
 ├── asr/                    # ASR引擎实现
 │   ├── AsrEngine.kt
-│   ├── VolcStreamAsrEngine.kt
 │   ├── VolcFileAsrEngine.kt
 │   └── LlmPostProcessor.kt
 ├── ui/                     # 用户界面

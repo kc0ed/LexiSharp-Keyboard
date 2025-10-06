@@ -8,7 +8,6 @@ interface AsrEngine {
 
 interface StreamingAsrEngine : AsrEngine {
     interface Listener {
-        fun onPartial(stableText: String, unstableText: String)
         fun onFinal(text: String)
         fun onError(message: String)
     }

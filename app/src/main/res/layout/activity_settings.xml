@@ -21,7 +21,6 @@
             android:layout_height="wrap_content">
 
             <LinearLayout
-                android:id="@+id/formContainer"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"

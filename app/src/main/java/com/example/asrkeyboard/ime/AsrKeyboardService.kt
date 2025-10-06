@@ -23,11 +23,9 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.asr.StreamingAsrEngine
-import com.example.asrkeyboard.asr.VolcStreamAsrEngine
 import com.example.asrkeyboard.asr.VolcFileAsrEngine
 import com.example.asrkeyboard.asr.LlmPostProcessor
 import com.example.asrkeyboard.store.Prefs
-import com.example.asrkeyboard.ui.PermissionActivity
 import com.example.asrkeyboard.ui.SettingsActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -312,12 +310,6 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         startActivity(intent)
     }
 
-    private fun requestAudioPermission() {
-        val intent = Intent(this, PermissionActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(intent)
-    }
-
     private fun hasRecordAudioPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             this,
@@ -335,6 +327,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun syncSystemBarsToKeyboardBackground(anchorView: View? = null) {
         val w = window?.window ?: return
         val color = resolveKeyboardSurfaceColor(anchorView)
@@ -349,23 +342,16 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private fun buildEngineForCurrentMode(): StreamingAsrEngine? {
         if (!prefs.hasVolcKeys()) return null
-        return if (prefs.postProcessEnabled) {
-            VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
-        } else {
-            VolcStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
-        }
+        // Always use non-streaming (file) engine regardless of post-processing setting
+        return VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
     }
 
     private fun ensureEngineMatchesMode(current: StreamingAsrEngine?): StreamingAsrEngine? {
         if (!prefs.hasVolcKeys()) return null
-        val needFileEngine = prefs.postProcessEnabled
-        return when {
-            current == null -> buildEngineForCurrentMode()
-            needFileEngine && current !is VolcFileAsrEngine ->
-                VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
-            !needFileEngine && current !is VolcStreamAsrEngine ->
-                VolcStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
-            else -> current
+        return when (current) {
+            null -> buildEngineForCurrentMode()
+            is VolcFileAsrEngine -> current
+            else -> VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
         }
     }
 
@@ -460,24 +446,6 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 v.vibrate(20)
             }
         } catch (_: Exception) {
-        }
-    }
-    // StreamingAsrEngine.Listener
-    override fun onPartial(stableText: String, unstableText: String) {
-        if (prefs.postProcessEnabled) {
-            // Keep everything as composing while recognizing; no commits yet
-            val preview = stableText + unstableText
-            currentInputConnection?.setComposingText(preview, 1)
-            committedStableLen = 0
-        } else {
-            // Commit newly stabilized prefix
-            if (stableText.length > committedStableLen) {
-                val newPart = stableText.substring(committedStableLen)
-                currentInputConnection?.commitText(newPart, 1)
-                committedStableLen = stableText.length
-            }
-            // Show remaining unstable as composing
-            currentInputConnection?.setComposingText(unstableText, 1)
         }
     }
 
