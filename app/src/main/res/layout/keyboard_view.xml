@@ -17,38 +17,19 @@
         android:layout_width="match_parent"
         android:layout_height="72dp">
 
-        <TextView
-            android:id="@+id/txtStatus"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="@string/status_idle"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="16sp"
-            app:layout_constrainedWidth="true"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/btnBackspace"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_goneMarginEnd="8dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp" />
-
         <ImageButton
-            android:id="@+id/btnGrant"
+            android:id="@+id/btnHide"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@android:color/transparent"
-            android:contentDescription="@string/cd_grant"
+            android:contentDescription="@string/cd_hide"
             android:padding="6dp"
-            android:src="@drawable/ic_lock"
+            android:src="@drawable/ic_chevron_down"
             android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/btnBackspace"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_goneMarginEnd="8dp" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <ImageButton
             android:id="@+id/btnBackspace"
@@ -136,20 +117,37 @@
 
     </LinearLayout>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/btnMic"
+    <LinearLayout
+        android:id="@+id/micContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:contentDescription="@string/cd_mic"
-        app:srcCompat="@drawable/ic_mic"
-        app:backgroundTint="?attr/colorPrimaryContainer"
-        app:tint="?attr/colorOnPrimaryContainer"
-        android:elevation="0dp"
-        app:elevation="0dp"
-        app:pressedTranslationZ="0dp"
-        android:stateListAnimator="@null"
-        app:fabCustomSize="72dp"
-        app:maxImageSize="40dp"
-        android:layout_gravity="center" />
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center_horizontal">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnMic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/cd_mic"
+            app:srcCompat="@drawable/ic_mic"
+            app:backgroundTint="?attr/colorPrimaryContainer"
+            app:tint="?attr/colorOnPrimaryContainer"
+            android:elevation="0dp"
+            app:elevation="0dp"
+            app:pressedTranslationZ="0dp"
+            android:stateListAnimator="@null"
+            app:fabCustomSize="72dp"
+            app:maxImageSize="40dp" />
+
+        <TextView
+            android:id="@+id/txtStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/status_idle"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="16sp" />
+    </LinearLayout>
 
 </FrameLayout>

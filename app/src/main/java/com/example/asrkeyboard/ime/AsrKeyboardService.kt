@@ -42,7 +42,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var btnEnter: ImageButton? = null
     private var btnPostproc: ImageButton? = null
     private var btnBackspace: ImageButton? = null
-    private var btnGrant: ImageButton? = null
+    private var btnHide: ImageButton? = null
     private var btnImeSwitcher: ImageButton? = null
     private var txtStatus: TextView? = null
     private var committedStableLen: Int = 0
@@ -85,7 +85,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnEnter = view.findViewById(R.id.btnEnter)
         btnPostproc = view.findViewById(R.id.btnPostproc)
         btnBackspace = view.findViewById(R.id.btnBackspace)
-        btnGrant = view.findViewById(R.id.btnGrant)
+        btnHide = view.findViewById(R.id.btnHide)
         btnImeSwitcher = view.findViewById(R.id.btnImeSwitcher)
         txtStatus = view.findViewById(R.id.txtStatus)
 
@@ -142,7 +142,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnSettings?.setOnClickListener { openSettings() }
         btnEnter?.setOnClickListener { sendEnter() }
         btnBackspace?.setOnClickListener { sendBackspace() }
-        btnGrant?.setOnClickListener { requestAudioPermission() }
+        btnHide?.setOnClickListener { hideKeyboardPanel() }
         btnImeSwitcher?.setOnClickListener { showImePicker() }
         btnPostproc?.apply {
             isSelected = prefs.postProcessEnabled
@@ -174,15 +174,12 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         val granted = hasRecordAudioPermission()
         val hasKeys = prefs.hasVolcKeys()
         if (!granted) {
-            btnGrant?.visibility = View.VISIBLE
             btnMic?.isEnabled = false
             txtStatus?.text = getString(R.string.hint_need_permission)
         } else if (!hasKeys) {
-            btnGrant?.visibility = View.GONE
             btnMic?.isEnabled = false
             txtStatus?.text = getString(R.string.hint_need_keys)
         } else {
-            btnGrant?.visibility = View.GONE
             btnMic?.isEnabled = true
             txtStatus?.text = getString(R.string.status_idle)
         }
@@ -228,6 +225,17 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         val ic = currentInputConnection ?: return
         // Delete one character before cursor
         ic.deleteSurroundingText(1, 0)
+    }
+
+    private fun hideKeyboardPanel() {
+        // Stop any ongoing ASR session and return to idle
+        if (asrEngine?.isRunning == true) {
+            asrEngine?.stop()
+        }
+        updateUiIdle()
+        try {
+            requestHideSelf(0)
+        } catch (_: Exception) { }
     }
 
     private fun showImePicker() {
