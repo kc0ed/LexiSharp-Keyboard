@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.asr.StreamingAsrEngine
 import com.example.asrkeyboard.asr.VolcStreamAsrEngine
+import com.example.asrkeyboard.asr.VolcFileAsrEngine
 import com.example.asrkeyboard.asr.LlmPostProcessor
 import com.example.asrkeyboard.store.Prefs
 import com.example.asrkeyboard.ui.PermissionActivity
@@ -66,11 +67,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
-        asrEngine = if (prefs.hasVolcKeys()) {
-            VolcStreamAsrEngine(this, serviceScope, prefs, this)
-        } else {
-            null
-        }
+        asrEngine = buildEngineForCurrentMode()
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -115,9 +112,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         v.performClick()
                         return@setOnTouchListener true
                     }
-                    if (asrEngine == null) {
-                        asrEngine = VolcStreamAsrEngine(this, serviceScope, prefs, this)
-                    }
+                    // Ensure engine type matches current post-processing mode
+                    asrEngine = ensureEngineMatchesMode(asrEngine)
                     micLongPressStarted = false
                     micLongPressPending = true
                     val timeout = ViewConfiguration.getLongPressTimeout().toLong()
@@ -143,6 +139,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         // and let onFinal() transition UI state after processing.
                         if (!prefs.postProcessEnabled) {
                             updateUiIdle()
+                        } else {
+                            // File-based recognition happens now
+                            txtStatus?.text = getString(R.string.status_recognizing)
                         }
                     }
                     v.performClick()
@@ -262,6 +261,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 alpha = if (enabled) 1f else 0.45f
                 // Provide quick feedback via status line
                 txtStatus?.text = if (enabled) getString(R.string.cd_postproc_toggle) + ": ON" else getString(R.string.cd_postproc_toggle) + ": OFF"
+                // Swap ASR engine implementation when toggled (only if not running)
+                if (asrEngine?.isRunning != true) {
+                    asrEngine = buildEngineForCurrentMode()
+                }
             }
         }
 
@@ -310,6 +313,28 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             this,
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun buildEngineForCurrentMode(): StreamingAsrEngine? {
+        if (!prefs.hasVolcKeys()) return null
+        return if (prefs.postProcessEnabled) {
+            VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+        } else {
+            VolcStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+        }
+    }
+
+    private fun ensureEngineMatchesMode(current: StreamingAsrEngine?): StreamingAsrEngine? {
+        if (!prefs.hasVolcKeys()) return null
+        val needFileEngine = prefs.postProcessEnabled
+        return when {
+            current == null -> buildEngineForCurrentMode()
+            needFileEngine && current !is VolcFileAsrEngine ->
+                VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            !needFileEngine && current !is VolcStreamAsrEngine ->
+                VolcStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            else -> current
+        }
     }
 
     private fun updateUiIdle() {
@@ -428,7 +453,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
             // Keep recognized text as composing while we post-process
             currentInputConnection?.setComposingText(text, 1)
-            txtStatus?.text = getString(R.string.status_processing)
+            txtStatus?.text = getString(R.string.status_ai_processing)
             serviceScope.launch {
                 val processed = try {
                     val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text

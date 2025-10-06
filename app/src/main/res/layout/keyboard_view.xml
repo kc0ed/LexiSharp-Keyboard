@@ -125,7 +125,7 @@
 
     <LinearLayout
         android:id="@+id/micContainer"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:orientation="vertical"
@@ -148,9 +148,12 @@
 
         <TextView
             android:id="@+id/txtStatus"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:maxLines="2"
+            android:ellipsize="end"
             android:text="@string/status_idle"
             android:textColor="?attr/colorOnSurface"
             android:textSize="16sp" />
