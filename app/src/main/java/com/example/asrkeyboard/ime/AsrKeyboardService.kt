@@ -8,6 +8,7 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Vibrator
 import android.view.LayoutInflater
+import android.graphics.Color
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.View
@@ -18,6 +19,8 @@ import android.view.inputmethod.InputMethodManager
 import android.view.inputmethod.EditorInfo
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.WindowInsetsControllerCompat
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.asr.StreamingAsrEngine
 import com.example.asrkeyboard.asr.VolcStreamAsrEngine
@@ -31,12 +34,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import com.google.android.material.color.MaterialColors
 
 class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var asrEngine: StreamingAsrEngine? = null
     private lateinit var prefs: Prefs
+    private var rootView: View? = null
 
     private var btnMic: FloatingActionButton? = null
     private var btnSettings: ImageButton? = null
@@ -75,6 +80,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         // Re-apply visibility in case user toggled setting while IME was backgrounded
         btnImeSwitcher?.visibility = if (prefs.showImeSwitcherButton) View.VISIBLE else View.GONE
         refreshPermissionUi()
+        // Keep system toolbar/nav colors in sync with our panel background
+        syncSystemBarsToKeyboardBackground(rootView)
     }
 
     override fun onDestroy() {
@@ -89,6 +96,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         val themedContext = android.view.ContextThemeWrapper(this, R.style.Theme_ASRKeyboard_Ime)
         val dynamicContext = com.google.android.material.color.DynamicColors.wrapContextIfAvailable(themedContext)
         val view = LayoutInflater.from(dynamicContext).inflate(R.layout.keyboard_view, null, false)
+        rootView = view
         btnMic = view.findViewById(R.id.btnMic)
         btnSettings = view.findViewById(R.id.btnSettings)
         btnEnter = view.findViewById(R.id.btnEnter)
@@ -273,6 +281,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
         updateUiIdle()
         refreshPermissionUi()
+        // Align system toolbar/navigation bar color to our surface color so they match
+        syncSystemBarsToKeyboardBackground(view)
         return view
     }
 
@@ -313,6 +323,28 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             this,
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun resolveKeyboardSurfaceColor(from: View? = null): Int {
+        // Use the same attribute the keyboard container uses for background
+        val ctx = from?.context ?: this
+        return try {
+            MaterialColors.getColor(ctx, com.google.android.material.R.attr.colorSurface, Color.BLACK)
+        } catch (_: Throwable) {
+            Color.BLACK
+        }
+    }
+
+    private fun syncSystemBarsToKeyboardBackground(anchorView: View? = null) {
+        val w = window?.window ?: return
+        val color = resolveKeyboardSurfaceColor(anchorView)
+        try {
+            w.navigationBarColor = color
+        } catch (_: Throwable) { }
+        // Adjust nav bar icon contrast depending on background brightness
+        val isLight = try { ColorUtils.calculateLuminance(color) > 0.5 } catch (_: Throwable) { false }
+        val controller = WindowInsetsControllerCompat(w, anchorView ?: w.decorView)
+        controller.isAppearanceLightNavigationBars = isLight
     }
 
     private fun buildEngineForCurrentMode(): StreamingAsrEngine? {
