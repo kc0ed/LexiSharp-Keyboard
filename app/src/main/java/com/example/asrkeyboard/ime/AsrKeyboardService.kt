@@ -51,6 +51,18 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var micLongPressPending: Boolean = false
     private var micLongPressRunnable: Runnable? = null
 
+    // Backspace gesture state
+    private var backspaceStartX: Float = 0f
+    private var backspaceStartY: Float = 0f
+    private var backspaceClearedInGesture: Boolean = false
+    private var backspaceSnapshotBefore: CharSequence? = null
+    private var backspaceSnapshotAfter: CharSequence? = null
+    private var backspaceSnapshotValid: Boolean = false
+    private var backspacePressed: Boolean = false
+    private var backspaceLongPressStarted: Boolean = false
+    private var backspaceLongPressStarter: Runnable? = null
+    private var backspaceRepeatRunnable: Runnable? = null
+
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
@@ -141,7 +153,103 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         }
         btnSettings?.setOnClickListener { openSettings() }
         btnEnter?.setOnClickListener { sendEnter() }
+        // Backspace: tap to delete one; swipe up/left to clear all; swipe down to undo within gesture; long-press to repeat delete
         btnBackspace?.setOnClickListener { sendBackspace() }
+        btnBackspace?.setOnTouchListener { v, event ->
+            val ic = currentInputConnection
+            if (ic == null) return@setOnTouchListener false
+            val slop = ViewConfiguration.get(v.context).scaledTouchSlop
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    backspaceStartX = event.x
+                    backspaceStartY = event.y
+                    backspaceClearedInGesture = false
+                    backspacePressed = true
+                    backspaceLongPressStarted = false
+                    // schedule long-press repeat starter
+                    backspaceLongPressStarter?.let { v.removeCallbacks(it) }
+                    backspaceRepeatRunnable?.let { v.removeCallbacks(it) }
+                    val starter = Runnable {
+                        if (!backspacePressed || backspaceClearedInGesture) return@Runnable
+                        backspaceLongPressStarted = true
+                        // initial delete then start repeating
+                        sendBackspace()
+                        val rep = object : Runnable {
+                            override fun run() {
+                                if (!backspacePressed || backspaceClearedInGesture) return
+                                sendBackspace()
+                                v.postDelayed(this, ViewConfiguration.getKeyRepeatDelay().toLong())
+                            }
+                        }
+                        backspaceRepeatRunnable = rep
+                        v.postDelayed(rep, ViewConfiguration.getKeyRepeatDelay().toLong())
+                    }
+                    backspaceLongPressStarter = starter
+                    v.postDelayed(starter, ViewConfiguration.getLongPressTimeout().toLong())
+                    // Take a snapshot so we can restore on downward swipe
+                    try {
+                        val before = ic.getTextBeforeCursor(10000, 0)
+                        val after = ic.getTextAfterCursor(10000, 0)
+                        backspaceSnapshotBefore = before
+                        backspaceSnapshotAfter = after
+                        backspaceSnapshotValid = before != null && after != null
+                    } catch (_: Throwable) {
+                        backspaceSnapshotBefore = null
+                        backspaceSnapshotAfter = null
+                        backspaceSnapshotValid = false
+                    }
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.x - backspaceStartX
+                    val dy = event.y - backspaceStartY
+                    // Trigger clear when swiping up or left beyond slop
+                    if (!backspaceClearedInGesture && (dy <= -slop || dx <= -slop)) {
+                        // cancel any repeat
+                        backspaceLongPressStarter?.let { v.removeCallbacks(it) }
+                        backspaceRepeatRunnable?.let { v.removeCallbacks(it) }
+                        clearAllTextWithSnapshot(ic)
+                        backspaceClearedInGesture = true
+                        vibrateTick()
+                        return@setOnTouchListener true
+                    }
+                    // If already cleared in this gesture, allow swipe down to undo
+                    if (backspaceClearedInGesture && dy >= slop) {
+                        if (backspaceSnapshotValid) {
+                            restoreSnapshot(ic)
+                        }
+                        backspaceClearedInGesture = false
+                        vibrateTick()
+                        return@setOnTouchListener true
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val dx = event.x - backspaceStartX
+                    val dy = event.y - backspaceStartY
+                    val isTap = kotlin.math.abs(dx) < slop && kotlin.math.abs(dy) < slop && !backspaceClearedInGesture && !backspaceLongPressStarted
+                    backspacePressed = false
+                    // cancel long-press repeat tasks
+                    backspaceLongPressStarter?.let { v.removeCallbacks(it) }
+                    backspaceLongPressStarter = null
+                    backspaceRepeatRunnable?.let { v.removeCallbacks(it) }
+                    backspaceRepeatRunnable = null
+                    if (isTap && event.actionMasked == MotionEvent.ACTION_UP) {
+                        // Treat as a normal backspace tap
+                        v.performClick()
+                        return@setOnTouchListener true
+                    }
+                    // If finger lifted after an already-cleared gesture, keep result.
+                    // If swiped down without having cleared, do nothing (cancel).
+                    backspaceSnapshotBefore = null
+                    backspaceSnapshotAfter = null
+                    backspaceSnapshotValid = false
+                    backspaceClearedInGesture = false
+                    true
+                }
+                else -> false
+            }
+        }
         btnHide?.setOnClickListener { hideKeyboardPanel() }
         btnImeSwitcher?.setOnClickListener { showImePicker() }
         btnPostproc?.apply {
@@ -225,6 +333,44 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         val ic = currentInputConnection ?: return
         // Delete one character before cursor
         ic.deleteSurroundingText(1, 0)
+    }
+
+    private fun clearAllTextWithSnapshot(ic: android.view.inputmethod.InputConnection) {
+        // If snapshot is invalid (e.g., secure fields), fall back to max deletion
+        if (!backspaceSnapshotValid) {
+            try {
+                ic.deleteSurroundingText(Int.MAX_VALUE, Int.MAX_VALUE)
+            } catch (_: Throwable) { }
+            return
+        }
+        try {
+            val beforeLen = backspaceSnapshotBefore?.length ?: 0
+            val afterLen = backspaceSnapshotAfter?.length ?: 0
+            ic.beginBatchEdit()
+            ic.deleteSurroundingText(beforeLen, afterLen)
+            ic.finishComposingText()
+            ic.endBatchEdit()
+        } catch (_: Throwable) {
+            try {
+                ic.deleteSurroundingText(Int.MAX_VALUE, Int.MAX_VALUE)
+            } catch (_: Throwable) { }
+        }
+    }
+
+    private fun restoreSnapshot(ic: android.view.inputmethod.InputConnection) {
+        if (!backspaceSnapshotValid) return
+        val before = backspaceSnapshotBefore?.toString() ?: return
+        val after = backspaceSnapshotAfter?.toString() ?: ""
+        try {
+            ic.beginBatchEdit()
+            ic.commitText(before + after, 1)
+            val sel = before.length
+            try {
+                ic.setSelection(sel, sel)
+            } catch (_: Throwable) { }
+            ic.finishComposingText()
+            ic.endBatchEdit()
+        } catch (_: Throwable) { }
     }
 
     private fun hideKeyboardPanel() {
