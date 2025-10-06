@@ -25,7 +25,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
-import kotlin.math.sqrt
+import java.util.concurrent.TimeUnit
 
 class VolcStreamAsrEngine(
     private val context: Context,
@@ -34,7 +34,9 @@ class VolcStreamAsrEngine(
     private val listener: StreamingAsrEngine.Listener
 ) : StreamingAsrEngine {
 
-    private val client: OkHttpClient = OkHttpClient.Builder().build()
+    private val client: OkHttpClient = OkHttpClient.Builder()
+        .pingInterval(20, TimeUnit.SECONDS)
+        .build()
     private var webSocket: WebSocket? = null
     private var audioJob: Job? = null
     private var running = AtomicBoolean(false) // user session is active
@@ -168,34 +170,11 @@ class VolcStreamAsrEngine(
                 return@launch
             }
             val buf = ByteArray(chunkBytes)
-            var silenceMs = 0
-            var hadVoice = false
             try {
                 while (running.get()) {
                     val read = recorder.read(buf, 0, buf.size)
                     if (read > 0) {
                         val chunk = if (read == buf.size) buf else buf.copyOf(read)
-                        // VAD: compute RMS and update silence window
-                        if (isVoiced(chunk)) {
-                            hadVoice = true
-                            silenceMs = 0
-                        } else {
-                            silenceMs += CHUNK_MS
-                            if (hadVoice && silenceMs >= END_WINDOW_MS) {
-                                // End of utterance: send last frame and stop this recording loop
-                                try {
-                                    val finalFrame = buildFrame(
-                                        messageType = MSG_TYPE_AUDIO_ONLY,
-                                        flags = FLAGS_LAST_NOSEQ,
-                                        serialization = SERIAL_NONE,
-                                        payload = byteArrayOf()
-                                    )
-                                    webSocket?.send(finalFrame.toByteString())
-                                } catch (_: Throwable) {}
-                                break
-                            }
-                        }
-
                         val compressed = gzip(chunk)
                         val frame = buildFrame(
                             messageType = MSG_TYPE_AUDIO_ONLY,
@@ -234,6 +213,11 @@ class VolcStreamAsrEngine(
             put("enable_nonstream", true) // 开启二遍识别
             put("enable_itn", true)
             put("enable_punc", true)
+            put("enable_ddc", true) // 启用语义顺滑，减少重复
+            // 使用服务端VAD进行分句：静音超过end_window_size即判停并输出definite
+            put("end_window_size", END_WINDOW_MS)
+            // 前1s内也允许根据静音判停，避免默认10s内不判停
+            put("force_to_speech_time", FORCE_TO_SPEECH_MS)
             put("show_utterances", true)
         }
         val root = JSONObject().apply {
@@ -267,7 +251,9 @@ class VolcStreamAsrEngine(
                 if (payloadEnd > bytes.size) return
                 val payload = bytes.copyOfRange(payloadStart, payloadEnd)
                 val data = if (compression == COMP_GZIP) gunzip(payload) else payload
-                val (text, stable) = parseResultTextAndStable(String(data))
+                val (textRaw, stableRaw) = parseResultTextAndStable(String(data))
+                val text = textRaw?.let { dedupImmediateRepeatSuffix(it) }
+                val stableFromServer = stableRaw?.let { dedupImmediateRepeatSuffix(it) }
                 if (text != null) {
                     if (flags == FLAGS_LAST_RESULT) {
                         listener.onFinal(text)
@@ -275,9 +261,9 @@ class VolcStreamAsrEngine(
                         // End session after delivering final result (no auto-restart)
                         running.set(false)
                     } else {
-                        val stableText = stable ?: ""
-                        val unstable = if (text.startsWith(stableText)) text.substring(stableText.length) else text
-                        listener.onPartial(stableText, unstable)
+                        val stableText = stableFromServer ?: ""
+                        val (stableOut, unstable) = splitStableUnstable(text, stableText)
+                        listener.onPartial(stableOut, unstable)
                     }
                 }
             }
@@ -322,6 +308,52 @@ class VolcStreamAsrEngine(
         } catch (_: Throwable) {
             Pair(null, null)
         }
+    }
+
+    private fun splitStableUnstable(text: String, stableCandidate: String): Pair<String, String> {
+        // Prefer exact prefix split; fall back to longest common prefix to be robust to punctuation
+        return if (text.startsWith(stableCandidate)) {
+            Pair(stableCandidate, text.substring(stableCandidate.length))
+        } else {
+            val lcpLen = longestCommonPrefixLength(text, stableCandidate)
+            Pair(stableCandidate.substring(0, lcpLen), text.substring(lcpLen))
+        }
+    }
+
+    private fun longestCommonPrefixLength(a: String, b: String): Int {
+        val n = minOf(a.length, b.length)
+        var i = 0
+        while (i < n && a[i] == b[i]) i++
+        return i
+    }
+
+    // Heuristic: if text ends with an immediate duplicate block (e.g., ABCDABCD),
+    // and the block is alnum-heavy with reasonable length, drop the trailing copy.
+    private fun dedupImmediateRepeatSuffix(s: String): String {
+        if (s.length < 8) return s // too short to meaningfully dedup
+        val maxCheck = s.length / 2
+        // Try larger blocks first to avoid trimming small intended repeats
+        for (blk in maxCheck downTo 4) {
+            val end = s.length
+            val mid = end - blk
+            val start = end - 2 * blk
+            if (start < 0) continue
+            val a = s.substring(start, mid)
+            val b = s.substring(mid, end)
+            if (a == b && isMostlyAlphaNum(b)) {
+                return s.substring(0, end - blk)
+            }
+        }
+        return s
+    }
+
+    private fun isMostlyAlphaNum(str: String): Boolean {
+        if (str.isEmpty()) return false
+        var alnum = 0
+        for (ch in str) {
+            if (ch.isLetterOrDigit()) alnum++
+        }
+        return alnum * 2 >= str.length // >=50% alnum
     }
 
     private fun buildFrame(
@@ -369,24 +401,7 @@ class VolcStreamAsrEngine(
         return bos.toByteArray()
     }
 
-    private fun isVoiced(chunk: ByteArray): Boolean {
-        // Compute RMS over 16-bit samples
-        var sumSq = 0.0
-        var samples = 0
-        var i = 0
-        while (i + 1 < chunk.size) {
-            val lo = chunk[i].toInt() and 0xFF
-            val hi = chunk[i + 1].toInt()
-            val v = (hi shl 8) or lo
-            val s = if (v and 0x8000 != 0) v - 0x10000 else v // sign extend
-            sumSq += (s * s).toDouble()
-            samples++
-            i += 2
-        }
-        if (samples == 0) return false
-        val rms = sqrt(sumSq / samples)
-        return rms >= VAD_RMS_THRESHOLD
-    }
+    
 
     companion object {
         private const val TAG = "VolcStreamAsr"
@@ -410,7 +425,7 @@ class VolcStreamAsrEngine(
         private const val COMP_GZIP = 0x1
 
         private const val CHUNK_MS = 200
-        private const val END_WINDOW_MS = 800
-        private const val VAD_RMS_THRESHOLD = 800.0 // heuristic; tune per device
+        private const val END_WINDOW_MS = 800 // 服务端VAD强制判停时间（ms）
+        private const val FORCE_TO_SPEECH_MS = 1000 // 允许在前1s内根据静音判停
     }
 }
