@@ -27,6 +27,7 @@
             android:src="@drawable/ic_chevron_down"
             android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -41,6 +42,7 @@
             android:src="@drawable/ic_backspace"
             android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -62,6 +64,7 @@
             android:src="@drawable/ic_keyboard"
             android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toEndOf="@id/btnSettings"
             app:layout_constraintTop_toTopOf="parent" />
@@ -76,6 +79,7 @@
             android:src="@drawable/ic_settings"
             android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -90,6 +94,7 @@
             android:src="@drawable/ic_enter"
             android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -104,6 +109,7 @@
             android:padding="6dp"
             android:src="@drawable/ic_magic"
             android:tint="?attr/colorOnSurface"
+            android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/btnEnter"
             app:layout_constraintHorizontal_bias="1.0"
@@ -131,7 +137,7 @@
             android:layout_height="wrap_content"
             android:contentDescription="@string/cd_mic"
             app:srcCompat="@drawable/ic_mic"
-            app:backgroundTint="?attr/colorPrimaryContainer"
+            app:backgroundTint="@color/fab_mic_tint"
             app:tint="?attr/colorOnPrimaryContainer"
             android:elevation="0dp"
             app:elevation="0dp"
