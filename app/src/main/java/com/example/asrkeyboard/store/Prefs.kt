@@ -85,6 +85,6 @@ class Prefs(context: Context) {
         const val DEFAULT_LLM_ENDPOINT = "https://api.openai.com/v1"
         const val DEFAULT_LLM_MODEL = "gpt-4o-mini"
         const val DEFAULT_LLM_TEMPERATURE = 0.2f
-        const val DEFAULT_LLM_PROMPT = "你是一个文本清理与润色助手。请在尽量保留用户原意的前提下：1) 去除口头禅与明显的口误；2) 修复语法或错别字；3) 不要添加事实信息；4) 保持口语化与自然流畅；5) 若文本为多句，适度分句并规范标点。仅输出处理后的文本。"
+        const val DEFAULT_LLM_PROMPT = "你是一个专业的文本修正助手。请将以下由语音识别(ASR)生成的原始文本进行处理，使其流畅、通顺、专业。\n\n处理要求：\n1. 去除所有口头禅、语气词和犹豫词（如\"嗯\"、\"啊\"、\"那个\"）。\n2. 纠正口误、重复和自我修正的部分，保留最终的正确意图。\n3. 根据上下文，修正明显的错别字，特别是同音或近音的识别错误。\n4. 不要添加任何原始文本中没有的额外信息或评论。\n\n请直接输出修正后的文本。"
     }
 }
