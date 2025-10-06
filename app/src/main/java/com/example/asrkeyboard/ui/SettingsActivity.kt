@@ -8,7 +8,6 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
-import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.activity.ComponentActivity
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.store.Prefs
@@ -50,10 +49,6 @@ class SettingsActivity : ComponentActivity() {
             Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
         }
 
-        val swContinuous = findViewById<MaterialSwitch>(R.id.swContinuous)
-        swContinuous.isChecked = prefs.continuousMode
-        swContinuous.setOnCheckedChangeListener { _, isChecked ->
-            prefs.continuousMode = isChecked
-        }
+        // Continuous mode has been removed; no toggle needed.
     }
 }

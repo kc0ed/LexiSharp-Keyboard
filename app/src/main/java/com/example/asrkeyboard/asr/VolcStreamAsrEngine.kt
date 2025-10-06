@@ -251,12 +251,8 @@ class VolcStreamAsrEngine(
                     if (flags == FLAGS_LAST_RESULT) {
                         listener.onFinal(text)
                         try { webSocket?.close(1000, "final") } catch (_: Throwable) {}
-                        // Continuous mode: restart a new session automatically
-                        if (prefs.continuousMode && running.get()) {
-                            openWebSocketAndStart()
-                        } else {
-                            running.set(false)
-                        }
+                        // End session after delivering final result (no auto-restart)
+                        running.set(false)
                     } else {
                         val stableText = stable ?: ""
                         val unstable = if (text.startsWith(stableText)) text.substring(stableText.length) else text

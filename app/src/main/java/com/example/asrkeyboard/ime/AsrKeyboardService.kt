@@ -8,6 +8,8 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Vibrator
 import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
@@ -37,6 +39,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var txtStatus: TextView? = null
     private var txtHint: TextView? = null
     private var committedStableLen: Int = 0
+    private var micLongPressStarted: Boolean = false
+    private var micLongPressPending: Boolean = false
+    private var micLongPressRunnable: Runnable? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -66,7 +71,41 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         txtStatus = view.findViewById(R.id.txtStatus)
         txtHint = view.findViewById(R.id.txtHint)
 
-        btnMic?.setOnClickListener { onMicClicked() }
+        btnMic?.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (!hasRecordAudioPermission()) {
+                        refreshPermissionUi()
+                        return@setOnTouchListener true
+                    }
+                    micLongPressStarted = false
+                    micLongPressPending = true
+                    val timeout = ViewConfiguration.getLongPressTimeout().toLong()
+                    val r = Runnable {
+                        if (micLongPressPending && !asrEngine.isRunning) {
+                            micLongPressStarted = true
+                            committedStableLen = 0
+                            updateUiListening()
+                            asrEngine.start()
+                        }
+                    }
+                    micLongPressRunnable = r
+                    v.postDelayed(r, timeout)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    micLongPressPending = false
+                    micLongPressRunnable?.let { v.removeCallbacks(it) }
+                    micLongPressRunnable = null
+                    if (micLongPressStarted && asrEngine.isRunning) {
+                        asrEngine.stop()
+                        updateUiIdle()
+                    }
+                    true
+                }
+                else -> true
+            }
+        }
         btnSettings?.setOnClickListener { openSettings() }
         btnGrant?.setOnClickListener { requestAudioPermission() }
 
@@ -85,21 +124,6 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnGrant?.visibility = if (granted) View.GONE else View.VISIBLE
         btnMic?.isEnabled = granted
         txtHint?.text = if (granted) getString(R.string.hint_press_mic) else getString(R.string.hint_need_permission)
-    }
-
-    private fun onMicClicked() {
-        if (!hasRecordAudioPermission()) {
-            refreshPermissionUi()
-            return
-        }
-        if (asrEngine.isRunning) {
-            asrEngine.stop()
-            updateUiIdle()
-        } else {
-            updateUiListening()
-            committedStableLen = 0
-            asrEngine.start()
-        }
     }
 
     private fun openSettings() {
@@ -164,13 +188,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         }
         vibrateTick()
         committedStableLen = 0
-        if (prefs.continuousMode && asrEngine.isRunning) {
-            // Stay in listening state for next utterance
-            txtStatus?.text = getString(R.string.status_listening)
-            btnMic?.isSelected = true
-        } else {
-            updateUiIdle()
-        }
+        // Always return to idle after finalizing one utterance
+        updateUiIdle()
     }
 
     override fun onError(message: String) {
