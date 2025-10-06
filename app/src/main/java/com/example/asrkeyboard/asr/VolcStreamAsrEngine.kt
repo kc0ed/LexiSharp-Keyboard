@@ -60,7 +60,6 @@ class VolcStreamAsrEngine(
                 messageType = MSG_TYPE_AUDIO_ONLY,
                 flags = FLAGS_LAST_NOSEQ,
                 serialization = SERIAL_NONE,
-                compression = COMP_GZIP,
                 payload = byteArrayOf()
             )
             webSocket?.send(finalFrame.toByteString())
@@ -93,7 +92,6 @@ class VolcStreamAsrEngine(
                         messageType = MSG_TYPE_FULL_CLIENT_REQ,
                         flags = FLAGS_NOSEQ,
                         serialization = SERIAL_JSON,
-                        compression = COMP_GZIP,
                         payload = payload,
                         alreadyCompressed = true
                     )
@@ -190,7 +188,6 @@ class VolcStreamAsrEngine(
                                         messageType = MSG_TYPE_AUDIO_ONLY,
                                         flags = FLAGS_LAST_NOSEQ,
                                         serialization = SERIAL_NONE,
-                                        compression = COMP_GZIP,
                                         payload = byteArrayOf()
                                     )
                                     webSocket?.send(finalFrame.toByteString())
@@ -204,7 +201,6 @@ class VolcStreamAsrEngine(
                             messageType = MSG_TYPE_AUDIO_ONLY,
                             flags = FLAGS_NOSEQ,
                             serialization = SERIAL_NONE,
-                            compression = COMP_GZIP,
                             payload = compressed,
                             alreadyCompressed = true
                         )
@@ -332,13 +328,11 @@ class VolcStreamAsrEngine(
         messageType: Int,
         flags: Int,
         serialization: Int,
-        compression: Int,
         payload: ByteArray,
         alreadyCompressed: Boolean = false
     ): ByteArray {
-        val compressedPayload = if (alreadyCompressed) payload else {
-            if (compression == COMP_GZIP) gzip(payload) else payload
-        }
+        val compression = COMP_GZIP
+        val compressedPayload = if (alreadyCompressed) payload else gzip(payload)
         val header0 = ((VERSION and 0x0F) shl 4) or (HEADER_SIZE_UNITS and 0x0F)
         val header1 = ((messageType and 0x0F) shl 4) or (flags and 0x0F)
         val header2 = ((serialization and 0x0F) shl 4) or (compression and 0x0F)

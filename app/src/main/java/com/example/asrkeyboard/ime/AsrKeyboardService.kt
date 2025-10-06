@@ -2,6 +2,7 @@ package com.example.asrkeyboard.ime
 
 import android.Manifest
 import android.content.Intent
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -44,10 +45,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
-        if (prefs.hasVolcKeys()) {
-            asrEngine = VolcStreamAsrEngine(this, serviceScope, prefs, this)
+        asrEngine = if (prefs.hasVolcKeys()) {
+            VolcStreamAsrEngine(this, serviceScope, prefs, this)
         } else {
-            asrEngine = null
+            null
         }
     }
 
@@ -57,12 +58,13 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         serviceScope.cancel()
     }
 
+    @SuppressLint("InflateParams")
     override fun onCreateInputView(): View {
         // IME context is forced to a framework DeviceDefault theme on many OS versions,
         // which breaks Material attribute resolution in our layout/drawables.
         // Inflate with our app's Material3 IME theme to ensure attrs like colorSurface resolve.
         val themedContext = android.view.ContextThemeWrapper(this, R.style.Theme_ASRKeyboard_Ime)
-        val view = LayoutInflater.from(themedContext).inflate(R.layout.keyboard_view, null)
+        val view = LayoutInflater.from(themedContext).inflate(R.layout.keyboard_view, null, false)
         btnMic = view.findViewById(R.id.btnMic)
         btnSettings = view.findViewById(R.id.btnSettings)
         btnGrant = view.findViewById(R.id.btnGrant)
