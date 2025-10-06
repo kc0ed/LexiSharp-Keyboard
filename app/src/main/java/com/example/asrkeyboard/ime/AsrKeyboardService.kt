@@ -221,10 +221,22 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     }
 
     override fun onFinal(text: String) {
-        val remainder = if (text.length > committedStableLen) text.substring(committedStableLen) else ""
-        currentInputConnection?.finishComposingText()
+        val ic = currentInputConnection
+        val finalText = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+        val trimDelta = text.length - finalText.length
+        // If some trailing punctuation was already committed as stable before final,
+        // delete it from the editor so the final result matches the trimmed output.
+        if (prefs.trimFinalTrailingPunct && trimDelta > 0) {
+            val alreadyCommittedOverrun = (committedStableLen - finalText.length).coerceAtLeast(0)
+            if (alreadyCommittedOverrun > 0) {
+                ic?.deleteSurroundingText(alreadyCommittedOverrun, 0)
+                committedStableLen -= alreadyCommittedOverrun
+            }
+        }
+        val remainder = if (finalText.length > committedStableLen) finalText.substring(committedStableLen) else ""
+        ic?.finishComposingText()
         if (remainder.isNotEmpty()) {
-            currentInputConnection?.commitText(remainder, 1)
+            ic?.commitText(remainder, 1)
         }
         vibrateTick()
         committedStableLen = 0
@@ -235,5 +247,12 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     override fun onError(message: String) {
         txtStatus?.text = message
         vibrateTick()
+    }
+
+    private fun trimTrailingPunctuation(s: String): String {
+        if (s.isEmpty()) return s
+        // Remove trailing ASCII and common CJK punctuation marks at end of utterance
+        val regex = Regex("[\\p{Punct}，。！？；、：]+$")
+        return s.replace(regex, "")
     }
 }

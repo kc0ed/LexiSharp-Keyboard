@@ -7,6 +7,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.activity.ComponentActivity
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.store.Prefs
@@ -34,11 +35,13 @@ class SettingsActivity : ComponentActivity() {
         val etAccessKey = findViewById<EditText>(R.id.etAccessKey)
         val etResourceId = findViewById<EditText>(R.id.etResourceId)
         val etEndpoint = findViewById<EditText>(R.id.etEndpoint)
+        val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
 
         etAppKey.setText(prefs.appKey)
         etAccessKey.setText(prefs.accessKey)
         etResourceId.setText(prefs.resourceId)
         etEndpoint.setText(prefs.endpoint)
+        switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
 
         findViewById<Button>(R.id.btnSaveKeys).setOnClickListener {
             prefs.appKey = etAppKey.text?.toString() ?: ""
@@ -46,6 +49,10 @@ class SettingsActivity : ComponentActivity() {
             prefs.resourceId = etResourceId.text?.toString()?.ifBlank { Prefs.DEFAULT_RESOURCE } ?: Prefs.DEFAULT_RESOURCE
             prefs.endpoint = etEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_ENDPOINT } ?: Prefs.DEFAULT_ENDPOINT
             Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
+        }
+
+        switchTrimTrailingPunct.setOnCheckedChangeListener { _, isChecked ->
+            prefs.trimFinalTrailingPunct = isChecked
         }
 
         // Continuous mode has been removed; no toggle needed.

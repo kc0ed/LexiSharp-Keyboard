@@ -25,4 +25,5 @@
     <string name="label_resource_id">X-Api-Resource-Id（默认: volc.bigasr.sauc.duration）</string>
     <string name="label_endpoint">Endpoint（默认: bigmodel_async）</string>
     <string name="btn_save">保存</string>
+    <string name="label_trim_trailing_punct">完成后去除句末标点</string>
 </resources>
