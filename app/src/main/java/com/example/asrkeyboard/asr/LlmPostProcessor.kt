@@ -19,9 +19,12 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
     private fun resolveUrl(base: String): String {
-        val b = base.trimEnd('/')
+        val raw = base.trim()
+        if (raw.isEmpty()) return Prefs.DEFAULT_LLM_ENDPOINT.trimEnd('/') + "/chat/completions"
+        val b = raw.trimEnd('/')
+        val withScheme = if (b.startsWith("http://", ignoreCase = true) || b.startsWith("https://", ignoreCase = true)) b else "https://$b"
         // If user already provided a full path ending with /chat/completions or /responses, use as-is
-        return if (b.endsWith("/chat/completions") || b.endsWith("/responses")) b else "$b/chat/completions"
+        return if (withScheme.endsWith("/chat/completions") || withScheme.endsWith("/responses")) withScheme else "$withScheme/chat/completions"
     }
 
     suspend fun process(input: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
@@ -86,4 +89,3 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
         return@withContext text
     }
 }
-

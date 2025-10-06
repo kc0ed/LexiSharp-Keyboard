@@ -134,13 +134,9 @@ class VolcFileAsrEngine(
                 val b64 = Base64.encodeToString(wav, Base64.NO_WRAP)
                 val json = buildRequestJson(b64)
                 val reqBody = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-                val resourceId = selectFileResourceId(prefs.resourceId)
-                val endpointUrl = prefs.endpoint.let { raw ->
-                    val u = raw.trim()
-                    if (u.isEmpty()) Prefs.DEFAULT_ENDPOINT
-                    else if (u.startsWith("ws", ignoreCase = true) || u.contains("/sauc/") || u.contains("bigmodel_async")) Prefs.DEFAULT_ENDPOINT
-                    else u
-                }
+                // Use fixed defaults for file recognition to simplify setup
+                val resourceId = DEFAULT_FILE_RESOURCE
+                val endpointUrl = Prefs.DEFAULT_ENDPOINT
                 val request = Request.Builder()
                     .url(endpointUrl)
                     .addHeader("X-Api-App-Key", prefs.appKey)

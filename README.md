@@ -83,12 +83,15 @@
 
 ### 火山引擎ASR配置
 
-在应用设置中配置以下参数：
+当前版本仅使用非流式（文件）识别，配置更简化：
 
-- **X-Api-App-Key**: 应用密钥
-- **X-Api-Access-Key**: 访问密钥
-- **X-Api-Resource-Id**: 资源ID
-- **服务端点**: 默认为 `https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash`
+- **X-Api-App-Key**: 应用密钥（必填）
+- **X-Api-Access-Key**: 访问密钥（必填）
+
+资源 ID 与服务端点固定为默认值，无需填写：
+
+- 资源 ID：`volc.bigasr.auc_turbo`
+- 端点：`https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash`
 
 ### LLM后处理配置
 

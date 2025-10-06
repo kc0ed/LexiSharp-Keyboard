@@ -33,8 +33,6 @@ class SettingsActivity : ComponentActivity() {
         val prefs = Prefs(this)
         val etAppKey = findViewById<EditText>(R.id.etAppKey)
         val etAccessKey = findViewById<EditText>(R.id.etAccessKey)
-        val etResourceId = findViewById<EditText>(R.id.etResourceId)
-        val etEndpoint = findViewById<EditText>(R.id.etEndpoint)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
         val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
 
@@ -47,8 +45,6 @@ class SettingsActivity : ComponentActivity() {
 
         etAppKey.setText(prefs.appKey)
         etAccessKey.setText(prefs.accessKey)
-        etResourceId.setText(prefs.resourceId)
-        etEndpoint.setText(prefs.endpoint)
         switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
         switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
         etLlmEndpoint.setText(prefs.llmEndpoint)
@@ -60,8 +56,6 @@ class SettingsActivity : ComponentActivity() {
         findViewById<Button>(R.id.btnSaveKeys).setOnClickListener {
             prefs.appKey = etAppKey.text?.toString() ?: ""
             prefs.accessKey = etAccessKey.text?.toString() ?: ""
-            prefs.resourceId = etResourceId.text?.toString()?.ifBlank { Prefs.DEFAULT_RESOURCE } ?: Prefs.DEFAULT_RESOURCE
-            prefs.endpoint = etEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_ENDPOINT } ?: Prefs.DEFAULT_ENDPOINT
             // 开关设置
             prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
             prefs.showImeSwitcherButton = switchShowImeSwitcher.isChecked

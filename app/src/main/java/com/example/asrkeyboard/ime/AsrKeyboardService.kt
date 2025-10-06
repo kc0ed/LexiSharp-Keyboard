@@ -450,11 +450,12 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     }
 
     override fun onFinal(text: String) {
-        if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
-            // Keep recognized text as composing while we post-process
-            currentInputConnection?.setComposingText(text, 1)
-            txtStatus?.text = getString(R.string.status_ai_processing)
-            serviceScope.launch {
+        // Ensure all UI/InputConnection operations happen on main thread
+        serviceScope.launch {
+            if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
+                // Keep recognized text as composing while we post-process
+                currentInputConnection?.setComposingText(text, 1)
+                txtStatus?.text = getString(R.string.status_ai_processing)
                 val processed = try {
                     val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
                     postproc.process(raw, prefs).ifBlank { raw }
@@ -467,35 +468,38 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 vibrateTick()
                 committedStableLen = 0
                 updateUiIdle()
-            }
-        } else {
-            val ic = currentInputConnection
-            val finalText = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
-            val trimDelta = text.length - finalText.length
-            // If some trailing punctuation was already committed as stable before final,
-            // delete it from the editor so the final result matches the trimmed output.
-            if (prefs.trimFinalTrailingPunct && trimDelta > 0) {
-                val alreadyCommittedOverrun = (committedStableLen - finalText.length).coerceAtLeast(0)
-                if (alreadyCommittedOverrun > 0) {
-                    ic?.deleteSurroundingText(alreadyCommittedOverrun, 0)
-                    committedStableLen -= alreadyCommittedOverrun
+            } else {
+                val ic = currentInputConnection
+                val finalText = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+                val trimDelta = text.length - finalText.length
+                // If some trailing punctuation was already committed as stable before final,
+                // delete it from the editor so the final result matches the trimmed output.
+                if (prefs.trimFinalTrailingPunct && trimDelta > 0) {
+                    val alreadyCommittedOverrun = (committedStableLen - finalText.length).coerceAtLeast(0)
+                    if (alreadyCommittedOverrun > 0) {
+                        ic?.deleteSurroundingText(alreadyCommittedOverrun, 0)
+                        committedStableLen -= alreadyCommittedOverrun
+                    }
                 }
+                val remainder = if (finalText.length > committedStableLen) finalText.substring(committedStableLen) else ""
+                ic?.finishComposingText()
+                if (remainder.isNotEmpty()) {
+                    ic?.commitText(remainder, 1)
+                }
+                vibrateTick()
+                committedStableLen = 0
+                // Always return to idle after finalizing one utterance
+                updateUiIdle()
             }
-            val remainder = if (finalText.length > committedStableLen) finalText.substring(committedStableLen) else ""
-            ic?.finishComposingText()
-            if (remainder.isNotEmpty()) {
-                ic?.commitText(remainder, 1)
-            }
-            vibrateTick()
-            committedStableLen = 0
-            // Always return to idle after finalizing one utterance
-            updateUiIdle()
         }
     }
 
     override fun onError(message: String) {
-        txtStatus?.text = message
-        vibrateTick()
+        // Switch to main thread before touching views
+        serviceScope.launch {
+            txtStatus?.text = message
+            vibrateTick()
+        }
     }
 
     private fun trimTrailingPunctuation(s: String): String {
