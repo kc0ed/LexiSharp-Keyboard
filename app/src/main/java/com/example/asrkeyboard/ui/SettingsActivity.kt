@@ -62,6 +62,9 @@ class SettingsActivity : ComponentActivity() {
             prefs.accessKey = etAccessKey.text?.toString() ?: ""
             prefs.resourceId = etResourceId.text?.toString()?.ifBlank { Prefs.DEFAULT_RESOURCE } ?: Prefs.DEFAULT_RESOURCE
             prefs.endpoint = etEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_ENDPOINT } ?: Prefs.DEFAULT_ENDPOINT
+            // 开关设置
+            prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
+            prefs.showImeSwitcherButton = switchShowImeSwitcher.isChecked
             // LLM
             prefs.llmEndpoint = etLlmEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT
             prefs.llmApiKey = etLlmApiKey.text?.toString() ?: ""
@@ -72,13 +75,6 @@ class SettingsActivity : ComponentActivity() {
             Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
         }
 
-        switchTrimTrailingPunct.setOnCheckedChangeListener { _, isChecked ->
-            prefs.trimFinalTrailingPunct = isChecked
-        }
-
-        switchShowImeSwitcher.setOnCheckedChangeListener { _, isChecked ->
-            prefs.showImeSwitcherButton = isChecked
-        }
 
         // Continuous mode has been removed; no toggle needed.
     }
