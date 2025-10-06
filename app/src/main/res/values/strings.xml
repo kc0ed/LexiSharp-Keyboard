@@ -7,6 +7,7 @@
     <string name="cd_grant">授予麦克风权限</string>
     <string name="cd_enter">回车</string>
     <string name="cd_backspace">退格</string>
+    <string name="cd_switch_ime">切换输入法</string>
 
     <string name="status_idle">就绪</string>
     <string name="status_listening">正在聆听…</string>
@@ -26,4 +27,5 @@
     <string name="label_endpoint">Endpoint（默认: bigmodel_async）</string>
     <string name="btn_save">保存</string>
     <string name="label_trim_trailing_punct">完成后去除句末标点</string>
+    <string name="label_show_ime_switcher">显示“切换输入法”按钮</string>
 </resources>

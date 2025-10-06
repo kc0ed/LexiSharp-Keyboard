@@ -14,6 +14,8 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import android.view.KeyEvent
+import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.EditorInfo
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.content.ContextCompat
 import com.example.asrkeyboard.R
@@ -38,8 +40,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var btnEnter: ImageButton? = null
     private var btnBackspace: ImageButton? = null
     private var btnGrant: ImageButton? = null
+    private var btnImeSwitcher: ImageButton? = null
     private var txtStatus: TextView? = null
-    private var txtHint: TextView? = null
     private var committedStableLen: Int = 0
     private var micLongPressStarted: Boolean = false
     private var micLongPressPending: Boolean = false
@@ -53,6 +55,13 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         } else {
             null
         }
+    }
+
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        // Re-apply visibility in case user toggled setting while IME was backgrounded
+        btnImeSwitcher?.visibility = if (prefs.showImeSwitcherButton) View.VISIBLE else View.GONE
+        refreshPermissionUi()
     }
 
     override fun onDestroy() {
@@ -72,8 +81,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnEnter = view.findViewById(R.id.btnEnter)
         btnBackspace = view.findViewById(R.id.btnBackspace)
         btnGrant = view.findViewById(R.id.btnGrant)
+        btnImeSwitcher = view.findViewById(R.id.btnImeSwitcher)
         txtStatus = view.findViewById(R.id.txtStatus)
-        txtHint = view.findViewById(R.id.txtHint)
 
         btnMic?.setOnTouchListener { v, event ->
             when (event.actionMasked) {
@@ -125,9 +134,13 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnEnter?.setOnClickListener { sendEnter() }
         btnBackspace?.setOnClickListener { sendBackspace() }
         btnGrant?.setOnClickListener { requestAudioPermission() }
+        btnImeSwitcher?.setOnClickListener { showImePicker() }
 
-        refreshPermissionUi()
+        // Apply visibility based on settings
+        btnImeSwitcher?.visibility = if (prefs.showImeSwitcherButton) View.VISIBLE else View.GONE
+
         updateUiIdle()
+        refreshPermissionUi()
         return view
     }
 
@@ -142,15 +155,15 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         if (!granted) {
             btnGrant?.visibility = View.VISIBLE
             btnMic?.isEnabled = false
-            txtHint?.text = getString(R.string.hint_need_permission)
+            txtStatus?.text = getString(R.string.hint_need_permission)
         } else if (!hasKeys) {
             btnGrant?.visibility = View.GONE
             btnMic?.isEnabled = false
-            txtHint?.text = getString(R.string.hint_need_keys)
+            txtStatus?.text = getString(R.string.hint_need_keys)
         } else {
             btnGrant?.visibility = View.GONE
             btnMic?.isEnabled = true
-            txtHint?.text = getString(R.string.hint_press_mic)
+            txtStatus?.text = getString(R.string.status_idle)
         }
     }
 
@@ -194,6 +207,15 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         val ic = currentInputConnection ?: return
         // Delete one character before cursor
         ic.deleteSurroundingText(1, 0)
+    }
+
+    private fun showImePicker() {
+        try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            imm?.showInputMethodPicker()
+        } catch (_: Exception) {
+            // no-op
+        }
     }
 
     private fun vibrateTick() {

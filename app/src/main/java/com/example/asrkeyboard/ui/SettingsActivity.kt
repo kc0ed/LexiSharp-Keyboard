@@ -36,12 +36,14 @@ class SettingsActivity : ComponentActivity() {
         val etResourceId = findViewById<EditText>(R.id.etResourceId)
         val etEndpoint = findViewById<EditText>(R.id.etEndpoint)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
+        val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
 
         etAppKey.setText(prefs.appKey)
         etAccessKey.setText(prefs.accessKey)
         etResourceId.setText(prefs.resourceId)
         etEndpoint.setText(prefs.endpoint)
         switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
+        switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
 
         findViewById<Button>(R.id.btnSaveKeys).setOnClickListener {
             prefs.appKey = etAppKey.text?.toString() ?: ""
@@ -53,6 +55,10 @@ class SettingsActivity : ComponentActivity() {
 
         switchTrimTrailingPunct.setOnCheckedChangeListener { _, isChecked ->
             prefs.trimFinalTrailingPunct = isChecked
+        }
+
+        switchShowImeSwitcher.setOnCheckedChangeListener { _, isChecked ->
+            prefs.showImeSwitcherButton = isChecked
         }
 
         // Continuous mode has been removed; no toggle needed.

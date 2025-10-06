@@ -1,17 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_keyboard_container"
-    android:orientation="vertical"
     android:paddingHorizontal="12dp"
     android:paddingTop="8dp"
     android:paddingBottom="12dp">
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="56dp">
+        android:layout_height="72dp">
 
         <TextView
             android:id="@+id/txtStatus"
@@ -24,29 +28,12 @@
             android:textSize="16sp"
             app:layout_constrainedWidth="true"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/btnMic"
+            app:layout_constraintEnd_toStartOf="@id/btnBackspace"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_goneMarginEnd="8dp"
             android:paddingStart="8dp"
             android:paddingEnd="8dp" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btnMic"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:contentDescription="@string/cd_mic"
-            app:srcCompat="@drawable/ic_mic"
-            app:backgroundTint="?attr/colorPrimaryContainer"
-            app:tint="?attr/colorOnPrimaryContainer"
-            android:elevation="0dp"
-            app:elevation="0dp"
-            app:pressedTranslationZ="0dp"
-            android:stateListAnimator="@null"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
 
         <ImageButton
             android:id="@+id/btnGrant"
@@ -85,6 +72,20 @@
         android:layout_marginTop="8dp">
 
         <ImageButton
+            android:id="@+id/btnImeSwitcher"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/cd_switch_ime"
+            android:padding="6dp"
+            android:src="@drawable/ic_keyboard"
+            android:tint="?attr/colorOnSurface"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/btnSettings"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
             android:id="@+id/btnSettings"
             android:layout_width="40dp"
             android:layout_height="40dp"
@@ -112,20 +113,26 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <TextView
-            android:id="@+id/txtHint"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/hint_press_mic"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="13sp"
-            android:gravity="center"
-            android:textAlignment="center"
-            app:layout_constraintStart_toEndOf="@id/btnSettings"
-            app:layout_constraintEnd_toStartOf="@id/btnEnter"
-            app:layout_constraintTop_toTopOf="@id/btnSettings"
-            app:layout_constraintBottom_toBottomOf="@id/btnSettings" />
+        
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-</LinearLayout>
+    </LinearLayout>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnMic"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/cd_mic"
+        app:srcCompat="@drawable/ic_mic"
+        app:backgroundTint="?attr/colorPrimaryContainer"
+        app:tint="?attr/colorOnPrimaryContainer"
+        android:elevation="0dp"
+        app:elevation="0dp"
+        app:pressedTranslationZ="0dp"
+        android:stateListAnimator="@null"
+        app:fabCustomSize="72dp"
+        app:maxImageSize="40dp"
+        android:layout_gravity="center" />
+
+</FrameLayout>

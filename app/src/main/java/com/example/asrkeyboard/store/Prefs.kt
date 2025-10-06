@@ -31,6 +31,10 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_TRIM_FINAL_TRAILING_PUNCT, false)
         set(value) = sp.edit { putBoolean(KEY_TRIM_FINAL_TRAILING_PUNCT, value) }
 
+    var showImeSwitcherButton: Boolean
+        get() = sp.getBoolean(KEY_SHOW_IME_SWITCHER_BUTTON, true)
+        set(value) = sp.edit { putBoolean(KEY_SHOW_IME_SWITCHER_BUTTON, value) }
+
     fun hasVolcKeys(): Boolean = appKey.isNotBlank() && accessKey.isNotBlank()
 
     companion object {
@@ -40,6 +44,7 @@ class Prefs(context: Context) {
         private const val KEY_ENDPOINT = "endpoint"
         private const val KEY_CONNECT_ID = "connect_id"
         private const val KEY_TRIM_FINAL_TRAILING_PUNCT = "trim_final_trailing_punct"
+        private const val KEY_SHOW_IME_SWITCHER_BUTTON = "show_ime_switcher_button"
 
         const val DEFAULT_RESOURCE = "volc.bigasr.sauc.duration"
         const val DEFAULT_ENDPOINT = "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async"
