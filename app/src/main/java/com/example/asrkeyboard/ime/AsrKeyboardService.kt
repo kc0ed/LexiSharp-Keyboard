@@ -13,6 +13,7 @@ import android.view.ViewConfiguration
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
+import android.view.KeyEvent
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.content.ContextCompat
 import com.example.asrkeyboard.R
@@ -34,6 +35,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private var btnMic: FloatingActionButton? = null
     private var btnSettings: ImageButton? = null
+    private var btnEnter: ImageButton? = null
+    private var btnBackspace: ImageButton? = null
     private var btnGrant: ImageButton? = null
     private var txtStatus: TextView? = null
     private var txtHint: TextView? = null
@@ -66,6 +69,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         val view = LayoutInflater.from(dynamicContext).inflate(R.layout.keyboard_view, null, false)
         btnMic = view.findViewById(R.id.btnMic)
         btnSettings = view.findViewById(R.id.btnSettings)
+        btnEnter = view.findViewById(R.id.btnEnter)
+        btnBackspace = view.findViewById(R.id.btnBackspace)
         btnGrant = view.findViewById(R.id.btnGrant)
         txtStatus = view.findViewById(R.id.txtStatus)
         txtHint = view.findViewById(R.id.txtHint)
@@ -117,6 +122,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             }
         }
         btnSettings?.setOnClickListener { openSettings() }
+        btnEnter?.setOnClickListener { sendEnter() }
+        btnBackspace?.setOnClickListener { sendBackspace() }
         btnGrant?.setOnClickListener { requestAudioPermission() }
 
         refreshPermissionUi()
@@ -175,6 +182,18 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private fun updateUiListening() {
         txtStatus?.text = getString(R.string.status_listening)
         btnMic?.isSelected = true
+    }
+
+    private fun sendEnter() {
+        val ic = currentInputConnection ?: return
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+    }
+
+    private fun sendBackspace() {
+        val ic = currentInputConnection ?: return
+        // Delete one character before cursor
+        ic.deleteSurroundingText(1, 0)
     }
 
     private fun vibrateTick() {

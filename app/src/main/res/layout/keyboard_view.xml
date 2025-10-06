@@ -39,6 +39,10 @@
             app:srcCompat="@drawable/ic_mic"
             app:backgroundTint="?attr/colorPrimaryContainer"
             app:tint="?attr/colorOnPrimaryContainer"
+            android:elevation="0dp"
+            app:elevation="0dp"
+            app:pressedTranslationZ="0dp"
+            android:stateListAnimator="@null"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -52,12 +56,33 @@
             android:contentDescription="@string/cd_grant"
             android:padding="6dp"
             android:src="@drawable/ic_lock"
-            app:tint="?attr/colorOnSurfaceVariant"
+            android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/btnSettings"
+            app:layout_constraintEnd_toStartOf="@id/btnBackspace"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_goneMarginEnd="8dp" />
+
+        <ImageButton
+            android:id="@+id/btnBackspace"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/cd_backspace"
+            android:padding="6dp"
+            android:src="@drawable/ic_backspace"
+            android:tint="?attr/colorOnSurface"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp">
 
         <ImageButton
             android:id="@+id/btnSettings"
@@ -67,21 +92,40 @@
             android:contentDescription="@string/cd_settings"
             android:padding="6dp"
             android:src="@drawable/ic_settings"
-            app:tint="?attr/colorOnSurfaceVariant"
+            android:tint="?attr/colorOnSurface"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/btnEnter"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/cd_enter"
+            android:padding="6dp"
+            android:src="@drawable/ic_enter"
+            android:tint="?attr/colorOnSurface"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        <TextView
+            android:id="@+id/txtHint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="@string/hint_press_mic"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:textAlignment="center"
+            app:layout_constraintStart_toEndOf="@id/btnSettings"
+            app:layout_constraintEnd_toStartOf="@id/btnEnter"
+            app:layout_constraintTop_toTopOf="@id/btnSettings"
+            app:layout_constraintBottom_toBottomOf="@id/btnSettings" />
 
-    <TextView
-        android:id="@+id/txtHint"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/hint_press_mic"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="13sp" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </LinearLayout>
