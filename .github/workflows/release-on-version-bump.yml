@@ -135,6 +135,11 @@ jobs:
           api-level: 34
           build-tools: 34.0.0
 
+      - name: Make Gradle wrapper executable
+        run: |
+          chmod +x ./gradlew || true
+          sed -i -e 's/\r$//' ./gradlew || true
+
       - name: Build debug APK (no signing keys required)
         run: ./gradlew --no-daemon clean assembleDebug
         continue-on-error: true
