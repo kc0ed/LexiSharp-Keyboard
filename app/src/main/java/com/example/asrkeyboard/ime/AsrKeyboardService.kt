@@ -60,11 +60,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     @SuppressLint("InflateParams")
     override fun onCreateInputView(): View {
-        // IME context is forced to a framework DeviceDefault theme on many OS versions,
-        // which breaks Material attribute resolution in our layout/drawables.
-        // Inflate with our app's Material3 IME theme to ensure attrs like colorSurface resolve.
+        // IME context often uses a framework theme; wrap with our theme and Material dynamic colors.
         val themedContext = android.view.ContextThemeWrapper(this, R.style.Theme_ASRKeyboard_Ime)
-        val view = LayoutInflater.from(themedContext).inflate(R.layout.keyboard_view, null, false)
+        val dynamicContext = com.google.android.material.color.DynamicColors.wrapContextIfAvailable(themedContext)
+        val view = LayoutInflater.from(dynamicContext).inflate(R.layout.keyboard_view, null, false)
         btnMic = view.findViewById(R.id.btnMic)
         btnSettings = view.findViewById(R.id.btnSettings)
         btnGrant = view.findViewById(R.id.btnGrant)
