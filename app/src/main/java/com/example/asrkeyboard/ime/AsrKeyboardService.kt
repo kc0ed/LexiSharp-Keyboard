@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.asr.StreamingAsrEngine
 import com.example.asrkeyboard.asr.VolcStreamAsrEngine
+import com.example.asrkeyboard.asr.LlmPostProcessor
 import com.example.asrkeyboard.store.Prefs
 import com.example.asrkeyboard.ui.PermissionActivity
 import com.example.asrkeyboard.ui.SettingsActivity
@@ -28,6 +29,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
@@ -38,11 +40,13 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var btnMic: FloatingActionButton? = null
     private var btnSettings: ImageButton? = null
     private var btnEnter: ImageButton? = null
+    private var btnPostproc: ImageButton? = null
     private var btnBackspace: ImageButton? = null
     private var btnGrant: ImageButton? = null
     private var btnImeSwitcher: ImageButton? = null
     private var txtStatus: TextView? = null
     private var committedStableLen: Int = 0
+    private var postproc: LlmPostProcessor = LlmPostProcessor()
     private var micLongPressStarted: Boolean = false
     private var micLongPressPending: Boolean = false
     private var micLongPressRunnable: Runnable? = null
@@ -79,6 +83,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnMic = view.findViewById(R.id.btnMic)
         btnSettings = view.findViewById(R.id.btnSettings)
         btnEnter = view.findViewById(R.id.btnEnter)
+        btnPostproc = view.findViewById(R.id.btnPostproc)
         btnBackspace = view.findViewById(R.id.btnBackspace)
         btnGrant = view.findViewById(R.id.btnGrant)
         btnImeSwitcher = view.findViewById(R.id.btnImeSwitcher)
@@ -122,7 +127,11 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     micLongPressRunnable = null
                     if (micLongPressStarted && asrEngine?.isRunning == true) {
                         asrEngine?.stop()
-                        updateUiIdle()
+                        // When post-processing is enabled, keep composing text visible
+                        // and let onFinal() transition UI state after processing.
+                        if (!prefs.postProcessEnabled) {
+                            updateUiIdle()
+                        }
                     }
                     v.performClick()
                     true
@@ -135,6 +144,18 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnBackspace?.setOnClickListener { sendBackspace() }
         btnGrant?.setOnClickListener { requestAudioPermission() }
         btnImeSwitcher?.setOnClickListener { showImePicker() }
+        btnPostproc?.apply {
+            isSelected = prefs.postProcessEnabled
+            alpha = if (prefs.postProcessEnabled) 1f else 0.45f
+            setOnClickListener {
+                val enabled = !prefs.postProcessEnabled
+                prefs.postProcessEnabled = enabled
+                isSelected = enabled
+                alpha = if (enabled) 1f else 0.45f
+                // Provide quick feedback via status line
+                txtStatus?.text = if (enabled) getString(R.string.cd_postproc_toggle) + ": ON" else getString(R.string.cd_postproc_toggle) + ": OFF"
+            }
+        }
 
         // Apply visibility based on settings
         btnImeSwitcher?.visibility = if (prefs.showImeSwitcherButton) View.VISIBLE else View.GONE
@@ -232,38 +253,65 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     }
     // StreamingAsrEngine.Listener
     override fun onPartial(stableText: String, unstableText: String) {
-        // Commit newly stabilized prefix
-        if (stableText.length > committedStableLen) {
-            val newPart = stableText.substring(committedStableLen)
-            currentInputConnection?.commitText(newPart, 1)
-            committedStableLen = stableText.length
+        if (prefs.postProcessEnabled) {
+            // Keep everything as composing while recognizing; no commits yet
+            val preview = stableText + unstableText
+            currentInputConnection?.setComposingText(preview, 1)
+            committedStableLen = 0
+        } else {
+            // Commit newly stabilized prefix
+            if (stableText.length > committedStableLen) {
+                val newPart = stableText.substring(committedStableLen)
+                currentInputConnection?.commitText(newPart, 1)
+                committedStableLen = stableText.length
+            }
+            // Show remaining unstable as composing
+            currentInputConnection?.setComposingText(unstableText, 1)
         }
-        // Show remaining unstable as composing
-        currentInputConnection?.setComposingText(unstableText, 1)
     }
 
     override fun onFinal(text: String) {
-        val ic = currentInputConnection
-        val finalText = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
-        val trimDelta = text.length - finalText.length
-        // If some trailing punctuation was already committed as stable before final,
-        // delete it from the editor so the final result matches the trimmed output.
-        if (prefs.trimFinalTrailingPunct && trimDelta > 0) {
-            val alreadyCommittedOverrun = (committedStableLen - finalText.length).coerceAtLeast(0)
-            if (alreadyCommittedOverrun > 0) {
-                ic?.deleteSurroundingText(alreadyCommittedOverrun, 0)
-                committedStableLen -= alreadyCommittedOverrun
+        if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
+            // Keep recognized text as composing while we post-process
+            currentInputConnection?.setComposingText(text, 1)
+            txtStatus?.text = getString(R.string.status_processing)
+            serviceScope.launch {
+                val processed = try {
+                    val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+                    postproc.process(raw, prefs).ifBlank { raw }
+                } catch (_: Throwable) {
+                    if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+                }
+                val ic = currentInputConnection
+                ic?.setComposingText(processed, 1)
+                ic?.finishComposingText()
+                vibrateTick()
+                committedStableLen = 0
+                updateUiIdle()
             }
+        } else {
+            val ic = currentInputConnection
+            val finalText = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+            val trimDelta = text.length - finalText.length
+            // If some trailing punctuation was already committed as stable before final,
+            // delete it from the editor so the final result matches the trimmed output.
+            if (prefs.trimFinalTrailingPunct && trimDelta > 0) {
+                val alreadyCommittedOverrun = (committedStableLen - finalText.length).coerceAtLeast(0)
+                if (alreadyCommittedOverrun > 0) {
+                    ic?.deleteSurroundingText(alreadyCommittedOverrun, 0)
+                    committedStableLen -= alreadyCommittedOverrun
+                }
+            }
+            val remainder = if (finalText.length > committedStableLen) finalText.substring(committedStableLen) else ""
+            ic?.finishComposingText()
+            if (remainder.isNotEmpty()) {
+                ic?.commitText(remainder, 1)
+            }
+            vibrateTick()
+            committedStableLen = 0
+            // Always return to idle after finalizing one utterance
+            updateUiIdle()
         }
-        val remainder = if (finalText.length > committedStableLen) finalText.substring(committedStableLen) else ""
-        ic?.finishComposingText()
-        if (remainder.isNotEmpty()) {
-            ic?.commitText(remainder, 1)
-        }
-        vibrateTick()
-        committedStableLen = 0
-        // Always return to idle after finalizing one utterance
-        updateUiIdle()
     }
 
     override fun onError(message: String) {

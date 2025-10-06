@@ -8,9 +8,11 @@
     <string name="cd_enter">回车</string>
     <string name="cd_backspace">退格</string>
     <string name="cd_switch_ime">切换输入法</string>
+    <string name="cd_postproc_toggle">AI后处理</string>
 
     <string name="status_idle">就绪</string>
     <string name="status_listening">正在聆听…</string>
+    <string name="status_processing">后处理中…</string>
     <string name="hint_press_mic">长按麦克风开始录音，松开结束</string>
     <string name="hint_need_permission">需要麦克风权限以进行语音输入</string>
 
@@ -28,4 +30,12 @@
     <string name="btn_save">保存</string>
     <string name="label_trim_trailing_punct">完成后去除句末标点</string>
     <string name="label_show_ime_switcher">显示“切换输入法”按钮</string>
+
+    <!-- LLM settings -->
+    <string name="llm_section_title">AI 后处理配置</string>
+    <string name="label_llm_endpoint">OpenAI Endpoint（例如：https://api.openai.com/v1 或包含 /chat/completions）</string>
+    <string name="label_llm_api_key">API Key</string>
+    <string name="label_llm_model">Model Name（例如：gpt-4o-mini）</string>
+    <string name="label_llm_temperature">Temperature（0.0 - 2.0）</string>
+    <string name="label_llm_prompt">后处理 Prompt（仅输出处理后的文本）</string>
 </resources>
