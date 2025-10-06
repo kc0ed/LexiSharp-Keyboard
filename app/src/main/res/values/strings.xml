@@ -26,6 +26,4 @@
     <string name="label_resource_id">X-Api-Resource-Id（默认: volc.bigasr.sauc.duration）</string>
     <string name="label_endpoint">Endpoint（默认: bigmodel_async）</string>
     <string name="btn_save">保存</string>
-    <string name="section_recognition_mode_title">识别模式</string>
-    <string name="continuous_mode_desc">连续模式：停顿后自动断句，持续聆听</string>
 </resources>

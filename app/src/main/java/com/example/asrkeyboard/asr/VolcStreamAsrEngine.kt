@@ -1,16 +1,18 @@
 package com.example.asrkeyboard.asr
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.example.asrkeyboard.store.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.*
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
@@ -23,8 +25,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import kotlin.math.sqrt
 
 class VolcStreamAsrEngine(
     private val context: Context,
@@ -128,22 +129,46 @@ class VolcStreamAsrEngine(
 
     private fun startAudioLoop() {
         audioJob = scope.launch(Dispatchers.IO) {
+            // Ensure RECORD_AUDIO permission is granted before accessing the mic
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasPermission) {
+                listener.onError("录音权限未授予")
+                stop()
+                return@launch
+            }
+
             val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
             val chunkBytes = ((sampleRate / 5) * 2) // 200ms -> 3200 samples -> 6400 bytes
             val bufferSize = maxOf(minBuffer, chunkBytes)
-            val recorder = AudioRecord(
-                MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                sampleRate,
-                channelConfig,
-                audioFormat,
-                bufferSize
-            )
+            val recorder = try {
+                AudioRecord(
+                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                    sampleRate,
+                    channelConfig,
+                    audioFormat,
+                    bufferSize
+                )
+            } catch (se: SecurityException) {
+                listener.onError("无法访问麦克风: ${se.message}")
+                stop()
+                return@launch
+            }
             if (recorder.state != AudioRecord.STATE_INITIALIZED) {
                 listener.onError("录音初始化失败")
                 stop()
                 return@launch
             }
-            recorder.startRecording()
+            try {
+                recorder.startRecording()
+            } catch (se: SecurityException) {
+                listener.onError("无法开始录音: ${se.message}")
+                try { recorder.release() } catch (_: Throwable) {}
+                stop()
+                return@launch
+            }
             val buf = ByteArray(chunkBytes)
             var silenceMs = 0
             var hadVoice = false
@@ -225,13 +250,13 @@ class VolcStreamAsrEngine(
 
     private fun handleServerFrame(bytes: ByteArray) {
         if (bytes.size < 8) return
-        val header0 = bytes[0].toInt() and 0xFF
+        // header0 is version/header size unit; not needed here
         val header1 = bytes[1].toInt() and 0xFF
         val header2 = bytes[2].toInt() and 0xFF
         // val header3 = bytes[3]
         val msgType = (header1 ushr 4) and 0x0F
         val flags = header1 and 0x0F
-        val serialization = (header2 ushr 4) and 0x0F
+        // val serialization = (header2 ushr 4) and 0x0F
         val compression = header2 and 0x0F
 
         when (msgType) {
@@ -239,7 +264,7 @@ class VolcStreamAsrEngine(
                 // next 4 bytes: sequence, then 4 bytes: payload size
                 if (bytes.size < 12) return
                 val bb = ByteBuffer.wrap(bytes, 4, 8).order(ByteOrder.BIG_ENDIAN)
-                val sequence = bb.int // not used
+                bb.int // consume sequence, not used
                 val payloadSize = bb.int
                 val payloadStart = 12
                 val payloadEnd = payloadStart + payloadSize
@@ -282,7 +307,7 @@ class VolcStreamAsrEngine(
             val obj = JSONObject(json)
             if (!obj.has("result")) return Pair(null, null)
             val result = obj.getJSONObject("result")
-            val fullText = result.optString("text", null)
+            val fullText = result.optString("text", "")
             var stableText: String? = null
             if (result.has("utterances")) {
                 val arr = result.getJSONArray("utterances")
@@ -298,7 +323,7 @@ class VolcStreamAsrEngine(
                 stableText = sb.toString()
             }
             Pair(fullText, stableText)
-        } catch (t: Throwable) {
+        } catch (_: Throwable) {
             Pair(null, null)
         }
     }
@@ -365,7 +390,7 @@ class VolcStreamAsrEngine(
             i += 2
         }
         if (samples == 0) return false
-        val rms = Math.sqrt(sumSq / samples)
+        val rms = sqrt(sumSq / samples)
         return rms >= VAD_RMS_THRESHOLD
     }
 
@@ -388,7 +413,6 @@ class VolcStreamAsrEngine(
         private const val SERIAL_NONE = 0x0
         private const val SERIAL_JSON = 0x1
 
-        private const val COMP_NONE = 0x0
         private const val COMP_GZIP = 0x1
 
         private const val CHUNK_MS = 200

@@ -1,6 +1,7 @@
 package com.example.asrkeyboard.store
 
 import android.content.Context
+import androidx.core.content.edit
 import java.util.UUID
 
 class Prefs(context: Context) {
@@ -8,27 +9,23 @@ class Prefs(context: Context) {
 
     var appKey: String
         get() = sp.getString(KEY_APP_KEY, "") ?: ""
-        set(value) = sp.edit().putString(KEY_APP_KEY, value.trim()).apply()
+        set(value) = sp.edit { putString(KEY_APP_KEY, value.trim()) }
 
     var accessKey: String
         get() = sp.getString(KEY_ACCESS_KEY, "") ?: ""
-        set(value) = sp.edit().putString(KEY_ACCESS_KEY, value.trim()).apply()
+        set(value) = sp.edit { putString(KEY_ACCESS_KEY, value.trim()) }
 
     var resourceId: String
         get() = sp.getString(KEY_RESOURCE_ID, DEFAULT_RESOURCE) ?: DEFAULT_RESOURCE
-        set(value) = sp.edit().putString(KEY_RESOURCE_ID, value.trim()).apply()
+        set(value) = sp.edit { putString(KEY_RESOURCE_ID, value.trim()) }
 
     var endpoint: String
         get() = sp.getString(KEY_ENDPOINT, DEFAULT_ENDPOINT) ?: DEFAULT_ENDPOINT
-        set(value) = sp.edit().putString(KEY_ENDPOINT, value.trim()).apply()
+        set(value) = sp.edit { putString(KEY_ENDPOINT, value.trim()) }
 
     var connectId: String
         get() = sp.getString(KEY_CONNECT_ID, UUID.randomUUID().toString()) ?: UUID.randomUUID().toString()
-        set(value) = sp.edit().putString(KEY_CONNECT_ID, value).apply()
-
-    var continuousMode: Boolean
-        get() = sp.getBoolean(KEY_CONTINUOUS, false)
-        set(value) = sp.edit().putBoolean(KEY_CONTINUOUS, value).apply()
+        set(value) = sp.edit { putString(KEY_CONNECT_ID, value) }
 
     fun hasVolcKeys(): Boolean = appKey.isNotBlank() && accessKey.isNotBlank()
 
@@ -38,7 +35,6 @@ class Prefs(context: Context) {
         private const val KEY_RESOURCE_ID = "resource_id"
         private const val KEY_ENDPOINT = "endpoint"
         private const val KEY_CONNECT_ID = "connect_id"
-        private const val KEY_CONTINUOUS = "continuous"
 
         const val DEFAULT_RESOURCE = "volc.bigasr.sauc.duration"
         const val DEFAULT_ENDPOINT = "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async"

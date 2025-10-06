@@ -1,7 +1,6 @@
 package com.example.asrkeyboard.ime
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
@@ -17,7 +16,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.content.ContextCompat
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.asr.StreamingAsrEngine
-import com.example.asrkeyboard.asr.FakeAsrEngine
 import com.example.asrkeyboard.asr.VolcStreamAsrEngine
 import com.example.asrkeyboard.store.Prefs
 import com.example.asrkeyboard.ui.PermissionActivity
@@ -30,7 +28,7 @@ import kotlinx.coroutines.cancel
 class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private lateinit var asrEngine: StreamingAsrEngine
+    private var asrEngine: StreamingAsrEngine? = null
     private lateinit var prefs: Prefs
 
     private var btnMic: FloatingActionButton? = null
@@ -46,16 +44,16 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
-        asrEngine = if (prefs.hasVolcKeys()) {
-            VolcStreamAsrEngine(this, serviceScope, prefs, this)
+        if (prefs.hasVolcKeys()) {
+            asrEngine = VolcStreamAsrEngine(this, serviceScope, prefs, this)
         } else {
-            FakeAsrEngine(this, serviceScope, this)
+            asrEngine = null
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        asrEngine.stop()
+        asrEngine?.stop()
         serviceScope.cancel()
     }
 
@@ -76,17 +74,27 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 MotionEvent.ACTION_DOWN -> {
                     if (!hasRecordAudioPermission()) {
                         refreshPermissionUi()
+                        v.performClick()
                         return@setOnTouchListener true
+                    }
+                    // Require configured keys before starting ASR
+                    if (!prefs.hasVolcKeys()) {
+                        refreshPermissionUi()
+                        v.performClick()
+                        return@setOnTouchListener true
+                    }
+                    if (asrEngine == null) {
+                        asrEngine = VolcStreamAsrEngine(this, serviceScope, prefs, this)
                     }
                     micLongPressStarted = false
                     micLongPressPending = true
                     val timeout = ViewConfiguration.getLongPressTimeout().toLong()
                     val r = Runnable {
-                        if (micLongPressPending && !asrEngine.isRunning) {
+                        if (micLongPressPending && asrEngine?.isRunning != true) {
                             micLongPressStarted = true
                             committedStableLen = 0
                             updateUiListening()
-                            asrEngine.start()
+                            asrEngine?.start()
                         }
                     }
                     micLongPressRunnable = r
@@ -97,13 +105,14 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     micLongPressPending = false
                     micLongPressRunnable?.let { v.removeCallbacks(it) }
                     micLongPressRunnable = null
-                    if (micLongPressStarted && asrEngine.isRunning) {
-                        asrEngine.stop()
+                    if (micLongPressStarted && asrEngine?.isRunning == true) {
+                        asrEngine?.stop()
                         updateUiIdle()
                     }
+                    v.performClick()
                     true
                 }
-                else -> true
+                else -> false
             }
         }
         btnSettings?.setOnClickListener { openSettings() }
@@ -121,9 +130,20 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private fun refreshPermissionUi() {
         val granted = hasRecordAudioPermission()
-        btnGrant?.visibility = if (granted) View.GONE else View.VISIBLE
-        btnMic?.isEnabled = granted
-        txtHint?.text = if (granted) getString(R.string.hint_press_mic) else getString(R.string.hint_need_permission)
+        val hasKeys = prefs.hasVolcKeys()
+        if (!granted) {
+            btnGrant?.visibility = View.VISIBLE
+            btnMic?.isEnabled = false
+            txtHint?.text = getString(R.string.hint_need_permission)
+        } else if (!hasKeys) {
+            btnGrant?.visibility = View.GONE
+            btnMic?.isEnabled = false
+            txtHint?.text = getString(R.string.hint_need_keys)
+        } else {
+            btnGrant?.visibility = View.GONE
+            btnMic?.isEnabled = true
+            txtHint?.text = getString(R.string.hint_press_mic)
+        }
     }
 
     private fun openSettings() {
@@ -158,7 +178,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private fun vibrateTick() {
         try {
-            val v = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            val v = getSystemService(Vibrator::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 v.vibrate(android.os.VibrationEffect.createOneShot(20, 50))
             } else {

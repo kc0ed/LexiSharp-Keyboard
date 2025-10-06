@@ -1,6 +1,5 @@
 package com.example.asrkeyboard.ui
 
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -22,7 +21,7 @@ class SettingsActivity : ComponentActivity() {
         }
 
         findViewById<Button>(R.id.btnChoose).setOnClickListener {
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showInputMethodPicker()
         }
 
