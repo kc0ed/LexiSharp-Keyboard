@@ -3,6 +3,10 @@
     <style name="Theme.ASRKeyboard" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">?attr/colorSurface</item>
+        <!-- Android 12+ splash: explicit background + icon without Monet/dynamic tint -->
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/logo_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
     </style>
 
     <style name="Theme.ASRKeyboard.Ime" parent="Theme.Material3.DayNight.NoActionBar">

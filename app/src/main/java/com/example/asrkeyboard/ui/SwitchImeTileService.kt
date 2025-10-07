@@ -13,8 +13,8 @@ class SwitchImeTileService : TileService() {
         super.onStartListening()
         val tile = qsTile ?: return
         tile.label = getString(com.example.asrkeyboard.R.string.tile_switch_ime)
-        // Reuse monochrome app icon for simplicity
-        tile.icon = Icon.createWithResource(this, com.example.asrkeyboard.R.drawable.ic_launcher_monochrome)
+        // Use app launcher icon for QS tile
+        tile.icon = Icon.createWithResource(this, com.example.asrkeyboard.R.mipmap.ic_launcher)
         tile.state = if (isOurImeCurrent()) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.updateTile()
     }
@@ -60,4 +60,3 @@ class SwitchImeTileService : TileService() {
         }
     }
 }
-
