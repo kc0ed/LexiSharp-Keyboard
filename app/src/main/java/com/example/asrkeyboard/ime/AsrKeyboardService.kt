@@ -584,6 +584,16 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 val edited = try {
                     postproc.editText(original, instruction, prefs).ifBlank { original }
                 } catch (_: Throwable) { original }
+                if (original.isBlank()) {
+                    // Safety: if we failed to reconstruct original text, do not delete anything
+                    txtStatus?.text = getString(R.string.hint_cannot_read_text)
+                    vibrateTick()
+                    currentSessionKind = null
+                    aiEditState = null
+                    committedStableLen = 0
+                    updateUiIdle()
+                    return@launch
+                }
                 try {
                     ic.beginBatchEdit()
                     if (state.targetIsSelection) {
