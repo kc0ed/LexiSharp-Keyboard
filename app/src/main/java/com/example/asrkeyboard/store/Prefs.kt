@@ -14,14 +14,6 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_ACCESS_KEY, "") ?: ""
         set(value) = sp.edit { putString(KEY_ACCESS_KEY, value.trim()) }
 
-    var resourceId: String
-        get() = sp.getString(KEY_RESOURCE_ID, DEFAULT_RESOURCE) ?: DEFAULT_RESOURCE
-        set(value) = sp.edit { putString(KEY_RESOURCE_ID, value.trim()) }
-
-    var endpoint: String
-        get() = sp.getString(KEY_ENDPOINT, DEFAULT_ENDPOINT) ?: DEFAULT_ENDPOINT
-        set(value) = sp.edit { putString(KEY_ENDPOINT, value.trim()) }
-
     var trimFinalTrailingPunct: Boolean
         get() = sp.getBoolean(KEY_TRIM_FINAL_TRAILING_PUNCT, false)
         set(value) = sp.edit { putBoolean(KEY_TRIM_FINAL_TRAILING_PUNCT, value) }
@@ -61,8 +53,6 @@ class Prefs(context: Context) {
     companion object {
         private const val KEY_APP_KEY = "app_key"
         private const val KEY_ACCESS_KEY = "access_key"
-        private const val KEY_RESOURCE_ID = "resource_id"
-        private const val KEY_ENDPOINT = "endpoint"
         private const val KEY_TRIM_FINAL_TRAILING_PUNCT = "trim_final_trailing_punct"
         private const val KEY_SHOW_IME_SWITCHER_BUTTON = "show_ime_switcher_button"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"

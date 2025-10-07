@@ -25,8 +25,6 @@
     <string name="volc_section_title">Volcano Engine 鉴权参数</string>
     <string name="label_app_key">X-Api-App-Key</string>
     <string name="label_access_key">X-Api-Access-Key</string>
-    <string name="label_resource_id">X-Api-Resource-Id（默认: volc.bigasr.auc_turbo）</string>
-    <string name="label_endpoint">Endpoint（默认: recognize/flash）</string>
     <string name="btn_save">保存</string>
     <string name="label_trim_trailing_punct">完成后去除句末标点</string>
     <string name="label_show_ime_switcher">显示“切换输入法”按钮</string>

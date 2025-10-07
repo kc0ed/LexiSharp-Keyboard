@@ -236,12 +236,5 @@ class VolcFileAsrEngine(
         private const val DEFAULT_FILE_RESOURCE = "volc.bigasr.auc_turbo"
     }
 
-    private fun selectFileResourceId(current: String): String {
-        val c = current.trim()
-        if (c.isEmpty()) return DEFAULT_FILE_RESOURCE
-        val lower = c.lowercase()
-        return if (lower.contains("sauc") || lower == Prefs.DEFAULT_RESOURCE.lowercase()) DEFAULT_FILE_RESOURCE else c
-    }
 
-    
 }
