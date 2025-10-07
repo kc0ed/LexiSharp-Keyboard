@@ -31,6 +31,24 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
+            android:tint="?attr/colorOnSurfaceVariant" />
+
+        <ImageButton
+            android:id="@+id/btnAiEdit"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_key_button"
+            android:contentDescription="@string/cd_ai_edit"
+            android:clipToOutline="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:padding="6dp"
+            android:src="@drawable/ic_edit"
+            android:stateListAnimator="@animator/key_button_state_list"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/btnHide"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
             android:tint="?attr/colorOnSurfaceVariant" />
 
         <ImageButton
@@ -47,6 +65,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
             android:tint="?attr/colorOnSurfaceVariant" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -123,6 +142,8 @@
             app:layout_constraintVertical_bias="0.0"
             app:layout_goneMarginEnd="8dp"
             android:tint="?attr/colorOnSurfaceVariant" />
+
+
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

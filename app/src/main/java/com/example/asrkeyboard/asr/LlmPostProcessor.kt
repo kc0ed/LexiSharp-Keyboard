@@ -88,4 +88,75 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
         }
         return@withContext text
     }
+
+    /**
+     * Edit existing text with a natural language instruction using a Chat Completions-compatible API.
+     * Returns the edited text; on any failure returns the original text unchanged.
+     */
+    suspend fun editText(original: String, instruction: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
+        if (original.isBlank() || instruction.isBlank()) return@withContext original
+        val apiKey = prefs.llmApiKey
+        val endpoint = prefs.llmEndpoint
+        val model = prefs.llmModel
+        val temperature = prefs.llmTemperature.toDouble()
+
+        val url = resolveUrl(endpoint)
+        val systemPrompt = """
+            你是一个文本编辑助手。根据用户的“编辑指令”对提供的“原文”进行修改并输出最终结果：
+            - 只输出修改后的文本，不要添加解释或前后包裹标记。
+            - 如果指令要求对部分内容变更，请在整体语义合理的前提下进行最小必要修改。
+            - 若指令含糊无法执行，请尽量按直觉优化原文的清晰度与可读性。
+        """.trimIndent()
+
+        val userContent = """
+            指令：${instruction}
+            原文：${original}
+        """.trimIndent()
+
+        val reqJson = JSONObject().apply {
+            put("model", model)
+            put("temperature", temperature)
+            put("messages", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("role", "system")
+                    put("content", systemPrompt)
+                })
+                put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", userContent)
+                })
+            })
+        }.toString()
+
+        val body = reqJson.toRequestBody(jsonMedia)
+        val http = (client ?: OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build())
+        val req = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("Content-Type", "application/json")
+            .post(body)
+            .build()
+
+        val resp = http.newCall(req).execute()
+        if (!resp.isSuccessful) {
+            resp.close()
+            return@withContext original
+        }
+        val out = try {
+            val s = resp.body?.string() ?: return@withContext original
+            val obj = JSONObject(s)
+            when {
+                obj.has("choices") -> {
+                    val choices = obj.getJSONArray("choices")
+                    if (choices.length() > 0) {
+                        val msg = choices.getJSONObject(0).optJSONObject("message")
+                        msg?.optString("content")?.ifBlank { original } ?: original
+                    } else original
+                }
+                obj.has("output_text") -> obj.optString("output_text", original)
+                else -> original
+            }
+        } catch (_: Throwable) { original } finally { resp.close() }
+        return@withContext out
+    }
 }

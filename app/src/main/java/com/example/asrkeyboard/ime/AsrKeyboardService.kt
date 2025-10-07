@@ -45,6 +45,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var btnSettings: ImageButton? = null
     private var btnEnter: ImageButton? = null
     private var btnPostproc: ImageButton? = null
+    private var btnAiEdit: ImageButton? = null
     private var btnBackspace: ImageButton? = null
     private var btnHide: ImageButton? = null
     private var btnImeSwitcher: ImageButton? = null
@@ -66,6 +67,15 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var backspaceLongPressStarted: Boolean = false
     private var backspaceLongPressStarter: Runnable? = null
     private var backspaceRepeatRunnable: Runnable? = null
+
+    private enum class SessionKind { Dictation, AiEdit }
+    private data class AiEditState(
+        val targetIsSelection: Boolean,
+        val beforeLen: Int,
+        val afterLen: Int
+    )
+    private var currentSessionKind: SessionKind? = null
+    private var aiEditState: AiEditState? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -99,6 +109,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnSettings = view.findViewById(R.id.btnSettings)
         btnEnter = view.findViewById(R.id.btnEnter)
         btnPostproc = view.findViewById(R.id.btnPostproc)
+        btnAiEdit = view.findViewById(R.id.btnAiEdit)
         btnBackspace = view.findViewById(R.id.btnBackspace)
         btnHide = view.findViewById(R.id.btnHide)
         btnImeSwitcher = view.findViewById(R.id.btnImeSwitcher)
@@ -158,6 +169,60 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         }
         btnSettings?.setOnClickListener { openSettings() }
         btnEnter?.setOnClickListener { sendEnter() }
+        btnAiEdit?.setOnClickListener {
+            // Tap-to-toggle: start/stop instruction capture for AI edit
+            if (!hasRecordAudioPermission()) {
+                refreshPermissionUi()
+                return@setOnClickListener
+            }
+            if (!prefs.hasVolcKeys()) {
+                txtStatus?.text = getString(R.string.hint_need_keys)
+                return@setOnClickListener
+            }
+            if (!prefs.hasLlmKeys()) {
+                txtStatus?.text = getString(R.string.hint_need_llm_keys)
+                return@setOnClickListener
+            }
+            val running = asrEngine?.isRunning == true
+            if (running && currentSessionKind == SessionKind.AiEdit) {
+                // Stop capture -> will trigger onFinal once recognition finishes
+                asrEngine?.stop()
+                txtStatus?.text = getString(R.string.status_recognizing)
+                return@setOnClickListener
+            }
+            if (running) {
+                // Engine currently in dictation; ignore to avoid conflicts
+                return@setOnClickListener
+            }
+            // Prepare snapshot of target text
+            val ic = currentInputConnection
+            if (ic == null) {
+                txtStatus?.text = getString(R.string.status_idle)
+                return@setOnClickListener
+            }
+            var targetIsSelection = false
+            var beforeLen = 0
+            var afterLen = 0
+            val selected = try { ic.getSelectedText(0) } catch (_: Throwable) { null }
+            if (selected != null && selected.isNotEmpty()) {
+                targetIsSelection = true
+            } else {
+                val before = try { ic.getTextBeforeCursor(10000, 0) } catch (_: Throwable) { null }
+                val after = try { ic.getTextAfterCursor(10000, 0) } catch (_: Throwable) { null }
+                if (before == null || after == null) {
+                    txtStatus?.text = getString(R.string.hint_cannot_read_text)
+                    return@setOnClickListener
+                }
+                beforeLen = before.length
+                afterLen = after.length
+            }
+            aiEditState = AiEditState(targetIsSelection, beforeLen, afterLen)
+            currentSessionKind = SessionKind.AiEdit
+            asrEngine = ensureEngineMatchesMode(asrEngine)
+            updateUiListening()
+            txtStatus?.text = getString(R.string.status_ai_edit_listening)
+            asrEngine?.start()
+        }
         // Backspace: tap to delete one; swipe up/left to clear all; swipe down to undo within gesture; long-press to repeat delete
         btnBackspace?.setOnClickListener { sendBackspace() }
         btnBackspace?.setOnTouchListener { v, event ->
@@ -447,7 +512,50 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     override fun onFinal(text: String) {
         // Ensure all UI/InputConnection operations happen on main thread
         serviceScope.launch {
-            if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
+            if (currentSessionKind == SessionKind.AiEdit && prefs.hasLlmKeys()) {
+                // AI edit flow: use recognized text as instruction to edit selection or full text
+                val ic = currentInputConnection
+                val state = aiEditState
+                if (ic == null || state == null) {
+                    updateUiIdle()
+                    currentSessionKind = null
+                    aiEditState = null
+                    return@launch
+                }
+                txtStatus?.text = getString(R.string.status_ai_editing)
+                // Build original text snapshot
+                val original = try {
+                    if (state.targetIsSelection) {
+                        ic.getSelectedText(0)?.toString() ?: ""
+                    } else {
+                        val before = ic.getTextBeforeCursor(state.beforeLen, 0)?.toString() ?: ""
+                        val after = ic.getTextAfterCursor(state.afterLen, 0)?.toString() ?: ""
+                        before + after
+                    }
+                } catch (_: Throwable) { "" }
+                val instruction = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+                val edited = try {
+                    postproc.editText(original, instruction, prefs).ifBlank { original }
+                } catch (_: Throwable) { original }
+                try {
+                    ic.beginBatchEdit()
+                    if (state.targetIsSelection) {
+                        // Replace current selection
+                        ic.commitText(edited, 1)
+                    } else {
+                        // Replace entire content using snapshot lengths
+                        ic.deleteSurroundingText(state.beforeLen, state.afterLen)
+                        ic.commitText(edited, 1)
+                    }
+                    ic.finishComposingText()
+                    ic.endBatchEdit()
+                } catch (_: Throwable) { }
+                vibrateTick()
+                currentSessionKind = null
+                aiEditState = null
+                committedStableLen = 0
+                updateUiIdle()
+            } else if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
                 // Keep recognized text as composing while we post-process
                 currentInputConnection?.setComposingText(text, 1)
                 txtStatus?.text = getString(R.string.status_ai_processing)
