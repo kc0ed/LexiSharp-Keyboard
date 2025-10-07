@@ -72,6 +72,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var backspaceLongPressStarter: Runnable? = null
     private var backspaceRepeatRunnable: Runnable? = null
 
+    // Track latest AI post-processed commit to allow swipe-down revert to raw
+    private data class PostprocCommit(val processed: String, val raw: String)
+    private var lastPostprocCommit: PostprocCommit? = null
+
     private enum class SessionKind { Dictation, AiEdit }
     private data class AiEditState(
         val targetIsSelection: Boolean,
@@ -287,6 +291,15 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         backspaceClearedInGesture = true
                         vibrateTick()
                         return@setOnTouchListener true
+                    }
+                    // Swipe down: revert last AI post-processing result to raw transcription
+                    if (!backspaceClearedInGesture && dy >= slop) {
+                        backspaceLongPressStarter?.let { v.removeCallbacks(it) }
+                        backspaceRepeatRunnable?.let { v.removeCallbacks(it) }
+                        if (revertLastPostprocToRaw(ic)) {
+                            vibrateTick()
+                            return@setOnTouchListener true
+                        }
                     }
                     // If already cleared in this gesture, allow swipe down to undo
                     if (backspaceClearedInGesture && dy >= slop) {
@@ -611,20 +624,23 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 currentSessionKind = null
                 aiEditState = null
                 committedStableLen = 0
+                lastPostprocCommit = null
                 updateUiIdle()
             } else if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
                 // Keep recognized text as composing while we post-process
                 currentInputConnection?.setComposingText(text, 1)
                 txtStatus?.text = getString(R.string.status_ai_processing)
+                val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
                 val processed = try {
-                    val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
                     postproc.process(raw, prefs).ifBlank { raw }
                 } catch (_: Throwable) {
-                    if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+                    raw
                 }
                 val ic = currentInputConnection
                 ic?.setComposingText(processed, 1)
                 ic?.finishComposingText()
+                // Record this commit so user can swipe-down on backspace to revert to raw
+                lastPostprocCommit = if (!processed.isNullOrEmpty() && processed != raw) PostprocCommit(processed, raw) else null
                 vibrateTick()
                 committedStableLen = 0
                 updateUiIdle()
@@ -650,6 +666,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 committedStableLen = 0
                 // Always return to idle after finalizing one utterance
                 updateUiIdle()
+                // Clear any previous postproc commit context
+                lastPostprocCommit = null
             }
         }
     }
@@ -667,5 +685,30 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         // Remove trailing ASCII and common CJK punctuation marks at end of utterance
         val regex = Regex("[\\p{Punct}，。！？；、：]+$")
         return s.replace(regex, "")
+    }
+
+    // Attempt to revert last AI post-processed output to raw transcript.
+    // Returns true if a change was applied.
+    private fun revertLastPostprocToRaw(ic: android.view.inputmethod.InputConnection): Boolean {
+        val commit = lastPostprocCommit ?: return false
+        if (commit.processed.isEmpty()) return false
+        val before = try { ic.getTextBeforeCursor(10000, 0)?.toString() } catch (_: Throwable) { null }
+        if (before.isNullOrEmpty()) return false
+        if (!before.endsWith(commit.processed)) {
+            // Only support immediate trailing replacement at cursor for simplicity and safety
+            return false
+        }
+        return try {
+            ic.beginBatchEdit()
+            ic.deleteSurroundingText(commit.processed.length, 0)
+            ic.commitText(commit.raw, 1)
+            ic.finishComposingText()
+            ic.endBatchEdit()
+            lastPostprocCommit = null
+            txtStatus?.text = getString(R.string.status_reverted_to_raw)
+            true
+        } catch (_: Throwable) {
+            false
+        }
     }
 }
