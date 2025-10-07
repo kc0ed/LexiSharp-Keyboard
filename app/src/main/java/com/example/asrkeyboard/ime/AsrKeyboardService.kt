@@ -439,12 +439,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private fun vibrateTick() {
         try {
             val v = getSystemService(Vibrator::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                v.vibrate(android.os.VibrationEffect.createOneShot(20, 50))
-            } else {
-                @Suppress("DEPRECATION")
-                v.vibrate(20)
-            }
+            v.vibrate(android.os.VibrationEffect.createOneShot(20, 50))
         } catch (_: Exception) {
         }
     }

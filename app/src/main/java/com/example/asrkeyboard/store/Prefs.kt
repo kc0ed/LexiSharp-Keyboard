@@ -62,8 +62,6 @@ class Prefs(context: Context) {
         private const val KEY_LLM_TEMPERATURE = "llm_temperature"
         private const val KEY_LLM_PROMPT = "llm_prompt"
 
-        // Defaults now target non-streaming (file) recognition
-        const val DEFAULT_RESOURCE = "volc.bigasr.auc_turbo"
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
 
         // Reasonable OpenAI-format defaults

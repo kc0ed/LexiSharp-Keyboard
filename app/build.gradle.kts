@@ -9,10 +9,10 @@ android {
 
     defaultConfig {
         applicationId = "com.example.asrkeyboard"
-        minSdk = 24
+        minSdk =31
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
     }
 
     buildTypes {
