@@ -16,6 +16,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.view.LayoutInflater
 import com.example.asrkeyboard.store.Prefs
 import com.example.asrkeyboard.store.PromptPreset
+import com.example.asrkeyboard.asr.AsrVendor
+import android.view.View
 
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,6 +49,11 @@ class SettingsActivity : ComponentActivity() {
         val prefs = Prefs(this)
         val etAppKey = findViewById<EditText>(R.id.etAppKey)
         val etAccessKey = findViewById<EditText>(R.id.etAccessKey)
+        val etSfApiKey = findViewById<EditText>(R.id.etSfApiKey)
+        val etSfModel = findViewById<EditText>(R.id.etSfModel)
+        val groupVolc = findViewById<View>(R.id.groupVolc)
+        val groupSf = findViewById<View>(R.id.groupSf)
+        val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
         val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
 
@@ -61,6 +68,8 @@ class SettingsActivity : ComponentActivity() {
 
         etAppKey.setText(prefs.appKey)
         etAccessKey.setText(prefs.accessKey)
+        etSfApiKey.setText(prefs.sfApiKey)
+        etSfModel.setText(prefs.sfModel)
         switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
         switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
         etLlmEndpoint.setText(prefs.llmEndpoint)
@@ -87,6 +96,30 @@ class SettingsActivity : ComponentActivity() {
         }
         refreshSpinnerSelection()
 
+        // ASR vendor spinner setup
+        val vendorItems = listOf(getString(R.string.vendor_volc), getString(R.string.vendor_sf))
+        spAsrVendor.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, vendorItems)
+        spAsrVendor.setSelection(
+            when (prefs.asrVendor) {
+                AsrVendor.Volc -> 0
+                AsrVendor.SiliconFlow -> 1
+            }
+        )
+        fun applyVendorVisibility(v: AsrVendor) {
+            groupVolc.visibility = if (v == AsrVendor.Volc) View.VISIBLE else View.GONE
+            groupSf.visibility = if (v == AsrVendor.SiliconFlow) View.VISIBLE else View.GONE
+        }
+        applyVendorVisibility(prefs.asrVendor)
+
+        spAsrVendor.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                val vendor = if (position == 1) AsrVendor.SiliconFlow else AsrVendor.Volc
+                prefs.asrVendor = vendor
+                applyVendorVisibility(vendor)
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        })
+
         spPromptPresets.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
                 val p = presets.getOrNull(position) ?: return
@@ -99,8 +132,11 @@ class SettingsActivity : ComponentActivity() {
         })
 
         findViewById<Button>(R.id.btnSaveKeys).setOnClickListener {
+            // Save vendor-specific keys
             prefs.appKey = etAppKey.text?.toString() ?: ""
             prefs.accessKey = etAccessKey.text?.toString() ?: ""
+            prefs.sfApiKey = etSfApiKey.text?.toString() ?: ""
+            prefs.sfModel = etSfModel.text?.toString()?.ifBlank { Prefs.DEFAULT_SF_MODEL } ?: Prefs.DEFAULT_SF_MODEL
             // 开关设置
             prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
             prefs.showImeSwitcherButton = switchShowImeSwitcher.isChecked

@@ -24,6 +24,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.example.asrkeyboard.R
 import com.example.asrkeyboard.asr.StreamingAsrEngine
 import com.example.asrkeyboard.asr.VolcFileAsrEngine
+import com.example.asrkeyboard.asr.SiliconFlowFileAsrEngine
+import com.example.asrkeyboard.asr.AsrVendor
 import com.example.asrkeyboard.asr.LlmPostProcessor
 import com.example.asrkeyboard.store.Prefs
 import com.example.asrkeyboard.ui.SettingsActivity
@@ -126,7 +128,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         return@setOnTouchListener true
                     }
                     // Require configured keys before starting ASR
-                    if (!prefs.hasVolcKeys()) {
+                    if (!prefs.hasAsrKeys()) {
                         refreshPermissionUi()
                         v.performClick()
                         return@setOnTouchListener true
@@ -177,7 +179,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 refreshPermissionUi()
                 return@setOnClickListener
             }
-            if (!prefs.hasVolcKeys()) {
+            if (!prefs.hasAsrKeys()) {
                 txtStatus?.text = getString(R.string.hint_need_keys)
                 return@setOnClickListener
             }
@@ -361,7 +363,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private fun refreshPermissionUi() {
         val granted = hasRecordAudioPermission()
-        val hasKeys = prefs.hasVolcKeys()
+        val hasKeys = prefs.hasAsrKeys()
         if (!granted) {
             btnMic?.isEnabled = false
             txtStatus?.text = getString(R.string.hint_need_permission)
@@ -411,17 +413,27 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     }
 
     private fun buildEngineForCurrentMode(): StreamingAsrEngine? {
-        if (!prefs.hasVolcKeys()) return null
-        // Always use non-streaming (file) engine regardless of post-processing setting
-        return VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+        return when (prefs.asrVendor) {
+            AsrVendor.Volc -> if (prefs.hasVolcKeys()) {
+                VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            } else null
+            AsrVendor.SiliconFlow -> if (prefs.hasSfKeys()) {
+                SiliconFlowFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            } else null
+        }
     }
 
     private fun ensureEngineMatchesMode(current: StreamingAsrEngine?): StreamingAsrEngine? {
-        if (!prefs.hasVolcKeys()) return null
-        return when (current) {
-            null -> buildEngineForCurrentMode()
-            is VolcFileAsrEngine -> current
-            else -> VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+        if (!prefs.hasAsrKeys()) return null
+        return when (prefs.asrVendor) {
+            AsrVendor.Volc -> when (current) {
+                is VolcFileAsrEngine -> current
+                else -> VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            }
+            AsrVendor.SiliconFlow -> when (current) {
+                is SiliconFlowFileAsrEngine -> current
+                else -> SiliconFlowFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            }
         }
     }
 

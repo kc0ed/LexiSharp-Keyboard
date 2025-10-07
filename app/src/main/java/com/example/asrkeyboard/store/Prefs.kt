@@ -2,10 +2,12 @@ package com.example.asrkeyboard.store
 
 import android.content.Context
 import androidx.core.content.edit
+import com.example.asrkeyboard.asr.AsrVendor
 
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("asr_prefs", Context.MODE_PRIVATE)
 
+    // Volcengine credentials
     var appKey: String
         get() = sp.getString(KEY_APP_KEY, "") ?: ""
         set(value) = sp.edit { putString(KEY_APP_KEY, value.trim()) }
@@ -106,7 +108,26 @@ class Prefs(context: Context) {
             return found?.content ?: (if (llmPrompt.isNotBlank()) llmPrompt else DEFAULT_LLM_PROMPT)
         }
 
+    // SiliconFlow credentials
+    var sfApiKey: String
+        get() = sp.getString(KEY_SF_API_KEY, "") ?: ""
+        set(value) = sp.edit { putString(KEY_SF_API_KEY, value.trim()) }
+
+    var sfModel: String
+        get() = sp.getString(KEY_SF_MODEL, DEFAULT_SF_MODEL) ?: DEFAULT_SF_MODEL
+        set(value) = sp.edit { putString(KEY_SF_MODEL, value.trim()) }
+
+    // Selected ASR vendor
+    var asrVendor: AsrVendor
+        get() = AsrVendor.fromId(sp.getString(KEY_ASR_VENDOR, AsrVendor.Volc.id))
+        set(value) = sp.edit { putString(KEY_ASR_VENDOR, value.id) }
+
     fun hasVolcKeys(): Boolean = appKey.isNotBlank() && accessKey.isNotBlank()
+    fun hasSfKeys(): Boolean = sfApiKey.isNotBlank()
+    fun hasAsrKeys(): Boolean = when (asrVendor) {
+        AsrVendor.Volc -> hasVolcKeys()
+        AsrVendor.SiliconFlow -> hasSfKeys()
+    }
     fun hasLlmKeys(): Boolean = llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
 
     companion object {
@@ -122,8 +143,13 @@ class Prefs(context: Context) {
         private const val KEY_LLM_PROMPT = "llm_prompt"
         private const val KEY_LLM_PROMPT_PRESETS = "llm_prompt_presets"
         private const val KEY_LLM_PROMPT_ACTIVE_ID = "llm_prompt_active_id"
+        private const val KEY_ASR_VENDOR = "asr_vendor"
+        private const val KEY_SF_API_KEY = "sf_api_key"
+        private const val KEY_SF_MODEL = "sf_model"
 
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
+        const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
+        const val DEFAULT_SF_MODEL = "FunAudioLLM/SenseVoiceSmall"
 
         // Reasonable OpenAI-format defaults
         const val DEFAULT_LLM_ENDPOINT = "https://api.openai.com/v1"

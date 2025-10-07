@@ -30,8 +30,14 @@
     <!-- Material UI additions -->
     <string name="settings_title">ASR 键盘设置</string>
     <string name="volc_section_title">Volcano Engine 鉴权参数</string>
+    <string name="sf_section_title">SiliconFlow 鉴权参数</string>
     <string name="label_app_key">X-Api-App-Key</string>
     <string name="label_access_key">X-Api-Access-Key</string>
+    <string name="label_asr_vendor">ASR 服务商</string>
+    <string name="vendor_volc">Volcano Engine</string>
+    <string name="vendor_sf">SiliconFlow</string>
+    <string name="label_sf_api_key">API Key（Bearer）</string>
+    <string name="label_sf_model">Model Name（如：FunAudioLLM/SenseVoiceSmall）</string>
     <string name="btn_save">保存</string>
     <string name="btn_close">关闭</string>
     <string name="title_quick_guide">快速上手教程</string>

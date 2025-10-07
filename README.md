@@ -17,7 +17,7 @@
 
 - **输入法服务** (`AsrKeyboardService.kt`): 继承自 InputMethodService，管理键盘交互和文本输入
 - **ASR 引擎接口** (`AsrEngine.kt`): 定义统一的 ASR 引擎接口
-- **文件式 ASR 引擎** (`VolcFileAsrEngine.kt`): 火山引擎文件识别实现
+- **文件式 ASR 引擎** (`VolcFileAsrEngine.kt`/`SiliconFlowFileAsrEngine.kt`): 火山引擎与 SiliconFlow 文件识别实现
 - **LLM 后处理器** (`LlmPostProcessor.kt`): 基于大语言模型的文本修正
 - **设置界面** (`SettingsActivity.kt`): 配置 ASR 服务和 LLM 参数
 - **权限管理** (`PermissionActivity.kt`): 处理麦克风权限请求
@@ -68,7 +68,13 @@
 
 ## 配置说明
 
-### 火山引擎 ASR 配置
+### ASR 供应商选择与配置
+
+设置页支持按供应商切换配置，所选供应商仅显示对应参数：
+
+- 供应商：`Volcano Engine` 或 `SiliconFlow`
+
+#### 火山引擎 ASR 配置
 
 当前版本仅使用非流式（文件）识别，配置更简化：
 
@@ -79,6 +85,12 @@
 
 - 资源 ID：`volc.bigasr.auc_turbo`
 - 端点：`https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash`
+
+#### SiliconFlow ASR 配置
+
+- **API Key（Bearer）**: SiliconFlow 控制台生成的密钥（必填）
+- **Model Name**: 如 `FunAudioLLM/SenseVoiceSmall`（默认值）
+- 端点固定为：`https://api.siliconflow.cn/v1/audio/transcriptions`
 
 ### LLM 后处理配置
 
