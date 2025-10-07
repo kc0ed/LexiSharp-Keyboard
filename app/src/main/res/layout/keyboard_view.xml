@@ -21,8 +21,9 @@
             android:id="@+id/btnHide"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@android:color/transparent"
+            android:background="@drawable/bg_key_button"
             android:contentDescription="@string/cd_hide"
+            android:clipToOutline="true"
             android:padding="6dp"
             android:src="@drawable/ic_chevron_down"
             android:foreground="?attr/selectableItemBackgroundBorderless"
@@ -30,14 +31,15 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:tint="?attr/colorOnSurface" />
+            android:tint="?attr/colorOnSurfaceVariant" />
 
         <ImageButton
             android:id="@+id/btnBackspace"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@android:color/transparent"
+            android:background="@drawable/bg_key_button"
             android:contentDescription="@string/cd_backspace"
+            android:clipToOutline="true"
             android:padding="6dp"
             android:src="@drawable/ic_backspace"
             android:foreground="?attr/selectableItemBackgroundBorderless"
@@ -45,7 +47,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:tint="?attr/colorOnSurface" />
+            android:tint="?attr/colorOnSurfaceVariant" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -58,8 +60,9 @@
             android:id="@+id/btnImeSwitcher"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@android:color/transparent"
+            android:background="@drawable/bg_key_button"
             android:contentDescription="@string/cd_switch_ime"
+            android:clipToOutline="true"
             android:padding="6dp"
             android:src="@drawable/ic_keyboard"
             android:foreground="?attr/selectableItemBackgroundBorderless"
@@ -67,14 +70,15 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toEndOf="@id/btnSettings"
             app:layout_constraintTop_toTopOf="parent"
-            android:tint="?attr/colorOnSurface" />
+            android:tint="?attr/colorOnSurfaceVariant" />
 
         <ImageButton
             android:id="@+id/btnSettings"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@android:color/transparent"
+            android:background="@drawable/bg_key_button"
             android:contentDescription="@string/cd_settings"
+            android:clipToOutline="true"
             android:padding="6dp"
             android:src="@drawable/ic_settings"
             android:foreground="?attr/selectableItemBackgroundBorderless"
@@ -82,14 +86,15 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:tint="?attr/colorOnSurface" />
+            android:tint="?attr/colorOnSurfaceVariant" />
 
         <ImageButton
             android:id="@+id/btnEnter"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@android:color/transparent"
+            android:background="@drawable/bg_key_button"
             android:contentDescription="@string/cd_enter"
+            android:clipToOutline="true"
             android:padding="6dp"
             android:src="@drawable/ic_enter"
             android:foreground="?attr/selectableItemBackgroundBorderless"
@@ -97,14 +102,15 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            android:tint="?attr/colorOnSurface" />
+            android:tint="?attr/colorOnSurfaceVariant" />
 
         <ImageButton
             android:id="@+id/btnPostproc"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@android:color/transparent"
+            android:background="@drawable/bg_key_button"
             android:contentDescription="@string/cd_postproc_toggle"
+            android:clipToOutline="true"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             android:padding="6dp"
             android:src="@drawable/ic_magic"
@@ -116,7 +122,7 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.0"
             app:layout_goneMarginEnd="8dp"
-            android:tint="?attr/colorOnSurface" />
+            android:tint="?attr/colorOnSurfaceVariant" />
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>
