@@ -25,6 +25,7 @@ import com.example.asrkeyboard.R
 import com.example.asrkeyboard.asr.StreamingAsrEngine
 import com.example.asrkeyboard.asr.VolcFileAsrEngine
 import com.example.asrkeyboard.asr.SiliconFlowFileAsrEngine
+import com.example.asrkeyboard.asr.ElevenLabsFileAsrEngine
 import com.example.asrkeyboard.asr.AsrVendor
 import com.example.asrkeyboard.asr.LlmPostProcessor
 import com.example.asrkeyboard.store.Prefs
@@ -420,6 +421,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             AsrVendor.SiliconFlow -> if (prefs.hasSfKeys()) {
                 SiliconFlowFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
             } else null
+            AsrVendor.ElevenLabs -> if (prefs.hasElevenKeys()) {
+                ElevenLabsFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            } else null
         }
     }
 
@@ -433,6 +437,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             AsrVendor.SiliconFlow -> when (current) {
                 is SiliconFlowFileAsrEngine -> current
                 else -> SiliconFlowFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            }
+            AsrVendor.ElevenLabs -> when (current) {
+                is ElevenLabsFileAsrEngine -> current
+                else -> ElevenLabsFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
             }
         }
     }

@@ -117,6 +117,15 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_SF_MODEL, DEFAULT_SF_MODEL) ?: DEFAULT_SF_MODEL
         set(value) = sp.edit { putString(KEY_SF_MODEL, value.trim()) }
 
+    // ElevenLabs credentials
+    var elevenApiKey: String
+        get() = sp.getString(KEY_ELEVEN_API_KEY, "") ?: ""
+        set(value) = sp.edit { putString(KEY_ELEVEN_API_KEY, value.trim()) }
+
+    var elevenModelId: String
+        get() = sp.getString(KEY_ELEVEN_MODEL_ID, "") ?: ""
+        set(value) = sp.edit { putString(KEY_ELEVEN_MODEL_ID, value.trim()) }
+
     // Selected ASR vendor
     var asrVendor: AsrVendor
         get() = AsrVendor.fromId(sp.getString(KEY_ASR_VENDOR, AsrVendor.Volc.id))
@@ -124,9 +133,11 @@ class Prefs(context: Context) {
 
     fun hasVolcKeys(): Boolean = appKey.isNotBlank() && accessKey.isNotBlank()
     fun hasSfKeys(): Boolean = sfApiKey.isNotBlank()
+    fun hasElevenKeys(): Boolean = elevenApiKey.isNotBlank()
     fun hasAsrKeys(): Boolean = when (asrVendor) {
         AsrVendor.Volc -> hasVolcKeys()
         AsrVendor.SiliconFlow -> hasSfKeys()
+        AsrVendor.ElevenLabs -> hasElevenKeys()
     }
     fun hasLlmKeys(): Boolean = llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
 
@@ -146,6 +157,8 @@ class Prefs(context: Context) {
         private const val KEY_ASR_VENDOR = "asr_vendor"
         private const val KEY_SF_API_KEY = "sf_api_key"
         private const val KEY_SF_MODEL = "sf_model"
+        private const val KEY_ELEVEN_API_KEY = "eleven_api_key"
+        private const val KEY_ELEVEN_MODEL_ID = "eleven_model_id"
 
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
         const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
