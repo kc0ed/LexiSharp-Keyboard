@@ -26,12 +26,15 @@
     <string name="btn_enable">启用键盘</string>
     <string name="btn_choose">选择键盘</string>
     <string name="btn_grant_mic">授予麦克风权限</string>
+    <string name="btn_show_guide">查看使用指南</string>
     <!-- Material UI additions -->
     <string name="settings_title">ASR 键盘设置</string>
     <string name="volc_section_title">Volcano Engine 鉴权参数</string>
     <string name="label_app_key">X-Api-App-Key</string>
     <string name="label_access_key">X-Api-Access-Key</string>
     <string name="btn_save">保存</string>
+    <string name="btn_close">关闭</string>
+    <string name="title_quick_guide">快速上手教程</string>
     <string name="label_trim_trailing_punct">完成后去除句末标点</string>
     <string name="label_show_ime_switcher">显示“切换输入法”按钮</string>
 

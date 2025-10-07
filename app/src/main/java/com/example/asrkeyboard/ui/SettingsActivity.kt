@@ -12,6 +12,8 @@ import android.widget.ArrayAdapter
 import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.activity.ComponentActivity
 import com.example.asrkeyboard.R
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.view.LayoutInflater
 import com.example.asrkeyboard.store.Prefs
 import com.example.asrkeyboard.store.PromptPreset
 
@@ -31,6 +33,15 @@ class SettingsActivity : ComponentActivity() {
 
         findViewById<Button>(R.id.btnMicPermission).setOnClickListener {
             startActivity(Intent(this, PermissionActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btnShowGuide).setOnClickListener {
+            val view = LayoutInflater.from(this).inflate(R.layout.dialog_guide, null, false)
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.title_quick_guide)
+                .setView(view)
+                .setPositiveButton(R.string.btn_close, null)
+                .show()
         }
 
         val prefs = Prefs(this)
