@@ -43,6 +43,7 @@
     <string name="title_quick_guide">快速上手教程</string>
     <string name="label_trim_trailing_punct">完成后去除句末标点</string>
     <string name="label_show_ime_switcher">显示“切换输入法”按钮</string>
+    <string name="tile_switch_ime">切换输入法</string>
 
     <!-- LLM settings -->
     <string name="llm_section_title">AI 后处理配置</string>

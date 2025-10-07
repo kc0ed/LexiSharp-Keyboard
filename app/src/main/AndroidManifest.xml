@@ -41,6 +41,18 @@
                 android:resource="@xml/method" />
         </service>
 
+        <!-- Quick Settings tile to switch input method (shows IME picker) -->
+        <service
+            android:name=".ui.SwitchImeTileService"
+            android:label="@string/tile_switch_ime"
+            android:icon="@drawable/ic_launcher_monochrome"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>
