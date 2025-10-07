@@ -141,6 +141,23 @@ class Prefs(context: Context) {
     }
     fun hasLlmKeys(): Boolean = llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
 
+    // Custom punctuation buttons (4 slots)
+    var punct1: String
+        get() = (sp.getString(KEY_PUNCT_1, DEFAULT_PUNCT_1) ?: DEFAULT_PUNCT_1).trim()
+        set(value) = sp.edit { putString(KEY_PUNCT_1, value.trim()) }
+
+    var punct2: String
+        get() = (sp.getString(KEY_PUNCT_2, DEFAULT_PUNCT_2) ?: DEFAULT_PUNCT_2).trim()
+        set(value) = sp.edit { putString(KEY_PUNCT_2, value.trim()) }
+
+    var punct3: String
+        get() = (sp.getString(KEY_PUNCT_3, DEFAULT_PUNCT_3) ?: DEFAULT_PUNCT_3).trim()
+        set(value) = sp.edit { putString(KEY_PUNCT_3, value.trim()) }
+
+    var punct4: String
+        get() = (sp.getString(KEY_PUNCT_4, DEFAULT_PUNCT_4) ?: DEFAULT_PUNCT_4).trim()
+        set(value) = sp.edit { putString(KEY_PUNCT_4, value.trim()) }
+
     companion object {
         private const val KEY_APP_KEY = "app_key"
         private const val KEY_ACCESS_KEY = "access_key"
@@ -159,6 +176,10 @@ class Prefs(context: Context) {
         private const val KEY_SF_MODEL = "sf_model"
         private const val KEY_ELEVEN_API_KEY = "eleven_api_key"
         private const val KEY_ELEVEN_MODEL_ID = "eleven_model_id"
+        private const val KEY_PUNCT_1 = "punct_1"
+        private const val KEY_PUNCT_2 = "punct_2"
+        private const val KEY_PUNCT_3 = "punct_3"
+        private const val KEY_PUNCT_4 = "punct_4"
 
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
         const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
@@ -169,6 +190,12 @@ class Prefs(context: Context) {
         const val DEFAULT_LLM_MODEL = "gpt-4o-mini"
         const val DEFAULT_LLM_TEMPERATURE = 0.2f
         const val DEFAULT_LLM_PROMPT = "# 角色\n\n你是一个顶级的 ASR（自动语音识别）后处理专家。\n\n# 任务\n\n你的任务是接收一段由 ASR 系统转录的原始文本，并将其精炼成一段通顺、准确、书面化的文本。你需要严格遵循以下规则，仅输出修正后的最终文本。\n\n# 规则\n\n1.  **去除无关填充词**: 彻底删除所有无意义的语气词、犹豫词和口头禅。\n    - **示例**: \"嗯\"、\"啊\"、\"呃\"、\"那个\"、\"然后\"、\"就是说\"等。\n2.  **合并重复与修正口误**: 当说话者重复单词、短语或进行自我纠正时，你需要整合这些内容，只保留其最终的、最清晰的意图。\n    - **重复示例**: 将\"我想...我想去...\"修正为\"我想去...\"。\n    - **口误修正示例**: 将\"我们明天去上海，哦不对，去苏州开会\"修正为\"我们明天去苏州开会\"。\n3.  **修正识别错误**: 根据上下文语境，纠正明显不符合逻辑的同音、近音词汇。\n    - **同音词示例**: 将\"请大家准时参加明天的『会意』\"修正为\"请大家准时参加明天的『会议』\"\n4.  **保持语义完整性**: 确保修正后的文本忠实于说话者的原始意图，不要进行主观臆断或添加额外信息。\n\n# 示例\n\n- **原始文本**: \"嗯...那个...我想确认一下，我们明天，我们明天的那个会意，啊不对，会议，时间是不是...是不是上午九点？\"\n- **修正后文本**: \"我想确认一下，我们明天的那个会议时间是不是上午九点？\"\n  请根据以上所有规则，处理给定文本"
+
+        // Defaults for punctuation buttons
+        const val DEFAULT_PUNCT_1 = "，"
+        const val DEFAULT_PUNCT_2 = "。"
+        const val DEFAULT_PUNCT_3 = "！"
+        const val DEFAULT_PUNCT_4 = "？"
 
         private fun buildDefaultPromptPresets(legacy: String = DEFAULT_LLM_PROMPT): List<PromptPreset> {
             val p1 = PromptPreset(

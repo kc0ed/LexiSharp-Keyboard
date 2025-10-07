@@ -68,6 +68,11 @@ class SettingsActivity : ComponentActivity() {
         val etLlmPrompt = findViewById<EditText>(R.id.etLlmPrompt)
         val etLlmPromptTitle = findViewById<EditText>(R.id.etLlmPromptTitle)
         val spPromptPresets = findViewById<Spinner>(R.id.spPromptPresets)
+        // Custom punctuation inputs
+        val etPunct1 = findViewById<EditText>(R.id.etPunct1)
+        val etPunct2 = findViewById<EditText>(R.id.etPunct2)
+        val etPunct3 = findViewById<EditText>(R.id.etPunct3)
+        val etPunct4 = findViewById<EditText>(R.id.etPunct4)
 
         etAppKey.setText(prefs.appKey)
         etAccessKey.setText(prefs.accessKey)
@@ -81,6 +86,10 @@ class SettingsActivity : ComponentActivity() {
         etLlmApiKey.setText(prefs.llmApiKey)
         etLlmModel.setText(prefs.llmModel)
         etLlmTemperature.setText(prefs.llmTemperature.toString())
+        etPunct1.setText(prefs.punct1)
+        etPunct2.setText(prefs.punct2)
+        etPunct3.setText(prefs.punct3)
+        etPunct4.setText(prefs.punct4)
         // Prompt presets
         var presets = prefs.getPromptPresets().toMutableList()
         var activeId = prefs.activePromptId
@@ -163,6 +172,11 @@ class SettingsActivity : ComponentActivity() {
             prefs.llmModel = etLlmModel.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_MODEL } ?: Prefs.DEFAULT_LLM_MODEL
             val tempVal = etLlmTemperature.text?.toString()?.toFloatOrNull()
             prefs.llmTemperature = (tempVal ?: Prefs.DEFAULT_LLM_TEMPERATURE).coerceIn(0f, 2f)
+            // Custom punctuation buttons
+            prefs.punct1 = etPunct1.text?.toString() ?: Prefs.DEFAULT_PUNCT_1
+            prefs.punct2 = etPunct2.text?.toString() ?: Prefs.DEFAULT_PUNCT_2
+            prefs.punct3 = etPunct3.text?.toString() ?: Prefs.DEFAULT_PUNCT_3
+            prefs.punct4 = etPunct4.text?.toString() ?: Prefs.DEFAULT_PUNCT_4
             // Update current preset title/content and set active
             val newTitle = etLlmPromptTitle.text?.toString()?.ifBlank { "未命名预设" } ?: "未命名预设"
             val newContent = etLlmPrompt.text?.toString() ?: Prefs.DEFAULT_LLM_PROMPT

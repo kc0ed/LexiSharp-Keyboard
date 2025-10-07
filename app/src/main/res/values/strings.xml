@@ -11,6 +11,10 @@
     <string name="cd_ai_edit">AI编辑</string>
     <string name="cd_hide">收起键盘</string>
     <string name="cd_prompt_picker">切换后处理 Prompt</string>
+    <string name="cd_punct_btn_1">自定义按键 1</string>
+    <string name="cd_punct_btn_2">自定义按键 2</string>
+    <string name="cd_punct_btn_3">自定义按键 3</string>
+    <string name="cd_punct_btn_4">自定义按键 4</string>
 
     <string name="status_idle">就绪</string>
     <string name="status_listening">正在聆听…</string>
@@ -56,4 +60,12 @@
     <string name="label_llm_prompt_title">Prompt 预设标题</string>
     <string name="label_llm_prompt_presets">选择 Prompt 预设</string>
     <string name="btn_add_preset">新增/另存为预设</string>
+
+    <!-- Custom punctuation settings -->
+    <string name="custom_punct_section_title">自定义标点按钮</string>
+    <string name="label_custom_punct_1">按钮1（字符或标点）</string>
+    <string name="label_custom_punct_2">按钮2（字符或标点）</string>
+    <string name="label_custom_punct_3">按钮3（字符或标点）</string>
+    <string name="label_custom_punct_4">按钮4（字符或标点）</string>
+    <string name="label_auto_switch_password">���������������Ϊ�������ʱ���Զ��л���ǰһ������</string>
 </resources>

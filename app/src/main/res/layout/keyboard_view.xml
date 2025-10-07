@@ -87,26 +87,92 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <!-- Middle function row moved to overlay to keep height unchanged -->
+
+    <!-- Custom punctuation row -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp">
 
-        <ImageButton
-            android:id="@+id/btnImeSwitcher"
+        <TextView
+            android:id="@+id/btnPunct1"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@drawable/bg_key_button"
-            android:contentDescription="@string/cd_switch_ime"
-            android:clipToOutline="true"
-            android:padding="6dp"
-            android:src="@drawable/ic_keyboard"
+            android:contentDescription="@string/cd_punct_btn_1"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
             android:foreground="?attr/selectableItemBackgroundBorderless"
             android:stateListAnimator="@animator/key_button_state_list"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="18sp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toEndOf="@id/btnSettings"
-            app:layout_constraintTop_toTopOf="parent"
-            android:tint="?attr/colorOnSurfaceVariant" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/btnPunct2"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_key_button"
+            android:contentDescription="@string/cd_punct_btn_2"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="18sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/btnPunct1"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/btnPunct3"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_key_button"
+            android:contentDescription="@string/cd_punct_btn_3"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="18sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btnPunct4"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/btnPunct4"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_key_button"
+            android:contentDescription="@string/cd_punct_btn_4"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="18sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </LinearLayout>
+
+    <!-- Overlay: original function row placed around middle height without increasing total panel height -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:translationY="0dp">
 
         <ImageButton
             android:id="@+id/btnSettings"
@@ -121,6 +187,22 @@
             android:stateListAnimator="@animator/key_button_state_list"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            android:tint="?attr/colorOnSurfaceVariant" />
+
+        <ImageButton
+            android:id="@+id/btnImeSwitcher"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_key_button"
+            android:contentDescription="@string/cd_switch_ime"
+            android:clipToOutline="true"
+            android:padding="6dp"
+            android:src="@drawable/ic_keyboard"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/btnSettings"
             app:layout_constraintTop_toTopOf="parent"
             android:tint="?attr/colorOnSurfaceVariant" />
 
@@ -156,16 +238,9 @@
             app:layout_constraintHorizontal_bias="1.0"
             app:layout_constraintStart_toEndOf="@id/btnImeSwitcher"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.0"
-            app:layout_goneMarginEnd="8dp"
             android:tint="?attr/colorOnSurfaceVariant" />
 
-
-
-
     </androidx.constraintlayout.widget.ConstraintLayout>
-
-    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"

@@ -53,6 +53,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var btnPromptPicker: ImageButton? = null
     private var btnHide: ImageButton? = null
     private var btnImeSwitcher: ImageButton? = null
+    private var btnPunct1: TextView? = null
+    private var btnPunct2: TextView? = null
+    private var btnPunct3: TextView? = null
+    private var btnPunct4: TextView? = null
     private var txtStatus: TextView? = null
     private var committedStableLen: Int = 0
     private var postproc: LlmPostProcessor = LlmPostProcessor()
@@ -95,6 +99,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         super.onStartInputView(info, restarting)
         // Re-apply visibility in case user toggled setting while IME was backgrounded
         btnImeSwitcher?.visibility = if (prefs.showImeSwitcherButton) View.VISIBLE else View.GONE
+        // Refresh custom punctuation labels
+        applyPunctuationLabels()
         refreshPermissionUi()
         // Keep system toolbar/nav colors in sync with our panel background
         syncSystemBarsToKeyboardBackground(rootView)
@@ -122,6 +128,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnPromptPicker = view.findViewById(R.id.btnPromptPicker)
         btnHide = view.findViewById(R.id.btnHide)
         btnImeSwitcher = view.findViewById(R.id.btnImeSwitcher)
+        btnPunct1 = view.findViewById(R.id.btnPunct1)
+        btnPunct2 = view.findViewById(R.id.btnPunct2)
+        btnPunct3 = view.findViewById(R.id.btnPunct3)
+        btnPunct4 = view.findViewById(R.id.btnPunct4)
         txtStatus = view.findViewById(R.id.txtStatus)
 
         btnMic?.setOnTouchListener { v, event ->
@@ -343,6 +353,11 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnPromptPicker?.setOnClickListener { v ->
             showPromptPicker(v)
         }
+        // Punctuation clicks
+        btnPunct1?.setOnClickListener { commitText(prefs.punct1) }
+        btnPunct2?.setOnClickListener { commitText(prefs.punct2) }
+        btnPunct3?.setOnClickListener { commitText(prefs.punct3) }
+        btnPunct4?.setOnClickListener { commitText(prefs.punct4) }
         btnPostproc?.apply {
             isSelected = prefs.postProcessEnabled
             alpha = if (prefs.postProcessEnabled) 1f else 0.45f
@@ -537,6 +552,20 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         } catch (_: Exception) {
             // no-op
         }
+    }
+
+    private fun applyPunctuationLabels() {
+        btnPunct1?.text = prefs.punct1
+        btnPunct2?.text = prefs.punct2
+        btnPunct3?.text = prefs.punct3
+        btnPunct4?.text = prefs.punct4
+    }
+
+    private fun commitText(s: String) {
+        try {
+            currentInputConnection?.commitText(s, 1)
+            vibrateTick()
+        } catch (_: Throwable) { }
     }
 
     private fun vibrateTick() {
