@@ -88,6 +88,13 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/label_show_ime_switcher" />
 
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchAutoSwitchPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/label_auto_switch_password" />
+
             <com.google.android.material.divider.MaterialDivider
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

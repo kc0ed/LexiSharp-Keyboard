@@ -24,6 +24,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SHOW_IME_SWITCHER_BUTTON, true)
         set(value) = sp.edit { putBoolean(KEY_SHOW_IME_SWITCHER_BUTTON, value) }
 
+    // Auto switch away on password fields
+    var autoSwitchOnPassword: Boolean
+        get() = sp.getBoolean(KEY_AUTO_SWITCH_ON_PASSWORD, true)
+        set(value) = sp.edit { putBoolean(KEY_AUTO_SWITCH_ON_PASSWORD, value) }
+
     // --- LLM post-processing settings ---
     var postProcessEnabled: Boolean
         get() = sp.getBoolean(KEY_POSTPROC_ENABLED, false)
@@ -163,6 +168,7 @@ class Prefs(context: Context) {
         private const val KEY_ACCESS_KEY = "access_key"
         private const val KEY_TRIM_FINAL_TRAILING_PUNCT = "trim_final_trailing_punct"
         private const val KEY_SHOW_IME_SWITCHER_BUTTON = "show_ime_switcher_button"
+        private const val KEY_AUTO_SWITCH_ON_PASSWORD = "auto_switch_on_password"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_LLM_ENDPOINT = "llm_endpoint"
         private const val KEY_LLM_API_KEY = "llm_api_key"

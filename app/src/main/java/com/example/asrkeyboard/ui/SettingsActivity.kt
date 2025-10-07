@@ -59,6 +59,7 @@ class SettingsActivity : ComponentActivity() {
         val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
         val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
+        val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
 
         // LLM fields
         val etLlmEndpoint = findViewById<EditText>(R.id.etLlmEndpoint)
@@ -82,6 +83,7 @@ class SettingsActivity : ComponentActivity() {
         etElevenModel.setText(prefs.elevenModelId)
         switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
         switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
+        switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
         etLlmEndpoint.setText(prefs.llmEndpoint)
         etLlmApiKey.setText(prefs.llmApiKey)
         etLlmModel.setText(prefs.llmModel)
@@ -166,6 +168,7 @@ class SettingsActivity : ComponentActivity() {
             // 开关设置
             prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
             prefs.showImeSwitcherButton = switchShowImeSwitcher.isChecked
+            prefs.autoSwitchOnPassword = switchAutoSwitchPassword.isChecked
             // LLM
             prefs.llmEndpoint = etLlmEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT
             prefs.llmApiKey = etLlmApiKey.text?.toString() ?: ""

@@ -16,6 +16,7 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.view.KeyEvent
 import android.view.inputmethod.InputMethodManager
+import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.content.ContextCompat
@@ -97,6 +98,18 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        // If current field is a password and user opted in, auto-switch back to previous IME
+        if (prefs.autoSwitchOnPassword && isPasswordEditor(info)) {
+            try {
+                val ok = try { switchToPreviousInputMethod() } catch (_: Throwable) { false }
+                if (!ok) {
+                    val imm = getSystemService(InputMethodManager::class.java)
+                    imm?.showInputMethodPicker()
+                }
+            } catch (_: Throwable) { }
+            try { requestHideSelf(0) } catch (_: Throwable) { }
+            return
+        }
         // Re-apply visibility in case user toggled setting while IME was backgrounded
         btnImeSwitcher?.visibility = if (prefs.showImeSwitcherButton) View.VISIBLE else View.GONE
         // Refresh custom punctuation labels
@@ -104,6 +117,20 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         refreshPermissionUi()
         // Keep system toolbar/nav colors in sync with our panel background
         syncSystemBarsToKeyboardBackground(rootView)
+    }
+
+    private fun isPasswordEditor(info: EditorInfo?): Boolean {
+        if (info == null) return false
+        val it = info.inputType
+        val klass = it and InputType.TYPE_MASK_CLASS
+        val variation = it and InputType.TYPE_MASK_VARIATION
+        return when (klass) {
+            InputType.TYPE_CLASS_TEXT -> variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+                    variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
+                    variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+            InputType.TYPE_CLASS_NUMBER -> variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            else -> false
+        }
     }
 
     override fun onDestroy() {
