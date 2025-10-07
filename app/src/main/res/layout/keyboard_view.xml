@@ -68,6 +68,23 @@
             app:layout_constraintVertical_bias="0.0"
             android:tint="?attr/colorOnSurfaceVariant" />
 
+        <ImageButton
+            android:id="@+id/btnPromptPicker"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_key_button"
+            android:contentDescription="@string/cd_prompt_picker"
+            android:clipToOutline="true"
+            android:padding="6dp"
+            android:src="@drawable/ic_prompt"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:stateListAnimator="@animator/key_button_state_list"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btnBackspace"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.0"
+            android:tint="?attr/colorOnSurfaceVariant" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout

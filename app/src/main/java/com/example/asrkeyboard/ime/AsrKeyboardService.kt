@@ -47,6 +47,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private var btnPostproc: ImageButton? = null
     private var btnAiEdit: ImageButton? = null
     private var btnBackspace: ImageButton? = null
+    private var btnPromptPicker: ImageButton? = null
     private var btnHide: ImageButton? = null
     private var btnImeSwitcher: ImageButton? = null
     private var txtStatus: TextView? = null
@@ -111,6 +112,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnPostproc = view.findViewById(R.id.btnPostproc)
         btnAiEdit = view.findViewById(R.id.btnAiEdit)
         btnBackspace = view.findViewById(R.id.btnBackspace)
+        btnPromptPicker = view.findViewById(R.id.btnPromptPicker)
         btnHide = view.findViewById(R.id.btnHide)
         btnImeSwitcher = view.findViewById(R.id.btnImeSwitcher)
         txtStatus = view.findViewById(R.id.txtStatus)
@@ -322,6 +324,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         }
         btnHide?.setOnClickListener { hideKeyboardPanel() }
         btnImeSwitcher?.setOnClickListener { showImePicker() }
+        btnPromptPicker?.setOnClickListener { v ->
+            showPromptPicker(v)
+        }
         btnPostproc?.apply {
             isSelected = prefs.postProcessEnabled
             alpha = if (prefs.postProcessEnabled) 1f else 0.45f
@@ -507,6 +512,28 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             v.vibrate(android.os.VibrationEffect.createOneShot(20, 50))
         } catch (_: Exception) {
         }
+    }
+
+    private fun showPromptPicker(anchor: View) {
+        try {
+            val presets = prefs.getPromptPresets()
+            if (presets.isEmpty()) return
+            val popup = androidx.appcompat.widget.PopupMenu(anchor.context, anchor)
+            presets.forEachIndexed { idx, p ->
+                val item = popup.menu.add(0, idx, idx, p.title)
+                item.isCheckable = true
+                if (p.id == prefs.activePromptId) item.isChecked = true
+            }
+            popup.menu.setGroupCheckable(0, true, true)
+            popup.setOnMenuItemClickListener { mi ->
+                val position = mi.itemId
+                val preset = presets.getOrNull(position) ?: return@setOnMenuItemClickListener false
+                prefs.activePromptId = preset.id
+                txtStatus?.text = "已切换：${preset.title}"
+                true
+            }
+            popup.show()
+        } catch (_: Throwable) { }
     }
 
     override fun onFinal(text: String) {

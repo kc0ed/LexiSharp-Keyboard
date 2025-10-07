@@ -33,7 +33,7 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
         val endpoint = prefs.llmEndpoint
         val model = prefs.llmModel
         val temperature = prefs.llmTemperature.toDouble()
-        val prompt = prefs.llmPrompt.ifBlank { Prefs.DEFAULT_LLM_PROMPT }
+        val prompt = prefs.activePromptContent.ifBlank { Prefs.DEFAULT_LLM_PROMPT }
 
         val url = resolveUrl(endpoint)
         val reqJson = JSONObject().apply {

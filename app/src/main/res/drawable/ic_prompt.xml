@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Simple chat bubble with a star to hint prompt/presets -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M4,3h16a2,2 0 0 1 2,2v11a2,2 0 0 1 -2,2h-6l-4,3v-3H4a2,2 0 0 1 -2,-2V5a2,2 0 0 1 2,-2z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M14.5,7.5l0.9,1.8 2,0.3 -1.45,1.4 0.34,2 -1.79,-0.95 -1.79,0.95 0.34,-2L11.6,9.6l2,-0.3z"/>
+  </vector>
+
