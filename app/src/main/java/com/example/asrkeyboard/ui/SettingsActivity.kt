@@ -60,6 +60,7 @@ class SettingsActivity : ComponentActivity() {
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
         val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
+        val switchFloating = findViewById<MaterialSwitch>(R.id.switchFloatingSwitcher)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
 
         // LLM相关字段
@@ -86,6 +87,19 @@ class SettingsActivity : ComponentActivity() {
         switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
         switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
         switchMicHaptic.isChecked = prefs.micHapticEnabled
+        switchFloating.isChecked = prefs.floatingSwitcherEnabled
+        // 开启悬浮球时主动引导申请悬浮窗权限
+        switchFloating.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                    Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
+                    try {
+                        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName"))
+                        startActivity(intent)
+                    } catch (_: Throwable) { }
+                }
+            }
+        }
         etLlmEndpoint.setText(prefs.llmEndpoint)
         etLlmApiKey.setText(prefs.llmApiKey)
         etLlmModel.setText(prefs.llmModel)
@@ -172,6 +186,31 @@ class SettingsActivity : ComponentActivity() {
             prefs.showImeSwitcherButton = switchShowImeSwitcher.isChecked
             prefs.autoSwitchOnPassword = switchAutoSwitchPassword.isChecked
             prefs.micHapticEnabled = switchMicHaptic.isChecked
+            // 悬浮球开关：保存状态并根据权限与当前输入法情况启动/隐藏
+            val newFloating = switchFloating.isChecked
+            val wasFloating = prefs.floatingSwitcherEnabled
+            prefs.floatingSwitcherEnabled = newFloating
+            if (newFloating != wasFloating) {
+                if (newFloating) {
+                    // 检查悬浮窗权限
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                        Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
+                        try {
+                            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName"))
+                            startActivity(intent)
+                        } catch (_: Throwable) { }
+                    }
+                    try {
+                        val intent = Intent(this, FloatingImeSwitcherService::class.java).apply { action = FloatingImeSwitcherService.ACTION_SHOW }
+                        startService(intent)
+                    } catch (_: Throwable) { }
+                } else {
+                    try {
+                        val intent = Intent(this, FloatingImeSwitcherService::class.java).apply { action = FloatingImeSwitcherService.ACTION_HIDE }
+                        startService(intent)
+                    } catch (_: Throwable) { }
+                }
+            }
             // 大语言模型相关设置
             prefs.llmEndpoint = etLlmEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT
             prefs.llmApiKey = etLlmApiKey.text?.toString() ?: ""

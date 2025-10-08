@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 悬浮球需要的系统悬浮窗权限（运行时在设置中授予） -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".App"
@@ -52,6 +54,11 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <!-- 悬浮球切换输入法的前台/常驻服务（不导出） -->
+        <service
+            android:name=".ui.FloatingImeSwitcherService"
+            android:exported="false" />
 
     </application>
 

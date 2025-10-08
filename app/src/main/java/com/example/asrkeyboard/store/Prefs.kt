@@ -34,6 +34,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_MIC_HAPTIC_ENABLED, true)
         set(value) = sp.edit { putBoolean(KEY_MIC_HAPTIC_ENABLED, value) }
 
+    // 悬浮球开关
+    var floatingSwitcherEnabled: Boolean
+        get() = sp.getBoolean(KEY_FLOATING_SWITCHER_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_FLOATING_SWITCHER_ENABLED, value) }
+
     // LLM后处理设置
     var postProcessEnabled: Boolean
         get() = sp.getBoolean(KEY_POSTPROC_ENABLED, false)
@@ -175,6 +180,7 @@ class Prefs(context: Context) {
         private const val KEY_SHOW_IME_SWITCHER_BUTTON = "show_ime_switcher_button"
         private const val KEY_AUTO_SWITCH_ON_PASSWORD = "auto_switch_on_password"
         private const val KEY_MIC_HAPTIC_ENABLED = "mic_haptic_enabled"
+        private const val KEY_FLOATING_SWITCHER_ENABLED = "floating_switcher_enabled"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_LLM_ENDPOINT = "llm_endpoint"
         private const val KEY_LLM_API_KEY = "llm_api_key"
