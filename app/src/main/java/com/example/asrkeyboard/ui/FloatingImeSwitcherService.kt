@@ -206,13 +206,40 @@ class FloatingImeSwitcherService : Service() {
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (!moved) v.performClick()
+                    if (!moved) {
+                        v.performClick()
+                    } else {
+                        // 拖动结束后自动吸附到最近的屏幕左右边缘，并限制在屏幕可视范围内
+                        try { snapToEdge(v) } catch (_: Throwable) { }
+                    }
                     moved = false
                     true
                 }
                 else -> false
             }
         }
+    }
+
+    private fun snapToEdge(v: View) {
+        val p = lp ?: return
+        val dm = resources.displayMetrics
+        val screenW = dm.widthPixels
+        val screenH = dm.heightPixels
+        val vw = if (v.width > 0) v.width else dp(28)
+        val vh = if (v.height > 0) v.height else dp(28)
+        val margin = dp(0)
+
+        // 计算目标X：吸附到左或右
+        val centerX = p.x + vw / 2
+        val targetX = if (centerX < screenW / 2) margin else (screenW - vw - margin)
+        // 约束Y范围，避免越界
+        val minY = margin
+        val maxY = (screenH - vh - margin).coerceAtLeast(minY)
+        val targetY = p.y.coerceIn(minY, maxY)
+
+        p.x = targetX
+        p.y = targetY
+        try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
     }
 
     private fun dp(v: Int): Int {
