@@ -1,6 +1,7 @@
 package com.example.asrkeyboard.ui
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
@@ -19,6 +20,7 @@ import com.example.asrkeyboard.store.Prefs
 import com.example.asrkeyboard.store.PromptPreset
 import com.example.asrkeyboard.asr.AsrVendor
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 
@@ -302,5 +304,43 @@ class SettingsActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.toast_preset_added), Toast.LENGTH_SHORT).show()
         }
 
+        // 设置导入/导出
+        val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+            if (uri != null) {
+                try {
+                    contentResolver.openOutputStream(uri)?.use { os ->
+                        os.write(Prefs(this).exportJsonString().toByteArray(Charsets.UTF_8))
+                        os.flush()
+                    }
+                    val name = uri.lastPathSegment ?: "settings.json"
+                    Toast.makeText(this, getString(R.string.toast_export_success, name), Toast.LENGTH_SHORT).show()
+                } catch (_: Throwable) {
+                    Toast.makeText(this, getString(R.string.toast_export_failed), Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            if (uri != null) {
+                try {
+                    val json = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
+                    val ok = Prefs(this).importJsonString(json)
+                    if (ok) {
+                        Toast.makeText(this, getString(R.string.toast_import_success), Toast.LENGTH_SHORT).show()
+                        recreate()
+                    } else {
+                        Toast.makeText(this, getString(R.string.toast_import_failed), Toast.LENGTH_SHORT).show()
+                    }
+                } catch (_: Throwable) {
+                    Toast.makeText(this, getString(R.string.toast_import_failed), Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        findViewById<Button>(R.id.btnExportSettings).setOnClickListener {
+            val fileName = "asr_keyboard_settings_" + java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.getDefault()).format(java.util.Date()) + ".json"
+            exportLauncher.launch(fileName)
+        }
+        findViewById<Button>(R.id.btnImportSettings).setOnClickListener {
+            importLauncher.launch(arrayOf("application/json", "text/plain"))
+        }
     }
 }

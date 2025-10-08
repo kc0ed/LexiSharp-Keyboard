@@ -67,6 +67,8 @@
     <string name="label_llm_prompt_title">Prompt 预设标题</string>
     <string name="label_llm_prompt_presets">选择 Prompt 预设</string>
     <string name="btn_add_preset">新增/另存为预设</string>
+    <string name="btn_export_settings">导出设置</string>
+    <string name="btn_import_settings">导入设置</string>
 
     <!-- Custom punctuation settings -->
     <string name="custom_punct_section_title">自定义标点按钮</string>
@@ -84,4 +86,8 @@
     <string name="toast_preset_added">已新增预设</string>
     <string name="untitled_preset">未命名预设</string>
     <string name="switched_preset">已切换：%1$s</string>
+    <string name="toast_export_success">已导出：%1$s</string>
+    <string name="toast_export_failed">导出失败</string>
+    <string name="toast_import_success">导入成功，已应用</string>
+    <string name="toast_import_failed">导入失败或格式不正确</string>
 </resources>

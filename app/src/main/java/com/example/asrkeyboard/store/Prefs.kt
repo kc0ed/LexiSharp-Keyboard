@@ -246,4 +246,88 @@ class Prefs(context: Context) {
             return listOf(p1, p2, p3)
         }
     }
+
+    // 导出全部设置为 JSON 字符串（包含密钥，仅用于本地备份/迁移）
+    fun exportJsonString(): String {
+        val o = org.json.JSONObject()
+        o.put("_version", 1)
+        o.put(KEY_APP_KEY, appKey)
+        o.put(KEY_ACCESS_KEY, accessKey)
+        o.put(KEY_TRIM_FINAL_TRAILING_PUNCT, trimFinalTrailingPunct)
+        o.put(KEY_SHOW_IME_SWITCHER_BUTTON, showImeSwitcherButton)
+        o.put(KEY_AUTO_SWITCH_ON_PASSWORD, autoSwitchOnPassword)
+        o.put(KEY_MIC_HAPTIC_ENABLED, micHapticEnabled)
+        o.put(KEY_APP_LANGUAGE_TAG, appLanguageTag)
+        o.put(KEY_FLOATING_SWITCHER_ENABLED, floatingSwitcherEnabled)
+        o.put(KEY_FLOATING_SWITCHER_ALPHA, floatingSwitcherAlpha)
+        o.put(KEY_POSTPROC_ENABLED, postProcessEnabled)
+        o.put(KEY_LLM_ENDPOINT, llmEndpoint)
+        o.put(KEY_LLM_API_KEY, llmApiKey)
+        o.put(KEY_LLM_MODEL, llmModel)
+        o.put(KEY_LLM_TEMPERATURE, llmTemperature.toDouble())
+        // 兼容旧字段
+        o.put(KEY_LLM_PROMPT, llmPrompt)
+        o.put(KEY_LLM_PROMPT_PRESETS, promptPresetsJson)
+        o.put(KEY_LLM_PROMPT_ACTIVE_ID, activePromptId)
+        // 供应商设置
+        o.put(KEY_ASR_VENDOR, asrVendor.id)
+        o.put(KEY_SF_API_KEY, sfApiKey)
+        o.put(KEY_SF_MODEL, sfModel)
+        o.put(KEY_ELEVEN_API_KEY, elevenApiKey)
+        o.put(KEY_ELEVEN_MODEL_ID, elevenModelId)
+        // 自定义标点
+        o.put(KEY_PUNCT_1, punct1)
+        o.put(KEY_PUNCT_2, punct2)
+        o.put(KEY_PUNCT_3, punct3)
+        o.put(KEY_PUNCT_4, punct4)
+        return o.toString()
+    }
+
+    // 从 JSON 字符串导入。仅覆盖提供的键；解析失败返回 false。
+    fun importJsonString(json: String): Boolean {
+        return try {
+            val o = org.json.JSONObject(json)
+            fun optBool(key: String, default: Boolean? = null): Boolean? =
+                if (o.has(key)) o.optBoolean(key) else default
+            fun optString(key: String, default: String? = null): String? =
+                if (o.has(key)) o.optString(key) else default
+            fun optFloat(key: String, default: Float? = null): Float? =
+                if (o.has(key)) o.optDouble(key).toFloat() else default
+
+            optString(KEY_APP_KEY)?.let { appKey = it }
+            optString(KEY_ACCESS_KEY)?.let { accessKey = it }
+            optBool(KEY_TRIM_FINAL_TRAILING_PUNCT)?.let { trimFinalTrailingPunct = it }
+            optBool(KEY_SHOW_IME_SWITCHER_BUTTON)?.let { showImeSwitcherButton = it }
+            optBool(KEY_AUTO_SWITCH_ON_PASSWORD)?.let { autoSwitchOnPassword = it }
+            optBool(KEY_MIC_HAPTIC_ENABLED)?.let { micHapticEnabled = it }
+            optString(KEY_APP_LANGUAGE_TAG)?.let { appLanguageTag = it }
+            optBool(KEY_POSTPROC_ENABLED)?.let { postProcessEnabled = it }
+            optBool(KEY_FLOATING_SWITCHER_ENABLED)?.let { floatingSwitcherEnabled = it }
+            optFloat(KEY_FLOATING_SWITCHER_ALPHA)?.let { floatingSwitcherAlpha = it.coerceIn(0.2f, 1.0f) }
+
+            optString(KEY_LLM_ENDPOINT)?.let { llmEndpoint = it.ifBlank { DEFAULT_LLM_ENDPOINT } }
+            optString(KEY_LLM_API_KEY)?.let { llmApiKey = it }
+            optString(KEY_LLM_MODEL)?.let { llmModel = it.ifBlank { DEFAULT_LLM_MODEL } }
+            optFloat(KEY_LLM_TEMPERATURE)?.let { llmTemperature = it.coerceIn(0f, 2f) }
+            // 兼容：先读新预设；未提供时退回旧单一 Prompt
+            optString(KEY_LLM_PROMPT_PRESETS)?.let { promptPresetsJson = it }
+            optString(KEY_LLM_PROMPT_ACTIVE_ID)?.let { activePromptId = it }
+            if (!o.has(KEY_LLM_PROMPT_PRESETS)) {
+                optString(KEY_LLM_PROMPT)?.let { llmPrompt = it }
+            }
+
+            optString(KEY_ASR_VENDOR)?.let { asrVendor = AsrVendor.fromId(it) }
+            optString(KEY_SF_API_KEY)?.let { sfApiKey = it }
+            optString(KEY_SF_MODEL)?.let { sfModel = it.ifBlank { DEFAULT_SF_MODEL } }
+            optString(KEY_ELEVEN_API_KEY)?.let { elevenApiKey = it }
+            optString(KEY_ELEVEN_MODEL_ID)?.let { elevenModelId = it }
+            optString(KEY_PUNCT_1)?.let { punct1 = it }
+            optString(KEY_PUNCT_2)?.let { punct2 = it }
+            optString(KEY_PUNCT_3)?.let { punct3 = it }
+            optString(KEY_PUNCT_4)?.let { punct4 = it }
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
 }
