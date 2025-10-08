@@ -19,4 +19,12 @@
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:backgroundDimAmount">0.0</item>
     </style>
+
+    <!-- 专用于 ImePickerActivity：需要可聚焦的前台窗口以成功唤起输入法选择器 -->
+    <style name="Theme.ASRKeyboard.PickerHost" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimAmount">0.0</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

@@ -32,6 +32,13 @@
             android:exported="false"
             android:theme="@style/Theme.ASRKeyboard.Transparent" />
 
+        <activity
+            android:name=".ui.ImePickerActivity"
+            android:exported="false"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.ASRKeyboard.PickerHost" />
+
         <service
             android:name=".ime.AsrKeyboardService"
             android:label="@string/app_name"

@@ -148,8 +148,11 @@ class FloatingImeSwitcherService : Service() {
                 startActivity(intent)
                 return
             }
-            // 普通应用无法直接设定输入法为本 IME，这里以系统输入法选择器作为快速入口
-            imm?.showInputMethodPicker()
+            // 从后台直接调 showInputMethodPicker 可能被系统忽略，改为启动透明 Activity 置前后再调
+            val intent = Intent(this, ImePickerActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            }
+            startActivity(intent)
         } catch (_: Exception) {
             try {
                 val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
@@ -160,7 +163,12 @@ class FloatingImeSwitcherService : Service() {
 
     private fun isOurImeEnabled(imm: InputMethodManager?): Boolean {
         val list = try { imm?.enabledInputMethodList } catch (_: Throwable) { null }
-        return list?.any { it.packageName == packageName } == true
+        if (list?.any { it.packageName == packageName } == true) return true
+        return try {
+            val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_INPUT_METHODS)
+            val id = "$packageName/.ime.AsrKeyboardService"
+            enabled?.contains(id) == true || (enabled?.split(':')?.any { it.startsWith(packageName) } == true)
+        } catch (_: Throwable) { false }
     }
 
     private fun isOurImeCurrent(): Boolean {
