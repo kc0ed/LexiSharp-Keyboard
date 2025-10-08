@@ -60,6 +60,7 @@ class SettingsActivity : ComponentActivity() {
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
         val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
+        val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
 
         // LLM fields
         val etLlmEndpoint = findViewById<EditText>(R.id.etLlmEndpoint)
@@ -84,6 +85,7 @@ class SettingsActivity : ComponentActivity() {
         switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
         switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
         switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
+        switchMicHaptic.isChecked = prefs.micHapticEnabled
         etLlmEndpoint.setText(prefs.llmEndpoint)
         etLlmApiKey.setText(prefs.llmApiKey)
         etLlmModel.setText(prefs.llmModel)

@@ -10,6 +10,7 @@ import android.os.Vibrator
 import android.view.LayoutInflater
 import android.graphics.Color
 import android.view.MotionEvent
+import android.view.HapticFeedbackConstants
 import android.view.ViewConfiguration
 import android.view.View
 import android.widget.ImageButton
@@ -164,6 +165,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnMic?.setOnTouchListener { v, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    // Crisp haptic on press (respects system settings)
+                    if (prefs.micHapticEnabled) {
+                        try { v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) } catch (_: Throwable) { }
+                    }
                     if (!hasRecordAudioPermission()) {
                         refreshPermissionUi()
                         v.performClick()
