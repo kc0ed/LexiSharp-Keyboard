@@ -2,7 +2,6 @@ package com.brycewg.asrkb
 
 import android.app.Application
 import android.content.Intent
-import android.os.Build
 import android.provider.Settings
 import com.google.android.material.color.DynamicColors
 import com.brycewg.asrkb.store.Prefs
@@ -32,7 +31,7 @@ class App : Application() {
         // 若用户在设置中启用了悬浮球且已授予悬浮窗权限，则启动悬浮球服务
         try {
             val prefs = Prefs(this)
-            val canOverlay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Settings.canDrawOverlays(this) else true
+            val canOverlay = Settings.canDrawOverlays(this)
             if (prefs.floatingSwitcherEnabled && canOverlay) {
                 val intent = Intent(this, FloatingImeSwitcherService::class.java).apply {
                     action = FloatingImeSwitcherService.ACTION_SHOW

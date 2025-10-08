@@ -129,10 +129,10 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
 
     val userContent = """
       【编辑指令】
-      ${instruction}
+      $instruction
 
       【原文】
-      ${original}
+      $original
     """.trimIndent()
 
     val reqJson = JSONObject().apply {

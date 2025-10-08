@@ -100,7 +100,7 @@ class SettingsActivity : AppCompatActivity() {
         // 开启悬浮球时主动引导申请悬浮窗权限
         switchFloating.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                if (true && !Settings.canDrawOverlays(this)) {
                     Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
                     try {
                         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
@@ -240,7 +240,7 @@ class SettingsActivity : AppCompatActivity() {
             if (newFloating != wasFloating) {
                 if (newFloating) {
                     // 检查悬浮窗权限
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                    if (true && !Settings.canDrawOverlays(this)) {
                         Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
                         try {
                             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
