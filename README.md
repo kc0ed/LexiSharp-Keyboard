@@ -7,7 +7,7 @@
 - 🎤 **长按录音**: 通过长按麦克风按钮开始语音识别
 - ⚡ **文件极速识别**: 松开麦克风后整体上传音频并一次性返回结果
 - 🧠 **AI 文本优化**: 集成 LLM 后处理，智能修正识别结果
-- 🔧 **多引擎支持**: 支持火山引擎、OpenAI、SiliconFlow、ElevenLabs、阿里云百炼等多种 ASR 服务
+- 🔧 **多引擎支持**: 支持火山引擎、OpenAI、SiliconFlow、ElevenLabs、阿里云百炼、Google Gemini 等多种 ASR 服务
 - 📱 **简洁界面**: Material3 Monet 设计风格，最小化界面干扰
 - 🟣 **悬浮球切换**: 支持悬浮球快速切回 ASR 键盘
 
@@ -24,6 +24,7 @@
   - `OpenAiFileAsrEngine.kt`: OpenAI Whisper 兼容实现
   - `ElevenLabsFileAsrEngine.kt`: ElevenLabs 语音识别实现
   - `DashscopeFileAsrEngine.kt`: 阿里云百炼语音识别实现
+  - `GeminiFileAsrEngine.kt`: Google Gemini 语音理解（通过提示词转写）
 - **LLM 后处理器** (`LlmPostProcessor.kt`): 基于大语言模型的文本修正
 - **设置界面** (`SettingsActivity.kt`): 配置 ASR 服务和 LLM 参数
 - **权限管理** (`PermissionActivity.kt`): 处理麦克风权限请求
@@ -52,7 +53,7 @@
 
 设置页支持按供应商切换配置，所选供应商仅显示对应参数：
 
-- 供应商：`Volcano Engine`、`SiliconFlow`、`OpenAI`、`ElevenLabs`、`DashScope`
+- 供应商：`Volcano Engine`、`SiliconFlow`、`OpenAI`、`ElevenLabs`、`DashScope`、`Google Gemini`
 
 #### 火山引擎 ASR 配置
 

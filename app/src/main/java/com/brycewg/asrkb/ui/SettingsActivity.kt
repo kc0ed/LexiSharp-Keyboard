@@ -66,11 +66,15 @@ class SettingsActivity : AppCompatActivity() {
         val etOpenAiAsrEndpoint = findViewById<EditText>(R.id.etOpenAiAsrEndpoint)
         val etOpenAiApiKey = findViewById<EditText>(R.id.etOpenAiApiKey)
         val etOpenAiModel = findViewById<EditText>(R.id.etOpenAiModel)
+        // Gemini
+        val etGeminiApiKey = findViewById<EditText>(R.id.etGeminiApiKey)
+        val etGeminiModel = findViewById<EditText>(R.id.etGeminiModel)
         val groupVolc = findViewById<View>(R.id.groupVolc)
         val groupSf = findViewById<View>(R.id.groupSf)
         val groupEleven = findViewById<View>(R.id.groupEleven)
         val groupDash = findViewById<View>(R.id.groupDashScope)
         val groupOpenAi = findViewById<View>(R.id.groupOpenAI)
+        val groupGemini = findViewById<View>(R.id.groupGemini)
         val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
         val spLanguage = findViewById<Spinner>(R.id.spLanguage)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
@@ -101,6 +105,8 @@ class SettingsActivity : AppCompatActivity() {
             etSfModel.setText(prefs.sfModel)
             etElevenApiKey.setText(prefs.elevenApiKey)
             etElevenModel.setText(prefs.elevenModelId)
+            etGeminiApiKey.setText(prefs.gemApiKey)
+            etGeminiModel.setText(prefs.gemModel)
             etDashApiKey.setText(prefs.dashApiKey)
             etDashModel.setText(prefs.dashModel)
             etOpenAiAsrEndpoint.setText(prefs.oaAsrEndpoint)
@@ -163,7 +169,8 @@ class SettingsActivity : AppCompatActivity() {
             getString(R.string.vendor_sf),
             getString(R.string.vendor_eleven),
             getString(R.string.vendor_openai),
-            getString(R.string.vendor_dashscope)
+            getString(R.string.vendor_dashscope),
+            getString(R.string.vendor_gemini)
         )
         spAsrVendor.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, vendorItems)
         spAsrVendor.setSelection(
@@ -173,6 +180,7 @@ class SettingsActivity : AppCompatActivity() {
                 AsrVendor.ElevenLabs -> 2
                 AsrVendor.OpenAI -> 3
                 AsrVendor.DashScope -> 4
+                AsrVendor.Gemini -> 5
             }
         )
         // 应用语言选择器设置
@@ -198,6 +206,7 @@ class SettingsActivity : AppCompatActivity() {
             groupEleven.visibility = if (v == AsrVendor.ElevenLabs) View.VISIBLE else View.GONE
             groupOpenAi.visibility = if (v == AsrVendor.OpenAI) View.VISIBLE else View.GONE
             groupDash.visibility = if (v == AsrVendor.DashScope) View.VISIBLE else View.GONE
+            groupGemini.visibility = if (v == AsrVendor.Gemini) View.VISIBLE else View.GONE
         }
         applyVendorVisibility(prefs.asrVendor)
 
@@ -208,6 +217,7 @@ class SettingsActivity : AppCompatActivity() {
                     2 -> AsrVendor.ElevenLabs
                     3 -> AsrVendor.OpenAI
                     4 -> AsrVendor.DashScope
+                    5 -> AsrVendor.Gemini
                     else -> AsrVendor.Volc
                 }
                 prefs.asrVendor = vendor
@@ -262,6 +272,9 @@ class SettingsActivity : AppCompatActivity() {
             prefs.oaAsrEndpoint = etOpenAiAsrEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_OA_ASR_ENDPOINT } ?: Prefs.DEFAULT_OA_ASR_ENDPOINT
             prefs.oaAsrApiKey = etOpenAiApiKey.text?.toString() ?: ""
             prefs.oaAsrModel = etOpenAiModel.text?.toString()?.ifBlank { Prefs.DEFAULT_OA_ASR_MODEL } ?: Prefs.DEFAULT_OA_ASR_MODEL
+            // Gemini 设置
+            prefs.gemApiKey = etGeminiApiKey.text?.toString() ?: ""
+            prefs.gemModel = etGeminiModel.text?.toString()?.ifBlank { Prefs.DEFAULT_GEM_MODEL } ?: Prefs.DEFAULT_GEM_MODEL
             // 开关设置
             prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
             prefs.showImeSwitcherButton = switchShowImeSwitcher.isChecked
@@ -377,6 +390,7 @@ class SettingsActivity : AppCompatActivity() {
                                 AsrVendor.ElevenLabs -> 2
                                 AsrVendor.OpenAI -> 3
                                 AsrVendor.DashScope -> 4
+                                AsrVendor.Gemini -> 5
                             }
                         )
                         // 同步语言选择（将触发 onItemSelected 从而应用语言）

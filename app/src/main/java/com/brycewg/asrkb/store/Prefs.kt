@@ -173,6 +173,19 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_OA_ASR_MODEL, DEFAULT_OA_ASR_MODEL) ?: DEFAULT_OA_ASR_MODEL
         set(value) = sp.edit { putString(KEY_OA_ASR_MODEL, value.trim()) }
 
+    // Google Gemini 语音理解（通过提示词转写）
+    var gemApiKey: String
+        get() = sp.getString(KEY_GEM_API_KEY, "") ?: ""
+        set(value) = sp.edit { putString(KEY_GEM_API_KEY, value.trim()) }
+
+    var gemModel: String
+        get() = sp.getString(KEY_GEM_MODEL, DEFAULT_GEM_MODEL) ?: DEFAULT_GEM_MODEL
+        set(value) = sp.edit { putString(KEY_GEM_MODEL, value.trim()) }
+
+    var gemPrompt: String
+        get() = sp.getString(KEY_GEM_PROMPT, DEFAULT_GEM_PROMPT) ?: DEFAULT_GEM_PROMPT
+        set(value) = sp.edit { putString(KEY_GEM_PROMPT, value) }
+
     // 选中的ASR供应商
     var asrVendor: AsrVendor
         get() = AsrVendor.fromId(sp.getString(KEY_ASR_VENDOR, AsrVendor.Volc.id))
@@ -183,12 +196,14 @@ class Prefs(context: Context) {
     fun hasDashKeys(): Boolean = dashApiKey.isNotBlank()
     fun hasElevenKeys(): Boolean = elevenApiKey.isNotBlank()
     fun hasOpenAiKeys(): Boolean = oaAsrApiKey.isNotBlank() && oaAsrEndpoint.isNotBlank() && oaAsrModel.isNotBlank()
+    fun hasGeminiKeys(): Boolean = gemApiKey.isNotBlank() && gemModel.isNotBlank()
     fun hasAsrKeys(): Boolean = when (asrVendor) {
         AsrVendor.Volc -> hasVolcKeys()
         AsrVendor.SiliconFlow -> hasSfKeys()
         AsrVendor.ElevenLabs -> hasElevenKeys()
         AsrVendor.OpenAI -> hasOpenAiKeys()
         AsrVendor.DashScope -> hasDashKeys()
+        AsrVendor.Gemini -> hasGeminiKeys()
     }
     fun hasLlmKeys(): Boolean = llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
 
@@ -235,6 +250,9 @@ class Prefs(context: Context) {
         private const val KEY_OA_ASR_ENDPOINT = "oa_asr_endpoint"
         private const val KEY_OA_ASR_API_KEY = "oa_asr_api_key"
         private const val KEY_OA_ASR_MODEL = "oa_asr_model"
+        private const val KEY_GEM_API_KEY = "gem_api_key"
+        private const val KEY_GEM_MODEL = "gem_model"
+        private const val KEY_GEM_PROMPT = "gem_prompt"
         private const val KEY_DASH_API_KEY = "dash_api_key"
         private const val KEY_DASH_MODEL = "dash_model"
         private const val KEY_PUNCT_1 = "punct_1"
@@ -252,6 +270,9 @@ class Prefs(context: Context) {
 
         // DashScope 默认
         const val DEFAULT_DASH_MODEL = "qwen3-asr-flash"
+        // Gemini 默认
+        const val DEFAULT_GEM_MODEL = "gemini-2.5-flash"
+        const val DEFAULT_GEM_PROMPT = "请将以下音频逐字转写为文本，不要输出解释或前后缀。"
 
         // 合理的OpenAI格式默认值
         const val DEFAULT_LLM_ENDPOINT = "https://api.openai.com/v1"
@@ -333,6 +354,9 @@ class Prefs(context: Context) {
         o.put(KEY_OA_ASR_ENDPOINT, oaAsrEndpoint)
         o.put(KEY_OA_ASR_API_KEY, oaAsrApiKey)
         o.put(KEY_OA_ASR_MODEL, oaAsrModel)
+        o.put(KEY_GEM_API_KEY, gemApiKey)
+        o.put(KEY_GEM_MODEL, gemModel)
+        o.put(KEY_GEM_PROMPT, gemPrompt)
         // 自定义标点
         o.put(KEY_PUNCT_1, punct1)
         o.put(KEY_PUNCT_2, punct2)
@@ -384,6 +408,9 @@ class Prefs(context: Context) {
             optString(KEY_OA_ASR_ENDPOINT)?.let { oaAsrEndpoint = it.ifBlank { DEFAULT_OA_ASR_ENDPOINT } }
             optString(KEY_OA_ASR_API_KEY)?.let { oaAsrApiKey = it }
             optString(KEY_OA_ASR_MODEL)?.let { oaAsrModel = it.ifBlank { DEFAULT_OA_ASR_MODEL } }
+            optString(KEY_GEM_API_KEY)?.let { gemApiKey = it }
+            optString(KEY_GEM_MODEL)?.let { gemModel = it.ifBlank { DEFAULT_GEM_MODEL } }
+            optString(KEY_GEM_PROMPT)?.let { gemPrompt = it.ifBlank { DEFAULT_GEM_PROMPT } }
             optString(KEY_PUNCT_1)?.let { punct1 = it }
             optString(KEY_PUNCT_2)?.let { punct2 = it }
             optString(KEY_PUNCT_3)?.let { punct3 = it }
