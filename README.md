@@ -1,15 +1,14 @@
 # ASR 语音键盘
 
-一个基于 Android 平台的语音输入法键盘应用，专注于提供高质量的语音转文字输入体验。
+一个基于 Kotlin 的 Android 平台的语音输入法键盘应用，专注于提供高质量的语音转文字输入体验。
 
 ## 功能特性
 
 - 🎤 **长按录音**: 通过长按麦克风按钮开始语音识别
 - ⚡ **文件极速识别**: 松开麦克风后整体上传音频并一次性返回结果
 - 🧠 **AI 文本优化**: 集成 LLM 后处理，智能修正识别结果
-- 🔧 **多引擎支持**: 支持火山引擎等多种 ASR 服务
-- 📱 **简洁界面**: Material3 设计风格，最小化界面干扰
-- 🔐 **权限管理**: 运行时麦克风权限请求
+- 🔧 **多引擎支持**: 支持火山引擎、OpenAI、SiliconFlow、ElevenLabs、阿里云百炼等多种 ASR 服务
+- 📱 **简洁界面**: Material3 Monet 设计风格，最小化界面干扰
 - 🟣 **悬浮球切换**: 支持悬浮球快速切回 ASR 键盘
 
 ## 技术架构
@@ -18,7 +17,13 @@
 
 - **输入法服务** (`AsrKeyboardService.kt`): 继承自 InputMethodService，管理键盘交互和文本输入
 - **ASR 引擎接口** (`AsrEngine.kt`): 定义统一的 ASR 引擎接口
-- **文件式 ASR 引擎** (`VolcFileAsrEngine.kt`/`SiliconFlowFileAsrEngine.kt`): 火山引擎与 SiliconFlow 文件识别实现
+- **ASR 供应商管理** (`AsrVendor.kt`): 管理多种 ASR 服务供应商
+- **文件式 ASR 引擎**:
+  - `VolcFileAsrEngine.kt`: 火山引擎文件识别实现
+  - `SiliconFlowFileAsrEngine.kt`: SiliconFlow 文件识别实现
+  - `OpenAiFileAsrEngine.kt`: OpenAI Whisper 兼容实现
+  - `ElevenLabsFileAsrEngine.kt`: ElevenLabs 语音识别实现
+  - `DashscopeFileAsrEngine.kt`: 阿里云百炼语音识别实现
 - **LLM 后处理器** (`LlmPostProcessor.kt`): 基于大语言模型的文本修正
 - **设置界面** (`SettingsActivity.kt`): 配置 ASR 服务和 LLM 参数
 - **权限管理** (`PermissionActivity.kt`): 处理麦克风权限请求
@@ -32,34 +37,6 @@
 - **网络通信**: OkHttp3 (HTTP)
 - **UI 框架**: Material3 + ViewBinding
 - **并发处理**: Kotlin Coroutines
-
-## 快速开始
-
-### 环境要求
-
-- Android Studio Giraffe 或更高版本
-- Android SDK 34
-- Java 17
-- Kotlin 1.9.24
-
-### 构建步骤
-
-1. 克隆项目到本地
-2. 使用 Android Studio 打开项目
-3. 等待 Gradle 同步完成
-4. 连接 Android 设备或启动模拟器
-5. 运行 `app` 模块
-
-```bash
-# 命令行构建
-./gradlew build
-
-# 安装到设备
-./gradlew installDebug
-
-# 运行测试
-./gradlew test
-```
 
 ### 使用指南
 
@@ -75,7 +52,7 @@
 
 设置页支持按供应商切换配置，所选供应商仅显示对应参数：
 
-- 供应商：`Volcano Engine` 或 `SiliconFlow`
+- 供应商：`Volcano Engine`、`SiliconFlow`、`OpenAI`、`ElevenLabs`、`DashScope`
 
 #### 火山引擎 ASR 配置
 
@@ -94,6 +71,27 @@
 - **API Key（Bearer）**: SiliconFlow 控制台生成的密钥（必填）
 - **Model Name**: 如 `FunAudioLLM/SenseVoiceSmall`（默认值）
 - 端点固定为：`https://api.siliconflow.cn/v1/audio/transcriptions`
+
+#### OpenAI ASR 配置
+
+- **API Key**: OpenAI API 密钥（以 `sk-` 开头，必填）
+- **Endpoint**: 完整 API 地址，如 `https://api.openai.com/v1/audio/transcriptions`
+- **Model**: 模型名称，支持 `gpt-4o-mini-transcribe`、`gpt-4o-transcribe` 或 `whisper-1`
+
+注意：OpenAI 接口单次上传上限为 25MB，长段语音建议分次识别。
+
+#### ElevenLabs ASR 配置
+
+- **API Key**: ElevenLabs 控制台生成的 API 密钥（必填）
+- **Model ID**: 语音识别模型 ID（默认值）
+- 端点固定为：`https://api.elevenlabs.io/v1/speech-to-text`
+
+#### 阿里云百炼（DashScope）ASR 配置
+
+- **API Key**: 阿里云百炼控制台生成的 API Key（必填）
+- **Model**: 模型名称，如 `qwen3-asr-flash`（默认值）
+
+特殊说明：DashScope 采用临时上传 + 生成接口模式，需要通过 OSS 中转音频文件。
 
 ### LLM 后处理配置
 
@@ -117,23 +115,23 @@ app/src/main/java/com/brycewg/asrkb/
 │   └── AsrKeyboardService.kt
 ├── asr/                    # ASR引擎实现
 │   ├── AsrEngine.kt
+│   ├── AsrVendor.kt
 │   ├── VolcFileAsrEngine.kt
+│   ├── SiliconFlowFileAsrEngine.kt
+│   ├── OpenAiFileAsrEngine.kt
+│   ├── ElevenLabsFileAsrEngine.kt
+│   ├── DashscopeFileAsrEngine.kt
 │   └── LlmPostProcessor.kt
 ├── ui/                     # 用户界面
 │   ├── SettingsActivity.kt
-│   └── PermissionActivity.kt
+│   ├── PermissionActivity.kt
+│   ├── FloatingImeSwitcherService.kt
+│   └── ImePickerActivity.kt
 ├── store/                  # 数据存储
-│   └── Prefs.kt
+│   ├── Prefs.kt
+│   └── PromptPreset.kt
 └── App.kt                  # 应用入口
 ```
-
-## 开发注意事项
-
-- 本项目专注于语音输入，界面设计保持简洁
-- 避免使用全屏模式，确保键盘体验流畅
-- 网络访问需要配置有效的服务凭据
-- 音频权限采用运行时请求机制
-- 支持多种 ASR 引擎，便于扩展和测试
 
 ## 许可证
 

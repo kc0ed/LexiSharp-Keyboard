@@ -28,6 +28,7 @@ import com.brycewg.asrkb.asr.VolcFileAsrEngine
 import com.brycewg.asrkb.asr.SiliconFlowFileAsrEngine
 import com.brycewg.asrkb.asr.ElevenLabsFileAsrEngine
 import com.brycewg.asrkb.asr.OpenAiFileAsrEngine
+import com.brycewg.asrkb.asr.DashscopeFileAsrEngine
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.store.Prefs
@@ -493,6 +494,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             AsrVendor.OpenAI -> if (prefs.hasOpenAiKeys()) {
                 OpenAiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
             } else null
+            AsrVendor.DashScope -> if (prefs.hasDashKeys()) {
+                DashscopeFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            } else null
         }
     }
 
@@ -514,6 +518,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             AsrVendor.OpenAI -> when (current) {
                 is OpenAiFileAsrEngine -> current
                 else -> OpenAiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+            }
+            AsrVendor.DashScope -> when (current) {
+                is DashscopeFileAsrEngine -> current
+                else -> DashscopeFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
             }
         }
     }

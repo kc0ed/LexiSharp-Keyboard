@@ -142,6 +142,15 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_SF_MODEL, DEFAULT_SF_MODEL) ?: DEFAULT_SF_MODEL
         set(value) = sp.edit { putString(KEY_SF_MODEL, value.trim()) }
 
+    // 阿里云百炼（DashScope）凭证
+    var dashApiKey: String
+        get() = sp.getString(KEY_DASH_API_KEY, "") ?: ""
+        set(value) = sp.edit { putString(KEY_DASH_API_KEY, value.trim()) }
+
+    var dashModel: String
+        get() = sp.getString(KEY_DASH_MODEL, DEFAULT_DASH_MODEL) ?: DEFAULT_DASH_MODEL
+        set(value) = sp.edit { putString(KEY_DASH_MODEL, value.trim()) }
+
     // ElevenLabs凭证
     var elevenApiKey: String
         get() = sp.getString(KEY_ELEVEN_API_KEY, "") ?: ""
@@ -171,6 +180,7 @@ class Prefs(context: Context) {
 
     fun hasVolcKeys(): Boolean = appKey.isNotBlank() && accessKey.isNotBlank()
     fun hasSfKeys(): Boolean = sfApiKey.isNotBlank()
+    fun hasDashKeys(): Boolean = dashApiKey.isNotBlank()
     fun hasElevenKeys(): Boolean = elevenApiKey.isNotBlank()
     fun hasOpenAiKeys(): Boolean = oaAsrApiKey.isNotBlank() && oaAsrEndpoint.isNotBlank() && oaAsrModel.isNotBlank()
     fun hasAsrKeys(): Boolean = when (asrVendor) {
@@ -178,6 +188,7 @@ class Prefs(context: Context) {
         AsrVendor.SiliconFlow -> hasSfKeys()
         AsrVendor.ElevenLabs -> hasElevenKeys()
         AsrVendor.OpenAI -> hasOpenAiKeys()
+        AsrVendor.DashScope -> hasDashKeys()
     }
     fun hasLlmKeys(): Boolean = llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
 
@@ -224,6 +235,8 @@ class Prefs(context: Context) {
         private const val KEY_OA_ASR_ENDPOINT = "oa_asr_endpoint"
         private const val KEY_OA_ASR_API_KEY = "oa_asr_api_key"
         private const val KEY_OA_ASR_MODEL = "oa_asr_model"
+        private const val KEY_DASH_API_KEY = "dash_api_key"
+        private const val KEY_DASH_MODEL = "dash_model"
         private const val KEY_PUNCT_1 = "punct_1"
         private const val KEY_PUNCT_2 = "punct_2"
         private const val KEY_PUNCT_3 = "punct_3"
@@ -236,6 +249,9 @@ class Prefs(context: Context) {
         // OpenAI Audio Transcriptions 默认值
         const val DEFAULT_OA_ASR_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions"
         const val DEFAULT_OA_ASR_MODEL = "gpt-4o-mini-transcribe"
+
+        // DashScope 默认
+        const val DEFAULT_DASH_MODEL = "qwen3-asr-flash"
 
         // 合理的OpenAI格式默认值
         const val DEFAULT_LLM_ENDPOINT = "https://api.openai.com/v1"
@@ -310,6 +326,8 @@ class Prefs(context: Context) {
         o.put(KEY_ASR_VENDOR, asrVendor.id)
         o.put(KEY_SF_API_KEY, sfApiKey)
         o.put(KEY_SF_MODEL, sfModel)
+        o.put(KEY_DASH_API_KEY, dashApiKey)
+        o.put(KEY_DASH_MODEL, dashModel)
         o.put(KEY_ELEVEN_API_KEY, elevenApiKey)
         o.put(KEY_ELEVEN_MODEL_ID, elevenModelId)
         o.put(KEY_OA_ASR_ENDPOINT, oaAsrEndpoint)
@@ -359,6 +377,8 @@ class Prefs(context: Context) {
             optString(KEY_ASR_VENDOR)?.let { asrVendor = AsrVendor.fromId(it) }
             optString(KEY_SF_API_KEY)?.let { sfApiKey = it }
             optString(KEY_SF_MODEL)?.let { sfModel = it.ifBlank { DEFAULT_SF_MODEL } }
+            optString(KEY_DASH_API_KEY)?.let { dashApiKey = it }
+            optString(KEY_DASH_MODEL)?.let { dashModel = it.ifBlank { DEFAULT_DASH_MODEL } }
             optString(KEY_ELEVEN_API_KEY)?.let { elevenApiKey = it }
             optString(KEY_ELEVEN_MODEL_ID)?.let { elevenModelId = it }
             optString(KEY_OA_ASR_ENDPOINT)?.let { oaAsrEndpoint = it.ifBlank { DEFAULT_OA_ASR_ENDPOINT } }

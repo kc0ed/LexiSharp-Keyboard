@@ -59,6 +59,9 @@ class SettingsActivity : AppCompatActivity() {
         val etSfModel = findViewById<EditText>(R.id.etSfModel)
         val etElevenApiKey = findViewById<EditText>(R.id.etElevenApiKey)
         val etElevenModel = findViewById<EditText>(R.id.etElevenModel)
+        // DashScope
+        val etDashApiKey = findViewById<EditText>(R.id.etDashApiKey)
+        val etDashModel = findViewById<EditText>(R.id.etDashModel)
         // OpenAI ASR
         val etOpenAiAsrEndpoint = findViewById<EditText>(R.id.etOpenAiAsrEndpoint)
         val etOpenAiApiKey = findViewById<EditText>(R.id.etOpenAiApiKey)
@@ -66,6 +69,7 @@ class SettingsActivity : AppCompatActivity() {
         val groupVolc = findViewById<View>(R.id.groupVolc)
         val groupSf = findViewById<View>(R.id.groupSf)
         val groupEleven = findViewById<View>(R.id.groupEleven)
+        val groupDash = findViewById<View>(R.id.groupDashScope)
         val groupOpenAi = findViewById<View>(R.id.groupOpenAI)
         val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
         val spLanguage = findViewById<Spinner>(R.id.spLanguage)
@@ -97,6 +101,8 @@ class SettingsActivity : AppCompatActivity() {
             etSfModel.setText(prefs.sfModel)
             etElevenApiKey.setText(prefs.elevenApiKey)
             etElevenModel.setText(prefs.elevenModelId)
+            etDashApiKey.setText(prefs.dashApiKey)
+            etDashModel.setText(prefs.dashModel)
             etOpenAiAsrEndpoint.setText(prefs.oaAsrEndpoint)
             etOpenAiApiKey.setText(prefs.oaAsrApiKey)
             etOpenAiModel.setText(prefs.oaAsrModel)
@@ -156,7 +162,8 @@ class SettingsActivity : AppCompatActivity() {
             getString(R.string.vendor_volc),
             getString(R.string.vendor_sf),
             getString(R.string.vendor_eleven),
-            getString(R.string.vendor_openai)
+            getString(R.string.vendor_openai),
+            getString(R.string.vendor_dashscope)
         )
         spAsrVendor.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, vendorItems)
         spAsrVendor.setSelection(
@@ -165,6 +172,7 @@ class SettingsActivity : AppCompatActivity() {
                 AsrVendor.SiliconFlow -> 1
                 AsrVendor.ElevenLabs -> 2
                 AsrVendor.OpenAI -> 3
+                AsrVendor.DashScope -> 4
             }
         )
         // 应用语言选择器设置
@@ -189,6 +197,7 @@ class SettingsActivity : AppCompatActivity() {
             groupSf.visibility = if (v == AsrVendor.SiliconFlow) View.VISIBLE else View.GONE
             groupEleven.visibility = if (v == AsrVendor.ElevenLabs) View.VISIBLE else View.GONE
             groupOpenAi.visibility = if (v == AsrVendor.OpenAI) View.VISIBLE else View.GONE
+            groupDash.visibility = if (v == AsrVendor.DashScope) View.VISIBLE else View.GONE
         }
         applyVendorVisibility(prefs.asrVendor)
 
@@ -198,6 +207,7 @@ class SettingsActivity : AppCompatActivity() {
                     1 -> AsrVendor.SiliconFlow
                     2 -> AsrVendor.ElevenLabs
                     3 -> AsrVendor.OpenAI
+                    4 -> AsrVendor.DashScope
                     else -> AsrVendor.Volc
                 }
                 prefs.asrVendor = vendor
@@ -245,6 +255,9 @@ class SettingsActivity : AppCompatActivity() {
             prefs.sfModel = etSfModel.text?.toString()?.ifBlank { Prefs.DEFAULT_SF_MODEL } ?: Prefs.DEFAULT_SF_MODEL
             prefs.elevenApiKey = etElevenApiKey.text?.toString() ?: ""
             prefs.elevenModelId = etElevenModel.text?.toString() ?: ""
+            // DashScope 设置
+            prefs.dashApiKey = etDashApiKey.text?.toString() ?: ""
+            prefs.dashModel = etDashModel.text?.toString()?.ifBlank { Prefs.DEFAULT_DASH_MODEL } ?: Prefs.DEFAULT_DASH_MODEL
             // OpenAI ASR 设置
             prefs.oaAsrEndpoint = etOpenAiAsrEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_OA_ASR_ENDPOINT } ?: Prefs.DEFAULT_OA_ASR_ENDPOINT
             prefs.oaAsrApiKey = etOpenAiApiKey.text?.toString() ?: ""
@@ -363,6 +376,7 @@ class SettingsActivity : AppCompatActivity() {
                                 AsrVendor.SiliconFlow -> 1
                                 AsrVendor.ElevenLabs -> 2
                                 AsrVendor.OpenAI -> 3
+                                AsrVendor.DashScope -> 4
                             }
                         )
                         // 同步语言选择（将触发 onItemSelected 从而应用语言）
