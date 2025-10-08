@@ -87,7 +87,7 @@ class Prefs(context: Context) {
     fun getPromptPresets(): List<PromptPreset> {
         // 如果未设置预设，从旧的单一提示词迁移
         if (promptPresetsJson.isBlank()) {
-            val defaults = buildDefaultPromptPresets(legacy = llmPrompt)
+            val defaults = buildDefaultPromptPresets()
             setPromptPresets(defaults)
             // 如果未设置，将第一个设为活动状态
             if (activePromptId.isBlank()) activePromptId = defaults.firstOrNull()?.id ?: ""
@@ -227,7 +227,7 @@ class Prefs(context: Context) {
         const val DEFAULT_PUNCT_3 = "！"
         const val DEFAULT_PUNCT_4 = "？"
 
-        private fun buildDefaultPromptPresets(legacy: String = DEFAULT_LLM_PROMPT): List<PromptPreset> {
+        private fun buildDefaultPromptPresets(): List<PromptPreset> {
             val p1 = PromptPreset(
                 id = java.util.UUID.randomUUID().toString(),
                 title = "基础文本润色",

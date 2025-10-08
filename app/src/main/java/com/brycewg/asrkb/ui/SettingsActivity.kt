@@ -23,6 +23,7 @@ import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import androidx.core.net.toUri
 
 class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,7 +103,7 @@ class SettingsActivity : AppCompatActivity() {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
                     Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
                     try {
-                        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName"))
+                        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
                         startActivity(intent)
                     } catch (_: Throwable) { }
                 }
@@ -173,7 +174,7 @@ class SettingsActivity : AppCompatActivity() {
         applyVendorVisibility(prefs.asrVendor)
 
         spAsrVendor.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val vendor = when (position) {
                     1 -> AsrVendor.SiliconFlow
                     2 -> AsrVendor.ElevenLabs
@@ -187,7 +188,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         spLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val newTag = when (position) {
                     // 使用通用中文标签，避免区域标签在部分设备上匹配异常
                     1 -> "zh"
@@ -207,7 +208,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         spPromptPresets.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val p = presets.getOrNull(position) ?: return
                 prefs.activePromptId = p.id
                 etLlmPromptTitle.setText(p.title)
@@ -242,7 +243,8 @@ class SettingsActivity : AppCompatActivity() {
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
                         Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
                         try {
-                            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName"))
+                            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                "package:$packageName".toUri())
                             startActivity(intent)
                         } catch (_: Throwable) { }
                     }

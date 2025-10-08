@@ -43,6 +43,8 @@
     <string name="label_asr_vendor">ASR Provider</string>
     <string name="vendor_volc">Volcano Engine</string>
     <string name="vendor_sf">SiliconFlow</string>
+    <string name="label_sf_api_key">API Key (Bearer)</string>
+    <string name="label_sf_model">Model Name (e.g., FunAudioLLM/SenseVoiceSmall)</string>
     <string name="btn_save">Save</string>
     <string name="btn_close">Close</string>
     <string name="title_quick_guide">Quick Start Guide</string>
@@ -51,7 +53,9 @@
     <string name="label_mic_haptic">Haptic feedback on mic press</string>
     <string name="tile_switch_ime">Switch Input Method</string>
     <string name="label_floating_switcher">Enable floating ball to switch IME</string>
+    <string name="label_floating_alpha">Floating ball transparency</string>
     <string name="toast_need_overlay_perm">Please grant "Display over other apps" in system settings to enable the floating ball</string>
+    <string name="cd_floating_switcher">Quick switch to ASR keyboard</string>
 
     <!-- LLM settings -->
     <string name="llm_section_title">AI Post-processing</string>
@@ -63,6 +67,8 @@
     <string name="label_llm_prompt_title">Prompt Preset Title</string>
     <string name="label_llm_prompt_presets">Choose Prompt Preset</string>
     <string name="btn_add_preset">Add/Save as Preset</string>
+    <string name="btn_export_settings">Export Settings</string>
+    <string name="btn_import_settings">Import Settings</string>
 
     <!-- Custom punctuation settings -->
     <string name="custom_punct_section_title">Custom Punctuation Buttons</string>
@@ -81,4 +87,8 @@
     <string name="toast_preset_added">Preset added</string>
     <string name="untitled_preset">Untitled preset</string>
     <string name="switched_preset">Switched: %1$s</string>
+    <string name="toast_export_success">Exported: %1$s</string>
+    <string name="toast_export_failed">Export failed</string>
+    <string name="toast_import_success">Imported successfully and applied</string>
+    <string name="toast_import_failed">Import failed or incorrect format</string>
 </resources>

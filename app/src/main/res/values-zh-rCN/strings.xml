@@ -42,6 +42,8 @@
     <string name="label_asr_vendor">ASR 服务商</string>
     <string name="vendor_volc">Volcano Engine</string>
     <string name="vendor_sf">SiliconFlow</string>
+    <string name="label_sf_api_key">API Key（Bearer）</string>
+    <string name="label_sf_model">模型名称（如：FunAudioLLM/SenseVoiceSmall）</string>
     <string name="btn_save">保存</string>
     <string name="btn_close">关闭</string>
     <string name="title_quick_guide">快速上手教程</string>
@@ -50,7 +52,9 @@
     <string name="label_mic_haptic">按下麦克风时振动反馈</string>
     <string name="tile_switch_ime">切换输入法</string>
     <string name="label_floating_switcher">启用悬浮球快速切换输入法</string>
-    <string name="toast_need_overlay_perm">请在系统设置中授予“在其他应用上层显示”权限以启用悬浮球</string>
+    <string name="label_floating_alpha">悬浮球透明度</string>
+    <string name="toast_need_overlay_perm">请在系统设置中授予"在其他应用上层显示"权限以启用悬浮球</string>
+    <string name="cd_floating_switcher">快速切换到 ASR 键盘</string>
 
     <string name="llm_section_title">AI 后处理配置</string>
     <string name="label_llm_endpoint">OpenAI Endpoint（例如：https://api.openai.com/v1 或包含 /chat/completions）</string>
@@ -61,6 +65,8 @@
     <string name="label_llm_prompt_title">Prompt 预设标题</string>
     <string name="label_llm_prompt_presets">选择 Prompt 预设</string>
     <string name="btn_add_preset">新增/另存为预设</string>
+    <string name="btn_export_settings">导出设置</string>
+    <string name="btn_import_settings">导入设置</string>
 
     <string name="custom_punct_section_title">自定义标点按钮</string>
     <string name="label_custom_punct_1">按钮1（字符或标点）</string>
@@ -77,4 +83,8 @@
     <string name="toast_preset_added">已新增预设</string>
     <string name="untitled_preset">未命名预设</string>
     <string name="switched_preset">已切换：%1$s</string>
+    <string name="toast_export_success">已导出：%1$s</string>
+    <string name="toast_export_failed">导出失败</string>
+    <string name="toast_import_success">导入成功，已应用</string>
+    <string name="toast_import_failed">导入失败或格式不正确</string>
 </resources>
