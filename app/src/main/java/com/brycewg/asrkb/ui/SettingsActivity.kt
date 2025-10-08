@@ -85,18 +85,31 @@ class SettingsActivity : AppCompatActivity() {
         val etPunct3 = findViewById<EditText>(R.id.etPunct3)
         val etPunct4 = findViewById<EditText>(R.id.etPunct4)
 
-        etAppKey.setText(prefs.appKey)
-        etAccessKey.setText(prefs.accessKey)
-        etSfApiKey.setText(prefs.sfApiKey)
-        etSfModel.setText(prefs.sfModel)
-        etElevenApiKey.setText(prefs.elevenApiKey)
-        etElevenModel.setText(prefs.elevenModelId)
-        switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
-        switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
-        switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
-        switchMicHaptic.isChecked = prefs.micHapticEnabled
-        switchFloating.isChecked = prefs.floatingSwitcherEnabled
-        sliderFloatingAlpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
+        fun applyPrefsToUi() {
+            etAppKey.setText(prefs.appKey)
+            etAccessKey.setText(prefs.accessKey)
+            etSfApiKey.setText(prefs.sfApiKey)
+            etSfModel.setText(prefs.sfModel)
+            etElevenApiKey.setText(prefs.elevenApiKey)
+            etElevenModel.setText(prefs.elevenModelId)
+            switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
+            switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
+            switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
+            switchMicHaptic.isChecked = prefs.micHapticEnabled
+            switchFloating.isChecked = prefs.floatingSwitcherEnabled
+            sliderFloatingAlpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
+            etLlmEndpoint.setText(prefs.llmEndpoint)
+            etLlmApiKey.setText(prefs.llmApiKey)
+            etLlmModel.setText(prefs.llmModel)
+            etLlmTemperature.setText(prefs.llmTemperature.toString())
+            etPunct1.setText(prefs.punct1)
+            etPunct2.setText(prefs.punct2)
+            etPunct3.setText(prefs.punct3)
+            etPunct4.setText(prefs.punct4)
+            // 注意：下拉框（Spinner）需在设置 adapter 后再更新 selection，
+            // 这里仅更新输入框/开关等即时可用的视图。
+        }
+        applyPrefsToUi()
         // 开启悬浮球时主动引导申请悬浮窗权限
         switchFloating.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -109,14 +122,7 @@ class SettingsActivity : AppCompatActivity() {
                 }
             }
         }
-        etLlmEndpoint.setText(prefs.llmEndpoint)
-        etLlmApiKey.setText(prefs.llmApiKey)
-        etLlmModel.setText(prefs.llmModel)
-        etLlmTemperature.setText(prefs.llmTemperature.toString())
-        etPunct1.setText(prefs.punct1)
-        etPunct2.setText(prefs.punct2)
-        etPunct3.setText(prefs.punct3)
-        etPunct4.setText(prefs.punct4)
+        // 已在 applyPrefsToUi 中统一设置上述字段
         // 提示词预设
         var presets = prefs.getPromptPresets().toMutableList()
         var activeId = prefs.activePromptId
@@ -330,6 +336,27 @@ class SettingsActivity : AppCompatActivity() {
                     val json = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
                     val ok = Prefs(this).importJsonString(json)
                     if (ok) {
+                        // 重新从 Prefs 读取并刷新界面与下拉框，确保导入立即生效
+                        applyPrefsToUi()
+                        // 刷新提示词预设
+                        refreshSpinnerSelection()
+                        // 同步 ASR 供应商选择与可见性
+                        spAsrVendor.setSelection(
+                            when (prefs.asrVendor) {
+                                AsrVendor.Volc -> 0
+                                AsrVendor.SiliconFlow -> 1
+                                AsrVendor.ElevenLabs -> 2
+                            }
+                        )
+                        // 同步语言选择（将触发 onItemSelected 从而应用语言）
+                        val tag = prefs.appLanguageTag
+                        spLanguage.setSelection(
+                            when (tag) {
+                                "zh", "zh-CN", "zh-Hans" -> 1
+                                "en" -> 2
+                                else -> 0
+                            }
+                        )
                         Toast.makeText(this, getString(R.string.toast_import_success), Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(this, getString(R.string.toast_import_failed), Toast.LENGTH_SHORT).show()
