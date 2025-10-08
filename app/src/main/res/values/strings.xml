@@ -53,6 +53,7 @@
     <string name="label_mic_haptic">按下麦克风时振动反馈</string>
     <string name="tile_switch_ime">切换输入法</string>
     <string name="label_floating_switcher">启用悬浮球快速切换输入法</string>
+    <string name="label_floating_alpha">悬浮球透明度</string>
     <string name="toast_need_overlay_perm">请在系统设置中授予“在其他应用上层显示”权限以启用悬浮球</string>
     <string name="cd_floating_switcher">快速切换到 ASR 键盘</string>
 

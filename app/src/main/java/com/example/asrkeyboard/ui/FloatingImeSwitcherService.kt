@@ -81,17 +81,22 @@ class FloatingImeSwitcherService : Service() {
             removeBall()
             return
         }
-        val isOurIme = isOurImeCurrent()
-        if (isOurIme) removeBall() else ensureBall()
+        if (isOurImeCurrent()) {
+            removeBall()
+            return
+        }
+        ensureBall()
+        applyBallAlpha()
     }
 
     private fun ensureBall() {
         if (ballView != null) return
         val iv = ImageView(this)
-        iv.setImageResource(R.drawable.ic_keyboard)
-        iv.setColorFilter(ContextCompat.getColor(this, android.R.color.white))
+        iv.setImageResource(R.drawable.logo)
+        iv.clearColorFilter()
+        iv.scaleType = ImageView.ScaleType.CENTER_INSIDE
         iv.background = ContextCompat.getDrawable(this, R.drawable.bg_floating_ball)
-        val pad = dp(12)
+        val pad = dp(6)
         iv.setPadding(pad, pad, pad, pad)
         iv.contentDescription = getString(R.string.cd_floating_switcher)
         iv.setOnClickListener { onBallClick() }
@@ -103,7 +108,7 @@ class FloatingImeSwitcherService : Service() {
             @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
 
         val params = WindowManager.LayoutParams(
-            dp(56), dp(56),
+            dp(28), dp(28),
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -119,6 +124,7 @@ class FloatingImeSwitcherService : Service() {
             ballView = iv
             lp = params
         } catch (_: Throwable) { }
+        applyBallAlpha()
     }
 
     private fun removeBall() {
@@ -126,6 +132,14 @@ class FloatingImeSwitcherService : Service() {
         try { windowManager.removeView(v) } catch (_: Throwable) { }
         ballView = null
         lp = null
+    }
+
+    private fun applyBallAlpha() {
+        val a = try { Prefs(this).floatingSwitcherAlpha } catch (_: Throwable) { 1.0f }
+        val v = ballView
+        if (v != null) {
+            try { v.alpha = a } catch (_: Throwable) { }
+        }
     }
 
     private fun onBallClick() {

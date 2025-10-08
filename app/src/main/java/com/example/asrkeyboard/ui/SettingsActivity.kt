@@ -10,6 +10,7 @@ import android.widget.Toast
 import android.widget.Spinner
 import android.widget.ArrayAdapter
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.slider.Slider
 import androidx.appcompat.app.AppCompatActivity
 import com.example.asrkeyboard.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -64,6 +65,7 @@ class SettingsActivity : AppCompatActivity() {
         val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchFloating = findViewById<MaterialSwitch>(R.id.switchFloatingSwitcher)
+        val sliderFloatingAlpha = findViewById<Slider>(R.id.sliderFloatingAlpha)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
 
         // LLM相关字段
@@ -91,6 +93,7 @@ class SettingsActivity : AppCompatActivity() {
         switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
         switchMicHaptic.isChecked = prefs.micHapticEnabled
         switchFloating.isChecked = prefs.floatingSwitcherEnabled
+        sliderFloatingAlpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
         // 开启悬浮球时主动引导申请悬浮窗权限
         switchFloating.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -223,6 +226,8 @@ class SettingsActivity : AppCompatActivity() {
             prefs.showImeSwitcherButton = switchShowImeSwitcher.isChecked
             prefs.autoSwitchOnPassword = switchAutoSwitchPassword.isChecked
             prefs.micHapticEnabled = switchMicHaptic.isChecked
+            // 悬浮球透明度（百分比转 0-1）
+            prefs.floatingSwitcherAlpha = (sliderFloatingAlpha.value / 100f).coerceIn(0.2f, 1.0f)
             // 悬浮球开关：保存状态并根据权限与当前输入法情况启动/隐藏
             val newFloating = switchFloating.isChecked
             val wasFloating = prefs.floatingSwitcherEnabled
@@ -247,6 +252,13 @@ class SettingsActivity : AppCompatActivity() {
                         startService(intent)
                     } catch (_: Throwable) { }
                 }
+            }
+            // 通知服务刷新透明度
+            if (prefs.floatingSwitcherEnabled) {
+                try {
+                    val intent = Intent(this, FloatingImeSwitcherService::class.java).apply { action = FloatingImeSwitcherService.ACTION_SHOW }
+                    startService(intent)
+                } catch (_: Throwable) { }
             }
             // 大语言模型相关设置
             prefs.llmEndpoint = etLlmEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT

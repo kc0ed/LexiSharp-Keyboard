@@ -44,6 +44,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_FLOATING_SWITCHER_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_SWITCHER_ENABLED, value) }
 
+    // 悬浮球透明度（0.2f - 1.0f）
+    var floatingSwitcherAlpha: Float
+        get() = sp.getFloat(KEY_FLOATING_SWITCHER_ALPHA, 1.0f).coerceIn(0.2f, 1.0f)
+        set(value) = sp.edit { putFloat(KEY_FLOATING_SWITCHER_ALPHA, value.coerceIn(0.2f, 1.0f)) }
+
     // LLM后处理设置
     var postProcessEnabled: Boolean
         get() = sp.getBoolean(KEY_POSTPROC_ENABLED, false)
@@ -186,6 +191,7 @@ class Prefs(context: Context) {
         private const val KEY_AUTO_SWITCH_ON_PASSWORD = "auto_switch_on_password"
         private const val KEY_MIC_HAPTIC_ENABLED = "mic_haptic_enabled"
         private const val KEY_FLOATING_SWITCHER_ENABLED = "floating_switcher_enabled"
+        private const val KEY_FLOATING_SWITCHER_ALPHA = "floating_switcher_alpha"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_APP_LANGUAGE_TAG = "app_language_tag"
         private const val KEY_LLM_ENDPOINT = "llm_endpoint"
