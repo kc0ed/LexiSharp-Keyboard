@@ -1,11 +1,10 @@
-package com.example.asrkeyboard.ime
+package com.brycewg.asrkb.ime
 
 import android.Manifest
 import android.content.Intent
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
-import android.os.Build
 import android.os.Vibrator
 import android.view.LayoutInflater
 import android.graphics.Color
@@ -23,15 +22,15 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowInsetsControllerCompat
-import com.example.asrkeyboard.R
-import com.example.asrkeyboard.asr.StreamingAsrEngine
-import com.example.asrkeyboard.asr.VolcFileAsrEngine
-import com.example.asrkeyboard.asr.SiliconFlowFileAsrEngine
-import com.example.asrkeyboard.asr.ElevenLabsFileAsrEngine
-import com.example.asrkeyboard.asr.AsrVendor
-import com.example.asrkeyboard.asr.LlmPostProcessor
-import com.example.asrkeyboard.store.Prefs
-import com.example.asrkeyboard.ui.SettingsActivity
+import com.brycewg.asrkb.R
+import com.brycewg.asrkb.asr.StreamingAsrEngine
+import com.brycewg.asrkb.asr.VolcFileAsrEngine
+import com.brycewg.asrkb.asr.SiliconFlowFileAsrEngine
+import com.brycewg.asrkb.asr.ElevenLabsFileAsrEngine
+import com.brycewg.asrkb.asr.AsrVendor
+import com.brycewg.asrkb.asr.LlmPostProcessor
+import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.ui.SettingsActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -85,7 +84,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     // Track last committed ASR result so AI Edit (no selection) can modify it
     private var lastAsrCommitText: String? = null
 
-    private enum class SessionKind { Dictation, AiEdit }
+    private enum class SessionKind { AiEdit }
     private data class AiEditState(
         val targetIsSelection: Boolean,
         val beforeLen: Int,
@@ -693,7 +692,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         val before = try { ic.getTextBeforeCursor(10000, 0)?.toString() } catch (_: Throwable) { null }
                         val after = try { ic.getTextAfterCursor(10000, 0)?.toString() } catch (_: Throwable) { null }
                         var replaced = false
-                        if (!lastText.isNullOrEmpty()) {
+                        if (lastText.isNotEmpty()) {
                             if (!before.isNullOrEmpty() && before.endsWith(lastText)) {
                                 ic.deleteSurroundingText(lastText.length, 0)
                                 ic.commitText(edited, 1)
@@ -759,7 +758,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 ic?.setComposingText(finalProcessed, 1)
                 ic?.finishComposingText()
                 // Record this commit so user can swipe-down on backspace to revert to raw
-                lastPostprocCommit = if (!finalProcessed.isNullOrEmpty() && finalProcessed != raw) PostprocCommit(finalProcessed, raw) else null
+                lastPostprocCommit = if (finalProcessed.isNotEmpty() && finalProcessed != raw) PostprocCommit(finalProcessed, raw) else null
                 vibrateTick()
                 committedStableLen = 0
                 // Track last ASR commit as what we actually inserted

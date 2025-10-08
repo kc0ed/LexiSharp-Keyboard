@@ -1,14 +1,14 @@
-package com.example.asrkeyboard
+package com.brycewg.asrkb
 
 import android.app.Application
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import com.google.android.material.color.DynamicColors
-import com.example.asrkeyboard.store.Prefs
+import com.brycewg.asrkb.store.Prefs
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import com.example.asrkeyboard.ui.FloatingImeSwitcherService
+import com.brycewg.asrkb.ui.FloatingImeSwitcherService
 
 class App : Application() {
     override fun onCreate() {

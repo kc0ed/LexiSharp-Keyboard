@@ -1,4 +1,4 @@
-package com.example.asrkeyboard.asr
+package com.brycewg.asrkb.asr
 
 import android.Manifest
 import android.content.Context
@@ -7,7 +7,7 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import androidx.core.content.ContextCompat
-import com.example.asrkeyboard.store.Prefs
+import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

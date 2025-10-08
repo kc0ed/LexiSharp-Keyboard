@@ -1,4 +1,4 @@
-package com.example.asrkeyboard.asr
+package com.brycewg.asrkb.asr
 
 enum class AsrVendor(val id: String) {
     Volc("volc"),

@@ -1,4 +1,4 @@
-package com.example.asrkeyboard.asr
+package com.brycewg.asrkb.asr
 
 import android.Manifest
 import android.content.Context
@@ -7,33 +7,29 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import androidx.core.content.ContextCompat
-import com.example.asrkeyboard.store.Prefs
+import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import android.util.Base64
 
 /**
- * 使用 SiliconFlow "audio/transcriptions" API 的非流式 ASR 引擎。
- * 行为：start() 开始录制 PCM；stop() 完成并上传一个请求；仅调用 onFinal。
+ * 使用火山引擎"recognize/flash" API的非流式ASR引擎。
+ * 行为：start()开始录制PCM；stop()完成并上传一个请求；仅调用onFinal。
  */
-class SiliconFlowFileAsrEngine(
+class VolcFileAsrEngine(
     private val context: Context,
     private val scope: CoroutineScope,
     private val prefs: Prefs,
@@ -61,12 +57,14 @@ class SiliconFlowFileAsrEngine(
     }
 
     override fun stop() {
+        // 翻转运行标志；任务将退出其循环并继续上传
         running.set(false)
     }
 
     private fun startRecordThenRecognize() {
         audioJob?.cancel()
         audioJob = scope.launch(Dispatchers.IO) {
+            // 权限检查
             val hasPermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.RECORD_AUDIO
@@ -78,6 +76,7 @@ class SiliconFlowFileAsrEngine(
             }
 
             val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+            // 每个块读取约200ms的数据
             val chunkBytes = ((sampleRate / 5) * 2)
             val bufferSize = maxOf(minBuffer, chunkBytes)
             val recorder = try {
@@ -103,13 +102,17 @@ class SiliconFlowFileAsrEngine(
             try {
                 recorder.startRecording()
                 val buf = ByteArray(chunkBytes)
+                // 软限制以避免在极长录音时占用过多内存（最大约5分钟）
                 val maxBytes = 5 * 60 * sampleRate * 2
                 while (true) {
                     if (!running.get()) break
                     val read = recorder.read(buf, 0, buf.size)
                     if (read > 0) {
                         pcmBuffer.write(buf, 0, read)
-                        if (pcmBuffer.size() >= maxBytes) break
+                        if (pcmBuffer.size() >= maxBytes) {
+                            // 超过限制时自动停止
+                            break
+                        }
                     }
                 }
             } catch (t: Throwable) {
@@ -119,6 +122,7 @@ class SiliconFlowFileAsrEngine(
                 try { recorder.release() } catch (_: Throwable) {}
             }
 
+            // 如果有数据，准备音频并上传
             val pcmBytes = pcmBuffer.toByteArray()
             if (pcmBytes.isEmpty()) {
                 listener.onError("空音频")
@@ -127,43 +131,34 @@ class SiliconFlowFileAsrEngine(
 
             try {
                 val wav = pcmToWav(pcmBytes)
-                // SiliconFlow 需要包含文件和模型的 multipart/form-data
-                // 将临时 wav 文件写入缓存目录以供 OkHttp 5 使用 FileBody
-                val tmp = File.createTempFile("asr_", ".wav", context.cacheDir)
-                FileOutputStream(tmp).use { it.write(wav) }
-
-                val apiKey = prefs.sfApiKey
-                if (apiKey.isBlank()) {
-                    listener.onError("未配置 SiliconFlow API Key")
-                    return@launch
-                }
-                val model = prefs.sfModel
-                val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
-                    .addFormDataPart("model", model)
-                    .addFormDataPart(
-                        "file",
-                        "audio.wav",
-                        tmp.asRequestBody("audio/wav".toMediaType())
-                    )
-                    .build()
-
+                val b64 = Base64.encodeToString(wav, Base64.NO_WRAP)
+                val json = buildRequestJson(b64)
+                val reqBody = json.toRequestBody("application/json; charset=utf-8".toMediaType())
+                // 使用固定默认值进行文件识别以简化设置
+                val resourceId = DEFAULT_FILE_RESOURCE
+                val endpointUrl = Prefs.DEFAULT_ENDPOINT
                 val request = Request.Builder()
-                    .url(Prefs.SF_ENDPOINT)
-                    .addHeader("Authorization", "Bearer $apiKey")
-                    .post(multipart)
+                    .url(endpointUrl)
+                    .addHeader("X-Api-App-Key", prefs.appKey)
+                    .addHeader("X-Api-Access-Key", prefs.accessKey)
+                    .addHeader("X-Api-Resource-Id", resourceId)
+                    .addHeader("X-Api-Request-Id", UUID.randomUUID().toString())
+                    .addHeader("X-Api-Sequence", "-1")
+                    .post(reqBody)
                     .build()
-
                 val resp = http.newCall(request).execute()
                 resp.use { r ->
                     if (!r.isSuccessful) {
-                        val msg = r.message
+                        val msg = r.header("X-Api-Message") ?: r.message
                         listener.onError("识别请求失败: HTTP ${r.code}${if (msg.isBlank()) "" else ": $msg"}")
                         return@launch
                     }
                     val bodyStr = r.body?.string() ?: ""
                     val text = try {
                         val obj = JSONObject(bodyStr)
-                        obj.optString("text", "")
+                        if (obj.has("result")) {
+                            obj.getJSONObject("result").optString("text", "")
+                        } else ""
                     } catch (_: Throwable) { "" }
                     if (text.isNotBlank()) {
                         listener.onFinal(text)
@@ -177,6 +172,26 @@ class SiliconFlowFileAsrEngine(
         }
     }
 
+    private fun buildRequestJson(base64Audio: String): String {
+        val user = JSONObject().apply {
+            put("uid", prefs.appKey)
+        }
+        val audio = JSONObject().apply {
+            put("data", base64Audio)
+        }
+        val request = JSONObject().apply {
+            put("model_name", "bigmodel")
+            put("enable_itn", true)
+            put("enable_punc", true)
+        }
+        val root = JSONObject().apply {
+            put("user", user)
+            put("audio", audio)
+            put("request", request)
+        }
+        return root.toString()
+    }
+
     private fun pcmToWav(pcm: ByteArray): ByteArray {
         val channels = 1
         val bitsPerSample = 16
@@ -185,17 +200,20 @@ class SiliconFlowFileAsrEngine(
         val dataSize = pcm.size
         val totalDataLen = dataSize + 36
         val out = ByteArrayOutputStream(headerSize + dataSize)
+        // RIFF文件头
         out.write("RIFF".toByteArray())
         out.write(intToBytesLE(totalDataLen))
         out.write("WAVE".toByteArray())
+        // fmt子块
         out.write("fmt ".toByteArray())
-        out.write(intToBytesLE(16))
-        out.write(shortToBytesLE(1))
+        out.write(intToBytesLE(16)) // PCM的Subchunk1Size
+        out.write(shortToBytesLE(1)) // AudioFormat = 1 (PCM)
         out.write(shortToBytesLE(channels))
         out.write(intToBytesLE(sampleRate))
         out.write(intToBytesLE(byteRate))
-        out.write(shortToBytesLE((channels * bitsPerSample / 8)))
+        out.write(shortToBytesLE((channels * bitsPerSample / 8))) // BlockAlign
         out.write(shortToBytesLE(bitsPerSample))
+        // data子块
         out.write("data".toByteArray())
         out.write(intToBytesLE(dataSize))
         out.write(pcm)
@@ -213,5 +231,10 @@ class SiliconFlowFileAsrEngine(
         bb.putShort(v.toShort())
         return bb.array()
     }
-}
 
+    companion object {
+        private const val DEFAULT_FILE_RESOURCE = "volc.bigasr.auc_turbo"
+    }
+
+
+}

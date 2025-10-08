@@ -1,4 +1,4 @@
-package com.example.asrkeyboard.asr
+package com.brycewg.asrkb.asr
 
 /**
  * ASR（自动语音识别）引擎基础接口

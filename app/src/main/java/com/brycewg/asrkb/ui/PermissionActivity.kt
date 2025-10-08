@@ -1,4 +1,4 @@
-package com.example.asrkeyboard.ui
+package com.brycewg.asrkb.ui
 
 import android.Manifest
 import android.content.pm.PackageManager

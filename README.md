@@ -115,7 +115,7 @@
 ## 项目结构
 
 ```
-app/src/main/java/com/example/asrkeyboard/
+app/src/main/java/com/brycewg/asrkb/
 ├── ime/                    # 输入法服务
 │   └── AsrKeyboardService.kt
 ├── asr/                    # ASR引擎实现

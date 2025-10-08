@@ -1,6 +1,6 @@
-package com.example.asrkeyboard.asr
+package com.brycewg.asrkb.asr
 
-import com.example.asrkeyboard.store.Prefs
+import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -182,4 +182,3 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
     return@withContext out
   }
 }
-

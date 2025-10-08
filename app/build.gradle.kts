@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.asrkeyboard"
+    namespace = "com.brycewg.asrkb"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.asrkeyboard"
+        applicationId = "com.brycewg.asrkb"
         minSdk =31
         targetSdk = 34
         versionCode = 7

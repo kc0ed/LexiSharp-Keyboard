@@ -1,4 +1,4 @@
-package com.example.asrkeyboard.ui
+package com.brycewg.asrkb.ui
 
 import android.content.Intent
 import android.net.Uri
@@ -13,12 +13,12 @@ import android.widget.ArrayAdapter
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
 import androidx.appcompat.app.AppCompatActivity
-import com.example.asrkeyboard.R
+import com.brycewg.asrkb.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.view.LayoutInflater
-import com.example.asrkeyboard.store.Prefs
-import com.example.asrkeyboard.store.PromptPreset
-import com.example.asrkeyboard.asr.AsrVendor
+import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.store.PromptPreset
+import com.brycewg.asrkb.asr.AsrVendor
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
@@ -172,7 +172,7 @@ class SettingsActivity : AppCompatActivity() {
         }
         applyVendorVisibility(prefs.asrVendor)
 
-        spAsrVendor.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
+        spAsrVendor.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
                 val vendor = when (position) {
                     1 -> AsrVendor.SiliconFlow
@@ -182,10 +182,11 @@ class SettingsActivity : AppCompatActivity() {
                 prefs.asrVendor = vendor
                 applyVendorVisibility(vendor)
             }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        })
 
-        spLanguage.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+
+        spLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
                 val newTag = when (position) {
                     // 使用通用中文标签，避免区域标签在部分设备上匹配异常
@@ -201,10 +202,11 @@ class SettingsActivity : AppCompatActivity() {
                     recreate()
                 }
             }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        })
 
-        spPromptPresets.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+
+        spPromptPresets.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
                 val p = presets.getOrNull(position) ?: return
                 prefs.activePromptId = p.id
@@ -213,7 +215,7 @@ class SettingsActivity : AppCompatActivity() {
             }
 
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) { }
-        })
+        }
 
         findViewById<Button>(R.id.btnSaveKeys).setOnClickListener {
             // 保存供应商特定密钥

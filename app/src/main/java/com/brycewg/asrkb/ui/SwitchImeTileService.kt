@@ -1,4 +1,4 @@
-package com.example.asrkeyboard.ui
+package com.brycewg.asrkb.ui
 
 import android.content.Intent
 import android.graphics.drawable.Icon
@@ -12,9 +12,9 @@ class SwitchImeTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
         val tile = qsTile ?: return
-        tile.label = getString(com.example.asrkeyboard.R.string.tile_switch_ime)
+        tile.label = getString(com.brycewg.asrkb.R.string.tile_switch_ime)
         // 使用应用启动器图标作为快速设置瓦片
-        tile.icon = Icon.createWithResource(this, com.example.asrkeyboard.R.mipmap.ic_launcher)
+        tile.icon = Icon.createWithResource(this, com.brycewg.asrkb.R.mipmap.ic_launcher)
         tile.state = if (isOurImeCurrent()) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.updateTile()
     }

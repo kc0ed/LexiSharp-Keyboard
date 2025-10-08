@@ -1,4 +1,4 @@
-package com.example.asrkeyboard.ui
+package com.brycewg.asrkb.ui
 
 import android.app.Service
 import android.content.Intent
@@ -15,8 +15,8 @@ import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import androidx.core.content.ContextCompat
-import com.example.asrkeyboard.R
-import com.example.asrkeyboard.store.Prefs
+import com.brycewg.asrkb.R
+import com.brycewg.asrkb.store.Prefs
 
 /**
  * 悬浮球：当当前输入法不是本应用 IME 时显示，点击快速呼出系统输入法选择器，
@@ -25,8 +25,8 @@ import com.example.asrkeyboard.store.Prefs
 class FloatingImeSwitcherService : Service() {
 
     companion object {
-        const val ACTION_SHOW = "com.example.asrkeyboard.action.FLOATING_SHOW"
-        const val ACTION_HIDE = "com.example.asrkeyboard.action.FLOATING_HIDE"
+        const val ACTION_SHOW = "com.brycewg.asrkb.action.FLOATING_SHOW"
+        const val ACTION_HIDE = "com.brycewg.asrkb.action.FLOATING_HIDE"
     }
 
     private lateinit var windowManager: WindowManager
@@ -72,7 +72,7 @@ class FloatingImeSwitcherService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun hasOverlayPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Settings.canDrawOverlays(this) else true
+        return Settings.canDrawOverlays(this)
     }
 
     private fun updateBallVisibility() {
@@ -102,10 +102,7 @@ class FloatingImeSwitcherService : Service() {
         iv.setOnClickListener { onBallClick() }
         attachDrag(iv)
 
-        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        else
-            @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
+        val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
 
         val params = WindowManager.LayoutParams(
             dp(28), dp(28),

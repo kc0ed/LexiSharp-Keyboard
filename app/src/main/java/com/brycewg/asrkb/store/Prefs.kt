@@ -1,8 +1,8 @@
-package com.example.asrkeyboard.store
+package com.brycewg.asrkb.store
 
 import android.content.Context
 import androidx.core.content.edit
-import com.example.asrkeyboard.asr.AsrVendor
+import com.brycewg.asrkb.asr.AsrVendor
 
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("asr_prefs", Context.MODE_PRIVATE)
@@ -130,7 +130,7 @@ class Prefs(context: Context) {
             val id = activePromptId
             val presets = getPromptPresets()
             val found = presets.firstOrNull { it.id == id }
-            return found?.content ?: (if (llmPrompt.isNotBlank()) llmPrompt else DEFAULT_LLM_PROMPT)
+            return found?.content ?: (llmPrompt.ifBlank { DEFAULT_LLM_PROMPT })
         }
 
     // SiliconFlow凭证
@@ -231,7 +231,7 @@ class Prefs(context: Context) {
             val p1 = PromptPreset(
                 id = java.util.UUID.randomUUID().toString(),
                 title = "基础文本润色",
-                content = "你是一个专业的中文编辑器。请对以下由ASR（语音识别）生成的文本进行润色和修正。请遵循以下规则：\n1. 修正所有错别字和语法错误。\n2. 添加正确、自然的标点符号。\n3. 删除口语化的词语、重复和无意义的填充词（例如"嗯"、"啊"、"那个"）。\n4. 在保持原意不变的前提下，让句子表达更流畅、更书面化。\n5. 不要添加任何原始文本中没有的信息，不要附带任何解释说明，只输出润色后的内容。"
+                content = "你是一个专业的中文编辑器。请对以下由ASR（语音识别）生成的文本进行润色和修正。请遵循以下规则：\n1. 修正所有错别字和语法错误。\n2. 添加正确、自然的标点符号。\n3. 删除口语化的词语、重复和无意义的填充词（例如嗯、啊、那个）。\n4. 在保持原意不变的前提下，让句子表达更流畅、更书面化。\n5. 不要添加任何原始文本中没有的信息，不要附带任何解释说明，只输出润色后的内容。"
             )
             val p2 = PromptPreset(
                 id = java.util.UUID.randomUUID().toString(),
