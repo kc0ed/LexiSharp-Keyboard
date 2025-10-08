@@ -94,4 +94,18 @@
     <string name="toast_export_failed">导出失败</string>
     <string name="toast_import_success">导入成功，已应用</string>
     <string name="toast_import_failed">导入失败或格式不正确</string>
+
+    <!-- Quick guide (image + text) -->
+    <string name="guide_header">从左到右，从上到下</string>
+    <string name="guide_body">核心用法：长按录音，松手转录（居中按钮）
+后处理 Prompt 切换
+启用后处理
+收起键盘键
+退格键，上滑或左滑删除所有内容，下滑撤销后处理结果
+设置键
+切换输入法
+编辑键，点击后语音输入指令，说完后再按一次，LLM 根据指令修改上次转录/选中内容
+
+回车键
+下方四个区域为可自定义标点符号键</string>
 </resources>

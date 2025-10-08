@@ -91,4 +91,18 @@
     <string name="toast_export_failed">Export failed</string>
     <string name="toast_import_success">Imported successfully and applied</string>
     <string name="toast_import_failed">Import failed or incorrect format</string>
+
+    <!-- Quick guide (image + text) -->
+    <string name="guide_header">From left to right, top to bottom</string>
+    <string name="guide_body">Core usage: Press and hold to record, release to transcribe (centered button)
+Post-processing Prompt switch
+Enable post-processing
+Hide keyboard key
+Backspace key: slide up or left to delete all content, slide down to undo post-processing results
+Settings key
+Switch input method
+Edit key: tap to speak a command, then tap again when done; the LLM will modify the last transcribed/selected content according to the command
+
+Enter key
+The four areas below are customizable punctuation keys</string>
 </resources>
