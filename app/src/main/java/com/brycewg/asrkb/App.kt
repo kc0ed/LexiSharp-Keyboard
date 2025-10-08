@@ -20,7 +20,7 @@ class App : Application() {
             val tag = prefs.appLanguageTag
             // 兼容旧版本存储的 zh-CN，统一归一化为 zh
             val normalized = when (tag.lowercase()) {
-                "zh-cn" -> "zh"
+                "zh", "zh-cn", "zh-hans" -> "zh-CN"
                 else -> tag
             }
             if (normalized != tag) prefs.appLanguageTag = normalized

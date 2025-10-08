@@ -159,6 +159,7 @@ class SettingsActivity : AppCompatActivity() {
         )
         spLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, languageItems)
         val savedTag = prefs.appLanguageTag
+        var languageSpinnerInitialized = false
         spLanguage.setSelection(
             when (savedTag) {
                 "zh", "zh-CN", "zh-Hans" -> 1
@@ -166,6 +167,7 @@ class SettingsActivity : AppCompatActivity() {
                 else -> 0
             }
         )
+        languageSpinnerInitialized = true
         fun applyVendorVisibility(v: AsrVendor) {
             groupVolc.visibility = if (v == AsrVendor.Volc) View.VISIBLE else View.GONE
             groupSf.visibility = if (v == AsrVendor.SiliconFlow) View.VISIBLE else View.GONE
@@ -189,9 +191,10 @@ class SettingsActivity : AppCompatActivity() {
 
         spLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (!languageSpinnerInitialized) return
                 val newTag = when (position) {
                     // 使用通用中文标签，避免区域标签在部分设备上匹配异常
-                    1 -> "zh"
+                    1 -> "zh-CN"
                     2 -> "en"
                     else -> "" // 跟随系统
                 }
@@ -199,8 +202,6 @@ class SettingsActivity : AppCompatActivity() {
                     prefs.appLanguageTag = newTag
                     val locales = if (newTag.isBlank()) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(newTag)
                     AppCompatDelegate.setApplicationLocales(locales)
-                    // 刷新当前界面文案
-                    recreate()
                 }
             }
 
@@ -330,7 +331,6 @@ class SettingsActivity : AppCompatActivity() {
                     val ok = Prefs(this).importJsonString(json)
                     if (ok) {
                         Toast.makeText(this, getString(R.string.toast_import_success), Toast.LENGTH_SHORT).show()
-                        recreate()
                     } else {
                         Toast.makeText(this, getString(R.string.toast_import_failed), Toast.LENGTH_SHORT).show()
                     }
