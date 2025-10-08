@@ -62,7 +62,7 @@ class SettingsActivity : ComponentActivity() {
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
 
-        // LLM fields
+        // LLM相关字段
         val etLlmEndpoint = findViewById<EditText>(R.id.etLlmEndpoint)
         val etLlmApiKey = findViewById<EditText>(R.id.etLlmApiKey)
         val etLlmModel = findViewById<EditText>(R.id.etLlmModel)
@@ -70,7 +70,7 @@ class SettingsActivity : ComponentActivity() {
         val etLlmPrompt = findViewById<EditText>(R.id.etLlmPrompt)
         val etLlmPromptTitle = findViewById<EditText>(R.id.etLlmPromptTitle)
         val spPromptPresets = findViewById<Spinner>(R.id.spPromptPresets)
-        // Custom punctuation inputs
+        // 自定义标点符号输入
         val etPunct1 = findViewById<EditText>(R.id.etPunct1)
         val etPunct2 = findViewById<EditText>(R.id.etPunct2)
         val etPunct3 = findViewById<EditText>(R.id.etPunct3)
@@ -94,7 +94,7 @@ class SettingsActivity : ComponentActivity() {
         etPunct2.setText(prefs.punct2)
         etPunct3.setText(prefs.punct3)
         etPunct4.setText(prefs.punct4)
-        // Prompt presets
+        // 提示词预设
         var presets = prefs.getPromptPresets().toMutableList()
         var activeId = prefs.activePromptId
         if (activeId.isBlank()) {
@@ -114,7 +114,7 @@ class SettingsActivity : ComponentActivity() {
         }
         refreshSpinnerSelection()
 
-        // ASR vendor spinner setup
+        // ASR供应商选择器设置
         val vendorItems = listOf(
             getString(R.string.vendor_volc),
             getString(R.string.vendor_sf),
@@ -160,7 +160,7 @@ class SettingsActivity : ComponentActivity() {
         })
 
         findViewById<Button>(R.id.btnSaveKeys).setOnClickListener {
-            // Save vendor-specific keys
+            // 保存供应商特定密钥
             prefs.appKey = etAppKey.text?.toString() ?: ""
             prefs.accessKey = etAccessKey.text?.toString() ?: ""
             prefs.sfApiKey = etSfApiKey.text?.toString() ?: ""
@@ -171,18 +171,19 @@ class SettingsActivity : ComponentActivity() {
             prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
             prefs.showImeSwitcherButton = switchShowImeSwitcher.isChecked
             prefs.autoSwitchOnPassword = switchAutoSwitchPassword.isChecked
-            // LLM
+            prefs.micHapticEnabled = switchMicHaptic.isChecked
+            // 大语言模型相关设置
             prefs.llmEndpoint = etLlmEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT
             prefs.llmApiKey = etLlmApiKey.text?.toString() ?: ""
             prefs.llmModel = etLlmModel.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_MODEL } ?: Prefs.DEFAULT_LLM_MODEL
             val tempVal = etLlmTemperature.text?.toString()?.toFloatOrNull()
             prefs.llmTemperature = (tempVal ?: Prefs.DEFAULT_LLM_TEMPERATURE).coerceIn(0f, 2f)
-            // Custom punctuation buttons
+            // 自定义标点符号按钮
             prefs.punct1 = etPunct1.text?.toString() ?: Prefs.DEFAULT_PUNCT_1
             prefs.punct2 = etPunct2.text?.toString() ?: Prefs.DEFAULT_PUNCT_2
             prefs.punct3 = etPunct3.text?.toString() ?: Prefs.DEFAULT_PUNCT_3
             prefs.punct4 = etPunct4.text?.toString() ?: Prefs.DEFAULT_PUNCT_4
-            // Update current preset title/content and set active
+            // 更新当前预设标题/内容并设为活动状态
             val newTitle = etLlmPromptTitle.text?.toString()?.ifBlank { "未命名预设" } ?: "未命名预设"
             val newContent = etLlmPrompt.text?.toString() ?: Prefs.DEFAULT_LLM_PROMPT
             val currentIdx = presets.indexOfFirst { it.id == prefs.activePromptId }
@@ -192,7 +193,7 @@ class SettingsActivity : ComponentActivity() {
                 prefs.setPromptPresets(updated)
                 prefs.activePromptId = updated[currentIdx].id
             } else {
-                // No active preset? create one
+                // 没有活动预设？创建一个
                 val created = PromptPreset(java.util.UUID.randomUUID().toString(), newTitle, newContent)
                 val newList = presets.toMutableList().apply { add(created) }
                 prefs.setPromptPresets(newList)
@@ -213,7 +214,5 @@ class SettingsActivity : ComponentActivity() {
             Toast.makeText(this, "已新增预设", Toast.LENGTH_SHORT).show()
         }
 
-
-        // Continuous mode has been removed; no toggle needed.
     }
 }

@@ -30,8 +30,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Non-streaming ASR engine using SiliconFlow "audio/transcriptions" API.
- * Behavior: start() begins recording PCM; stop() finalizes and uploads one request; only calls onFinal.
+ * 使用 SiliconFlow "audio/transcriptions" API 的非流式 ASR 引擎。
+ * 行为：start() 开始录制 PCM；stop() 完成并上传一个请求；仅调用 onFinal。
  */
 class SiliconFlowFileAsrEngine(
     private val context: Context,
@@ -127,8 +127,8 @@ class SiliconFlowFileAsrEngine(
 
             try {
                 val wav = pcmToWav(pcmBytes)
-                // SiliconFlow requires multipart/form-data with file and model
-                // Write temp wav to cache dir to use FileBody for OkHttp 5
+                // SiliconFlow 需要包含文件和模型的 multipart/form-data
+                // 将临时 wav 文件写入缓存目录以供 OkHttp 5 使用 FileBody
                 val tmp = File.createTempFile("asr_", ".wav", context.cacheDir)
                 FileOutputStream(tmp).use { it.write(wav) }
 

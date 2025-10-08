@@ -27,8 +27,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Non-streaming ASR engine using ElevenLabs Speech-to-Text multipart API.
- * Docs: elevenlabs.md (POST /v1/speech-to-text, header: xi-api-key)
+ * 使用 ElevenLabs Speech-to-Text 多部分 API 的非流式 ASR 引擎
+ * 文档: elevenlabs.md (POST /v1/speech-to-text, header: xi-api-key)
  */
 class ElevenLabsFileAsrEngine(
   private val context: Context,
@@ -100,6 +100,7 @@ class ElevenLabsFileAsrEngine(
       try {
         recorder.startRecording()
         val buf = ByteArray(chunkBytes)
+        // 最大录音时长 5 分钟
         val maxBytes = 5 * 60 * sampleRate * 2
         while (true) {
           if (!running.get()) break

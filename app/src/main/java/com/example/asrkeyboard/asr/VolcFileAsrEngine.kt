@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import android.util.Base64
 
 /**
- * Non-streaming ASR engine using Volcengine "recognize/flash" API.
- * Behavior: start() begins recording PCM; stop() finalizes and uploads one request; only calls onFinal.
+ * 使用火山引擎"recognize/flash" API的非流式ASR引擎。
+ * 行为：start()开始录制PCM；stop()完成并上传一个请求；仅调用onFinal。
  */
 class VolcFileAsrEngine(
     private val context: Context,
@@ -57,14 +57,14 @@ class VolcFileAsrEngine(
     }
 
     override fun stop() {
-        // Flip running flag; job will exit its loop and continue to upload
+        // 翻转运行标志；任务将退出其循环并继续上传
         running.set(false)
     }
 
     private fun startRecordThenRecognize() {
         audioJob?.cancel()
         audioJob = scope.launch(Dispatchers.IO) {
-            // Permission check
+            // 权限检查
             val hasPermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.RECORD_AUDIO
@@ -76,7 +76,7 @@ class VolcFileAsrEngine(
             }
 
             val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-            // Read ~200ms per chunk
+            // 每个块读取约200ms的数据
             val chunkBytes = ((sampleRate / 5) * 2)
             val bufferSize = maxOf(minBuffer, chunkBytes)
             val recorder = try {
@@ -102,7 +102,7 @@ class VolcFileAsrEngine(
             try {
                 recorder.startRecording()
                 val buf = ByteArray(chunkBytes)
-                // Soft cap to avoid excessive memory in case of very long holds (~5 minutes max)
+                // 软限制以避免在极长录音时占用过多内存（最大约5分钟）
                 val maxBytes = 5 * 60 * sampleRate * 2
                 while (true) {
                     if (!running.get()) break
@@ -110,7 +110,7 @@ class VolcFileAsrEngine(
                     if (read > 0) {
                         pcmBuffer.write(buf, 0, read)
                         if (pcmBuffer.size() >= maxBytes) {
-                            // Auto stop if exceeding cap
+                            // 超过限制时自动停止
                             break
                         }
                     }
@@ -122,7 +122,7 @@ class VolcFileAsrEngine(
                 try { recorder.release() } catch (_: Throwable) {}
             }
 
-            // Prepare audio and upload if we have data
+            // 如果有数据，准备音频并上传
             val pcmBytes = pcmBuffer.toByteArray()
             if (pcmBytes.isEmpty()) {
                 listener.onError("空音频")
@@ -134,7 +134,7 @@ class VolcFileAsrEngine(
                 val b64 = Base64.encodeToString(wav, Base64.NO_WRAP)
                 val json = buildRequestJson(b64)
                 val reqBody = json.toRequestBody("application/json; charset=utf-8".toMediaType())
-                // Use fixed defaults for file recognition to simplify setup
+                // 使用固定默认值进行文件识别以简化设置
                 val resourceId = DEFAULT_FILE_RESOURCE
                 val endpointUrl = Prefs.DEFAULT_ENDPOINT
                 val request = Request.Builder()
@@ -200,20 +200,20 @@ class VolcFileAsrEngine(
         val dataSize = pcm.size
         val totalDataLen = dataSize + 36
         val out = ByteArrayOutputStream(headerSize + dataSize)
-        // RIFF header
+        // RIFF文件头
         out.write("RIFF".toByteArray())
         out.write(intToBytesLE(totalDataLen))
         out.write("WAVE".toByteArray())
-        // fmt subchunk
+        // fmt子块
         out.write("fmt ".toByteArray())
-        out.write(intToBytesLE(16)) // Subchunk1Size for PCM
+        out.write(intToBytesLE(16)) // PCM的Subchunk1Size
         out.write(shortToBytesLE(1)) // AudioFormat = 1 (PCM)
         out.write(shortToBytesLE(channels))
         out.write(intToBytesLE(sampleRate))
         out.write(intToBytesLE(byteRate))
         out.write(shortToBytesLE((channels * bitsPerSample / 8))) // BlockAlign
         out.write(shortToBytesLE(bitsPerSample))
-        // data subchunk
+        // data子块
         out.write("data".toByteArray())
         out.write(intToBytesLE(dataSize))
         out.write(pcm)

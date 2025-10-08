@@ -6,7 +6,7 @@ import com.google.android.material.color.DynamicColors
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Opt-in to Material You dynamic color for all activities when available (Android 12+)
+        // 在可用时为所有Activity启用Material You动态颜色 (Android 12+)
         DynamicColors.applyToActivitiesIfAvailable(this)
     }
 }

@@ -12,8 +12,8 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * OpenAI-format post-processor for ASR text cleanup and AI editing.
- * Uses Chat Completions-compatible APIs and falls back to simple fields when present.
+ * OpenAI 格式的 ASR 文本后处理器，用于文本清理和 AI 编辑。
+ * 使用与 Chat Completions 兼容的 API，并在存在简单字段时回退使用。
  */
 class LlmPostProcessor(private val client: OkHttpClient? = null) {
   private val jsonMedia = "application/json; charset=utf-8".toMediaType()
@@ -87,8 +87,8 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
   }
 
   /**
-   * Edit existing text with a natural-language instruction using a Chat Completions-compatible API.
-   * Returns the edited text; on any failure returns the original text unchanged.
+   * 使用自然语言指令编辑现有文本，兼容 Chat Completions API。
+   * 返回编辑后的文本；任何失败时返回原始文本不变。
    */
   suspend fun editText(original: String, instruction: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
     if (original.isBlank() || instruction.isBlank()) return@withContext original

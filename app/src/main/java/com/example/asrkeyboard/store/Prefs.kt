@@ -7,7 +7,7 @@ import com.example.asrkeyboard.asr.AsrVendor
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("asr_prefs", Context.MODE_PRIVATE)
 
-    // Volcengine credentials
+    // 火山引擎凭证
     var appKey: String
         get() = sp.getString(KEY_APP_KEY, "") ?: ""
         set(value) = sp.edit { putString(KEY_APP_KEY, value.trim()) }
@@ -24,7 +24,7 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SHOW_IME_SWITCHER_BUTTON, true)
         set(value) = sp.edit { putBoolean(KEY_SHOW_IME_SWITCHER_BUTTON, value) }
 
-    // Auto switch away on password fields
+    // 在密码框中自动切换输入法
     var autoSwitchOnPassword: Boolean
         get() = sp.getBoolean(KEY_AUTO_SWITCH_ON_PASSWORD, true)
         set(value) = sp.edit { putBoolean(KEY_AUTO_SWITCH_ON_PASSWORD, value) }
@@ -55,12 +55,12 @@ class Prefs(context: Context) {
         get() = sp.getFloat(KEY_LLM_TEMPERATURE, DEFAULT_LLM_TEMPERATURE)
         set(value) = sp.edit { putFloat(KEY_LLM_TEMPERATURE, value) }
 
-    // Deprecated: single prompt. Kept for backward compatibility/migration.
+    // 已弃用：单一提示词。保留用于向后兼容/迁移。
     var llmPrompt: String
         get() = sp.getString(KEY_LLM_PROMPT, DEFAULT_LLM_PROMPT) ?: DEFAULT_LLM_PROMPT
         set(value) = sp.edit { putString(KEY_LLM_PROMPT, value) }
 
-    // Multiple prompt presets with titles and active selection
+    // 多个预设提示词，包含标题和活动选择
     var promptPresetsJson: String
         get() = sp.getString(KEY_LLM_PROMPT_PRESETS, "") ?: ""
         set(value) = sp.edit { putString(KEY_LLM_PROMPT_PRESETS, value) }
@@ -70,11 +70,11 @@ class Prefs(context: Context) {
         set(value) = sp.edit { putString(KEY_LLM_PROMPT_ACTIVE_ID, value) }
 
     fun getPromptPresets(): List<PromptPreset> {
-        // Migrate from legacy single prompt if no presets set yet
+        // 如果未设置预设，从旧的单一提示词迁移
         if (promptPresetsJson.isBlank()) {
             val defaults = buildDefaultPromptPresets(legacy = llmPrompt)
             setPromptPresets(defaults)
-            // set first as active if not set
+            // 如果未设置，将第一个设为活动状态
             if (activePromptId.isBlank()) activePromptId = defaults.firstOrNull()?.id ?: ""
             return defaults
         }
@@ -104,7 +104,7 @@ class Prefs(context: Context) {
             arr.put(o)
         }
         promptPresetsJson = arr.toString()
-        // Ensure active id is valid
+        // 确保活动ID有效
         if (list.none { it.id == activePromptId }) {
             activePromptId = list.firstOrNull()?.id ?: ""
         }
@@ -118,7 +118,7 @@ class Prefs(context: Context) {
             return found?.content ?: (if (llmPrompt.isNotBlank()) llmPrompt else DEFAULT_LLM_PROMPT)
         }
 
-    // SiliconFlow credentials
+    // SiliconFlow凭证
     var sfApiKey: String
         get() = sp.getString(KEY_SF_API_KEY, "") ?: ""
         set(value) = sp.edit { putString(KEY_SF_API_KEY, value.trim()) }
@@ -127,7 +127,7 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_SF_MODEL, DEFAULT_SF_MODEL) ?: DEFAULT_SF_MODEL
         set(value) = sp.edit { putString(KEY_SF_MODEL, value.trim()) }
 
-    // ElevenLabs credentials
+    // ElevenLabs凭证
     var elevenApiKey: String
         get() = sp.getString(KEY_ELEVEN_API_KEY, "") ?: ""
         set(value) = sp.edit { putString(KEY_ELEVEN_API_KEY, value.trim()) }
@@ -136,7 +136,7 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_ELEVEN_MODEL_ID, "") ?: ""
         set(value) = sp.edit { putString(KEY_ELEVEN_MODEL_ID, value.trim()) }
 
-    // Selected ASR vendor
+    // 选中的ASR供应商
     var asrVendor: AsrVendor
         get() = AsrVendor.fromId(sp.getString(KEY_ASR_VENDOR, AsrVendor.Volc.id))
         set(value) = sp.edit { putString(KEY_ASR_VENDOR, value.id) }
@@ -151,7 +151,7 @@ class Prefs(context: Context) {
     }
     fun hasLlmKeys(): Boolean = llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
 
-    // Custom punctuation buttons (4 slots)
+    // 自定义标点按钮（4个位置）
     var punct1: String
         get() = (sp.getString(KEY_PUNCT_1, DEFAULT_PUNCT_1) ?: DEFAULT_PUNCT_1).trim()
         set(value) = sp.edit { putString(KEY_PUNCT_1, value.trim()) }
@@ -197,13 +197,13 @@ class Prefs(context: Context) {
         const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
         const val DEFAULT_SF_MODEL = "FunAudioLLM/SenseVoiceSmall"
 
-        // Reasonable OpenAI-format defaults
+        // 合理的OpenAI格式默认值
         const val DEFAULT_LLM_ENDPOINT = "https://api.openai.com/v1"
         const val DEFAULT_LLM_MODEL = "gpt-4o-mini"
         const val DEFAULT_LLM_TEMPERATURE = 0.2f
         const val DEFAULT_LLM_PROMPT = "# 角色\n\n你是一个顶级的 ASR（自动语音识别）后处理专家。\n\n# 任务\n\n你的任务是接收一段由 ASR 系统转录的原始文本，并将其精炼成一段通顺、准确、书面化的文本。你需要严格遵循以下规则，仅输出修正后的最终文本。\n\n# 规则\n\n1.  **去除无关填充词**: 彻底删除所有无意义的语气词、犹豫词和口头禅。\n    - **示例**: \"嗯\"、\"啊\"、\"呃\"、\"那个\"、\"然后\"、\"就是说\"等。\n2.  **合并重复与修正口误**: 当说话者重复单词、短语或进行自我纠正时，你需要整合这些内容，只保留其最终的、最清晰的意图。\n    - **重复示例**: 将\"我想...我想去...\"修正为\"我想去...\"。\n    - **口误修正示例**: 将\"我们明天去上海，哦不对，去苏州开会\"修正为\"我们明天去苏州开会\"。\n3.  **修正识别错误**: 根据上下文语境，纠正明显不符合逻辑的同音、近音词汇。\n    - **同音词示例**: 将\"请大家准时参加明天的『会意』\"修正为\"请大家准时参加明天的『会议』\"\n4.  **保持语义完整性**: 确保修正后的文本忠实于说话者的原始意图，不要进行主观臆断或添加额外信息。\n\n# 示例\n\n- **原始文本**: \"嗯...那个...我想确认一下，我们明天，我们明天的那个会意，啊不对，会议，时间是不是...是不是上午九点？\"\n- **修正后文本**: \"我想确认一下，我们明天的那个会议时间是不是上午九点？\"\n  请根据以上所有规则，处理给定文本"
 
-        // Defaults for punctuation buttons
+        // 标点按钮默认值
         const val DEFAULT_PUNCT_1 = "，"
         const val DEFAULT_PUNCT_2 = "。"
         const val DEFAULT_PUNCT_3 = "！"
