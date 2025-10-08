@@ -753,15 +753,17 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 } catch (_: Throwable) {
                     raw
                 }
+                // 如果开启去除句尾标点，对LLM后处理结果也执行一次修剪，避免模型重新补回标点导致设置失效
+                val finalProcessed = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(processed) else processed
                 val ic = currentInputConnection
-                ic?.setComposingText(processed, 1)
+                ic?.setComposingText(finalProcessed, 1)
                 ic?.finishComposingText()
                 // Record this commit so user can swipe-down on backspace to revert to raw
-                lastPostprocCommit = if (!processed.isNullOrEmpty() && processed != raw) PostprocCommit(processed, raw) else null
+                lastPostprocCommit = if (!finalProcessed.isNullOrEmpty() && finalProcessed != raw) PostprocCommit(finalProcessed, raw) else null
                 vibrateTick()
                 committedStableLen = 0
                 // Track last ASR commit as what we actually inserted
-                lastAsrCommitText = processed
+                lastAsrCommitText = finalProcessed
                 updateUiIdle()
             } else {
                 val ic = currentInputConnection
