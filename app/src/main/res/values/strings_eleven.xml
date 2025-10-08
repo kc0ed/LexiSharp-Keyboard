@@ -2,5 +2,5 @@
     <string name="vendor_eleven">ElevenLabs</string>
     <string name="eleven_section_title">ElevenLabs 鉴权参数</string>
     <string name="label_eleven_api_key">xi-api-key</string>
-    <string name="label_eleven_model">Model ID（可选）</string>
+    <string name="label_eleven_model">Model ID（必填）</string>
 </resources>

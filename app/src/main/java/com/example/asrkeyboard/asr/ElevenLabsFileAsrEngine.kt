@@ -142,9 +142,11 @@ class ElevenLabsFileAsrEngine(
           )
 
         val modelId = prefs.elevenModelId.trim()
-        if (modelId.isNotEmpty()) {
-          multipartBuilder.addFormDataPart("model_id", modelId)
+        if (modelId.isEmpty()) {
+          listener.onError("未配置 ElevenLabs Model ID（服务端要求必填）")
+          return@launch
         }
+        multipartBuilder.addFormDataPart("model_id", modelId)
 
         val request = Request.Builder()
           .url("https://api.elevenlabs.io/v1/speech-to-text")
@@ -154,12 +156,18 @@ class ElevenLabsFileAsrEngine(
 
         val resp = http.newCall(request).execute()
         resp.use { r ->
+          val bodyStr = r.body?.string().orEmpty()
           if (!r.isSuccessful) {
+            val extra = extractErrorHint(bodyStr)
             val msg = r.message
-            listener.onError("识别请求失败: HTTP ${r.code}${if (msg.isBlank()) "" else ": $msg"}")
+            val reason = buildString {
+              append("识别请求失败: HTTP ${r.code}")
+              if (msg.isNotBlank()) append(": $msg")
+              if (extra.isNotBlank()) append(" — $extra")
+            }
+            listener.onError(reason)
             return@use
           }
-          val bodyStr = r.body?.string() ?: ""
           val text = parseTextFromResponse(bodyStr)
           if (text.isNotBlank()) {
             listener.onFinal(text)
@@ -169,6 +177,41 @@ class ElevenLabsFileAsrEngine(
         }
       } catch (t: Throwable) {
         listener.onError("识别失败: ${t.message}")
+      }
+    }
+  }
+
+  private fun extractErrorHint(body: String): String {
+    if (body.isBlank()) return ""
+    return try {
+      // Try object first
+      val obj = JSONObject(body)
+      when {
+        obj.has("detail") -> obj.optString("detail").trim()
+        obj.has("message") -> obj.optString("message").trim()
+        obj.has("error") -> obj.optString("error").trim()
+        else -> body.take(200).trim()
+      }
+    } catch (_: Throwable) {
+      try {
+        val arr = org.json.JSONArray(body)
+        val msgs = mutableListOf<String>()
+        for (i in 0 until minOf(arr.length(), 5)) {
+          val e = arr.optJSONObject(i) ?: continue
+          val loc = e.opt("loc")
+          val msg = e.optString("msg").ifBlank { e.optString("message") }
+          if (msg.isNotBlank()) {
+            val locStr = when (loc) {
+              is org.json.JSONArray -> (0 until loc.length()).joinToString(".") { loc.optString(it) }
+              is String -> loc
+              else -> ""
+            }
+            msgs.add(if (locStr.isNotBlank()) "$locStr: $msg" else msg)
+          }
+        }
+        if (msgs.isNotEmpty()) msgs.joinToString("; ") else body.take(200).trim()
+      } catch (_: Throwable) {
+        body.take(200).trim()
       }
     }
   }
