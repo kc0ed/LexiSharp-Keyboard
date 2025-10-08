@@ -75,6 +75,14 @@ class SettingsActivity : AppCompatActivity() {
         val groupDash = findViewById<View>(R.id.groupDashScope)
         val groupOpenAi = findViewById<View>(R.id.groupOpenAI)
         val groupGemini = findViewById<View>(R.id.groupGemini)
+        // Titles for vendor sections
+        val titleVolc = findViewById<View>(R.id.titleVolc)
+        val titleSf = findViewById<View>(R.id.titleSf)
+        val titleEleven = findViewById<View>(R.id.titleEleven)
+        val titleOpenAi = findViewById<View>(R.id.titleOpenAI)
+        val titleDash = findViewById<View>(R.id.titleDash)
+        val titleGemini = findViewById<View>(R.id.titleGemini)
+        
         val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
         val spLanguage = findViewById<Spinner>(R.id.spLanguage)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
@@ -201,12 +209,25 @@ class SettingsActivity : AppCompatActivity() {
         )
         languageSpinnerInitialized = true
         fun applyVendorVisibility(v: AsrVendor) {
-            groupVolc.visibility = if (v == AsrVendor.Volc) View.VISIBLE else View.GONE
-            groupSf.visibility = if (v == AsrVendor.SiliconFlow) View.VISIBLE else View.GONE
-            groupEleven.visibility = if (v == AsrVendor.ElevenLabs) View.VISIBLE else View.GONE
-            groupOpenAi.visibility = if (v == AsrVendor.OpenAI) View.VISIBLE else View.GONE
-            groupDash.visibility = if (v == AsrVendor.DashScope) View.VISIBLE else View.GONE
-            groupGemini.visibility = if (v == AsrVendor.Gemini) View.VISIBLE else View.GONE
+            fun vis(target: AsrVendor) = if (v == target) View.VISIBLE else View.GONE
+            // Volc
+            titleVolc.visibility = vis(AsrVendor.Volc)
+            groupVolc.visibility = vis(AsrVendor.Volc)
+            // SiliconFlow
+            titleSf.visibility = vis(AsrVendor.SiliconFlow)
+            groupSf.visibility = vis(AsrVendor.SiliconFlow)
+            // ElevenLabs
+            titleEleven.visibility = vis(AsrVendor.ElevenLabs)
+            groupEleven.visibility = vis(AsrVendor.ElevenLabs)
+            // OpenAI
+            titleOpenAi.visibility = vis(AsrVendor.OpenAI)
+            groupOpenAi.visibility = vis(AsrVendor.OpenAI)
+            // DashScope
+            titleDash.visibility = vis(AsrVendor.DashScope)
+            groupDash.visibility = vis(AsrVendor.DashScope)
+            // Gemini
+            titleGemini.visibility = vis(AsrVendor.Gemini)
+            groupGemini.visibility = vis(AsrVendor.Gemini)
         }
         applyVendorVisibility(prefs.asrVendor)
 
