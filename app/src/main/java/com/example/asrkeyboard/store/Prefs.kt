@@ -230,20 +230,35 @@ class Prefs(context: Context) {
         private fun buildDefaultPromptPresets(legacy: String = DEFAULT_LLM_PROMPT): List<PromptPreset> {
             val p1 = PromptPreset(
                 id = java.util.UUID.randomUUID().toString(),
-                title = "默认精炼",
-                content = legacy.ifBlank { DEFAULT_LLM_PROMPT }
+                title = "基础文本润色",
+                content = "你是一个专业的中文编辑器。请对以下由ASR（语音识别）生成的文本进行润色和修正。请遵循以下规则：\n1. 修正所有错别字和语法错误。\n2. 添加正确、自然的标点符号。\n3. 删除口语化的词语、重复和无意义的填充词（例如"嗯"、"啊"、"那个"）。\n4. 在保持原意不变的前提下，让句子表达更流畅、更书面化。\n5. 不要添加任何原始文本中没有的信息，不要附带任何解释说明，只输出润色后的内容。"
             )
             val p2 = PromptPreset(
+                id = java.util.UUID.randomUUID().toString(),
+                title = "翻译为英文",
+                content = "请将以下文本翻译为英语。在翻译过程中，请确保：\n1. 准确传达原文的核心意思。\n2. 保持原文的语气（例如，正式、非正式、紧急等）。\n3. 译文流畅、符合目标语言的表达习惯。不要附带任何解释说明，只输出翻译后的内容。"
+            )
+            val p3 = PromptPreset(
+                id = java.util.UUID.randomUUID().toString(),
+                title = "提取关键要点",
+                content = "请从以下文本中提取核心要点，并以无序列表（bullet points）的形式呈现。每个要点都应简洁明了。"
+            )
+            val p4 = PromptPreset(
+                id = java.util.UUID.randomUUID().toString(),
+                title = "提取待办事项",
+                content = "请从以下文本中识别并提取所有待办事项（Action Items）。如果文本中提到了负责人和截止日期，请一并列出。\n\n请使用以下格式输出：\n- [ ] [任务内容] (负责人: [姓名], 截止日期: [日期])\n\n如果信息不完整，则省略相应部分。"
+            )
+            val p5 = PromptPreset(
                 id = java.util.UUID.randomUUID().toString(),
                 title = "仅纠错不改写",
                 content = "仅在不改变原意的前提下进行最小必要的纠错：修正错别字、标点、大小写与明显的口误。不要重写或美化句式，不要添加或省略信息。输出纠正后的文本。"
             )
-            val p3 = PromptPreset(
+            val p6 = PromptPreset(
                 id = java.util.UUID.randomUUID().toString(),
                 title = "保留口语风格",
                 content = "在尽量保持口语风格的前提下，去除明显的口头禅与重复，统一人名/地名等专有名词的写法。尽量不改变原句结构。只输出处理后的文本。"
             )
-            return listOf(p1, p2, p3)
+            return listOf(p1, p2, p3, p4, p5, p6)
         }
     }
 
