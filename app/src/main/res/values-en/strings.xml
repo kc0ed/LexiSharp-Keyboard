@@ -1,0 +1,84 @@
+<resources>
+    <string name="app_name">ASR Keyboard</string>
+    <string name="subtype_generic">General</string>
+
+    <string name="cd_mic">Microphone</string>
+    <string name="cd_settings">Settings</string>
+    <string name="cd_enter">Enter</string>
+    <string name="cd_backspace">Backspace</string>
+    <string name="cd_switch_ime">Switch input method</string>
+    <string name="cd_postproc_toggle">AI Post-process</string>
+    <string name="cd_ai_edit">AI Edit</string>
+    <string name="cd_hide">Hide keyboard</string>
+    <string name="cd_prompt_picker">Switch post-processing prompt</string>
+    <string name="cd_punct_btn_1">Custom key 1</string>
+    <string name="cd_punct_btn_2">Custom key 2</string>
+    <string name="cd_punct_btn_3">Custom key 3</string>
+    <string name="cd_punct_btn_4">Custom key 4</string>
+
+    <string name="status_idle">Ready</string>
+    <string name="status_listening">Listening…</string>
+    <string name="status_recognizing">Recognizing…</string>
+    <string name="status_ai_processing">AI post-processing…</string>
+    <string name="status_ai_edit_listening">Speak your edit instruction…</string>
+    <string name="status_ai_editing">AI editing…</string>
+    <string name="status_reverted_to_raw">Reverted to raw transcript</string>
+    <string name="status_llm_empty_result">AI edit failed: no result</string>
+    <string name="status_last_asr_not_found">Last ASR result not found; canceled</string>
+    <string name="hint_need_llm_keys">Configure AI post-processing first</string>
+    <string name="hint_cannot_read_text">Current app text is not readable</string>
+    <string name="hint_need_permission">Microphone permission is required for voice input</string>
+
+    <string name="settings_instructions">First-time setup:\n1. Tap “Enable Keyboard” and enable ASR Keyboard in system settings\n2. Tap “Choose Keyboard” to switch to ASR Keyboard\n3. Grant microphone permission, then long‑press the mic button on the keyboard to try</string>
+    <string name="btn_enable">Enable Keyboard</string>
+    <string name="btn_choose">Choose Keyboard</string>
+    <string name="btn_grant_mic">Grant Microphone Permission</string>
+    <string name="btn_show_guide">View Quick Guide</string>
+    <!-- Material UI additions -->
+    <string name="settings_title">ASR Keyboard Settings</string>
+    <string name="volc_section_title">Volcano Engine Credentials</string>
+    <string name="sf_section_title">SiliconFlow Credentials</string>
+    <string name="label_app_key">X-Api-App-Key</string>
+    <string name="label_access_key">X-Api-Access-Key</string>
+    <string name="label_asr_vendor">ASR Provider</string>
+    <string name="vendor_volc">Volcano Engine</string>
+    <string name="vendor_sf">SiliconFlow</string>
+    <string name="btn_save">Save</string>
+    <string name="btn_close">Close</string>
+    <string name="title_quick_guide">Quick Start Guide</string>
+    <string name="label_trim_trailing_punct">Remove trailing punctuation on finish</string>
+    <string name="label_show_ime_switcher">Show “Switch Input Method” button</string>
+    <string name="label_mic_haptic">Haptic feedback on mic press</string>
+    <string name="tile_switch_ime">Switch Input Method</string>
+    <string name="label_floating_switcher">Enable floating ball to switch IME</string>
+    <string name="toast_need_overlay_perm">Please grant "Display over other apps" in system settings to enable the floating ball</string>
+
+    <!-- LLM settings -->
+    <string name="llm_section_title">AI Post-processing</string>
+    <string name="label_llm_endpoint">OpenAI Endpoint (e.g., https://api.openai.com/v1 or includes /chat/completions)</string>
+    <string name="label_llm_api_key">API Key</string>
+    <string name="label_llm_model">Model Name (e.g., gpt-4o-mini)</string>
+    <string name="label_llm_temperature">Temperature (0.0 – 2.0)</string>
+    <string name="label_llm_prompt">Post-processing prompt (output only the processed text)</string>
+    <string name="label_llm_prompt_title">Prompt Preset Title</string>
+    <string name="label_llm_prompt_presets">Choose Prompt Preset</string>
+    <string name="btn_add_preset">Add/Save as Preset</string>
+
+    <!-- Custom punctuation settings -->
+    <string name="custom_punct_section_title">Custom Punctuation Buttons</string>
+    <string name="label_custom_punct_1">Button 1 (char or punctuation)</string>
+    <string name="label_custom_punct_2">Button 2 (char or punctuation)</string>
+    <string name="label_custom_punct_3">Button 3 (char or punctuation)</string>
+    <string name="label_custom_punct_4">Button 4 (char or punctuation)</string>
+    <string name="label_auto_switch_password">Auto switch back on password fields</string>
+
+    <!-- Language & misc -->
+    <string name="label_language">App Language</string>
+    <string name="lang_follow_system">Follow System</string>
+    <string name="lang_zh_cn">Simplified Chinese</string>
+    <string name="lang_en">English</string>
+    <string name="toast_saved">Saved</string>
+    <string name="toast_preset_added">Preset added</string>
+    <string name="untitled_preset">Untitled preset</string>
+    <string name="switched_preset">Switched: %1$s</string>
+</resources>

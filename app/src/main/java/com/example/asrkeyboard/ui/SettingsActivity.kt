@@ -10,7 +10,7 @@ import android.widget.Toast
 import android.widget.Spinner
 import android.widget.ArrayAdapter
 import com.google.android.material.materialswitch.MaterialSwitch
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import com.example.asrkeyboard.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.view.LayoutInflater
@@ -18,8 +18,10 @@ import com.example.asrkeyboard.store.Prefs
 import com.example.asrkeyboard.store.PromptPreset
 import com.example.asrkeyboard.asr.AsrVendor
 import android.view.View
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 
-class SettingsActivity : ComponentActivity() {
+class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -57,6 +59,7 @@ class SettingsActivity : ComponentActivity() {
         val groupSf = findViewById<View>(R.id.groupSf)
         val groupEleven = findViewById<View>(R.id.groupEleven)
         val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
+        val spLanguage = findViewById<Spinner>(R.id.spLanguage)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
         val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
@@ -142,6 +145,21 @@ class SettingsActivity : ComponentActivity() {
                 AsrVendor.ElevenLabs -> 2
             }
         )
+        // 应用语言选择器设置
+        val languageItems = listOf(
+            getString(R.string.lang_follow_system),
+            getString(R.string.lang_zh_cn),
+            getString(R.string.lang_en)
+        )
+        spLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, languageItems)
+        val savedTag = prefs.appLanguageTag
+        spLanguage.setSelection(
+            when (savedTag) {
+                "zh", "zh-CN", "zh-Hans" -> 1
+                "en" -> 2
+                else -> 0
+            }
+        )
         fun applyVendorVisibility(v: AsrVendor) {
             groupVolc.visibility = if (v == AsrVendor.Volc) View.VISIBLE else View.GONE
             groupSf.visibility = if (v == AsrVendor.SiliconFlow) View.VISIBLE else View.GONE
@@ -158,6 +176,25 @@ class SettingsActivity : ComponentActivity() {
                 }
                 prefs.asrVendor = vendor
                 applyVendorVisibility(vendor)
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        })
+
+        spLanguage.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                val newTag = when (position) {
+                    // 使用通用中文标签，避免区域标签在部分设备上匹配异常
+                    1 -> "zh"
+                    2 -> "en"
+                    else -> "" // 跟随系统
+                }
+                if (newTag != prefs.appLanguageTag) {
+                    prefs.appLanguageTag = newTag
+                    val locales = if (newTag.isBlank()) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(newTag)
+                    AppCompatDelegate.setApplicationLocales(locales)
+                    // 刷新当前界面文案
+                    recreate()
+                }
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         })
@@ -223,7 +260,7 @@ class SettingsActivity : ComponentActivity() {
             prefs.punct3 = etPunct3.text?.toString() ?: Prefs.DEFAULT_PUNCT_3
             prefs.punct4 = etPunct4.text?.toString() ?: Prefs.DEFAULT_PUNCT_4
             // 更新当前预设标题/内容并设为活动状态
-            val newTitle = etLlmPromptTitle.text?.toString()?.ifBlank { "未命名预设" } ?: "未命名预设"
+            val newTitle = etLlmPromptTitle.text?.toString()?.ifBlank { getString(R.string.untitled_preset) } ?: getString(R.string.untitled_preset)
             val newContent = etLlmPrompt.text?.toString() ?: Prefs.DEFAULT_LLM_PROMPT
             val currentIdx = presets.indexOfFirst { it.id == prefs.activePromptId }
             val updated = if (currentIdx >= 0) presets.toMutableList() else presets
@@ -239,18 +276,18 @@ class SettingsActivity : ComponentActivity() {
                 prefs.activePromptId = created.id
             }
             refreshSpinnerSelection()
-            Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
         }
 
         findViewById<Button>(R.id.btnAddPromptPreset).setOnClickListener {
-            val title = etLlmPromptTitle.text?.toString()?.ifBlank { "未命名预设" } ?: "未命名预设"
+            val title = etLlmPromptTitle.text?.toString()?.ifBlank { getString(R.string.untitled_preset) } ?: getString(R.string.untitled_preset)
             val content = etLlmPrompt.text?.toString() ?: Prefs.DEFAULT_LLM_PROMPT
             val created = PromptPreset(java.util.UUID.randomUUID().toString(), title, content)
             val newList = prefs.getPromptPresets().toMutableList().apply { add(created) }
             prefs.setPromptPresets(newList)
             prefs.activePromptId = created.id
             refreshSpinnerSelection()
-            Toast.makeText(this, "已新增预设", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_preset_added), Toast.LENGTH_SHORT).show()
         }
 
     }

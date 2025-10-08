@@ -34,6 +34,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_MIC_HAPTIC_ENABLED, true)
         set(value) = sp.edit { putBoolean(KEY_MIC_HAPTIC_ENABLED, value) }
 
+    // 应用内语言（空字符串表示跟随系统；如："zh-Hans"、"en"）
+    var appLanguageTag: String
+        get() = sp.getString(KEY_APP_LANGUAGE_TAG, "") ?: ""
+        set(value) = sp.edit { putString(KEY_APP_LANGUAGE_TAG, value) }
+
     // 悬浮球开关
     var floatingSwitcherEnabled: Boolean
         get() = sp.getBoolean(KEY_FLOATING_SWITCHER_ENABLED, false)
@@ -182,6 +187,7 @@ class Prefs(context: Context) {
         private const val KEY_MIC_HAPTIC_ENABLED = "mic_haptic_enabled"
         private const val KEY_FLOATING_SWITCHER_ENABLED = "floating_switcher_enabled"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
+        private const val KEY_APP_LANGUAGE_TAG = "app_language_tag"
         private const val KEY_LLM_ENDPOINT = "llm_endpoint"
         private const val KEY_LLM_API_KEY = "llm_api_key"
         private const val KEY_LLM_MODEL = "llm_model"

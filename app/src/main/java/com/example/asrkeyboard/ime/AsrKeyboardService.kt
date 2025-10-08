@@ -629,7 +629,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 val position = mi.itemId
                 val preset = presets.getOrNull(position) ?: return@setOnMenuItemClickListener false
                 prefs.activePromptId = preset.id
-                txtStatus?.text = "已切换：${preset.title}"
+                txtStatus?.text = getString(R.string.switched_preset, preset.title)
                 true
             }
             popup.show()
