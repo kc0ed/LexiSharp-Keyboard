@@ -82,6 +82,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private data class PostprocCommit(val processed: String, val raw: String)
     private var lastPostprocCommit: PostprocCommit? = null
 
+    // Track last committed ASR result so AI Edit (no selection) can modify it
+    private var lastAsrCommitText: String? = null
+
     private enum class SessionKind { Dictation, AiEdit }
     private data class AiEditState(
         val targetIsSelection: Boolean,
@@ -258,14 +261,17 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             if (selected != null && selected.isNotEmpty()) {
                 targetIsSelection = true
             } else {
+                // No selection: AI Edit will target last ASR commit text.
+                // We keep snapshot lengths for legacy fallback only.
                 val before = try { ic.getTextBeforeCursor(10000, 0) } catch (_: Throwable) { null }
                 val after = try { ic.getTextAfterCursor(10000, 0) } catch (_: Throwable) { null }
-                if (before == null || after == null) {
-                    txtStatus?.text = getString(R.string.hint_cannot_read_text)
+                beforeLen = before?.length ?: 0
+                afterLen = after?.length ?: 0
+                if (lastAsrCommitText.isNullOrEmpty()) {
+                    // No last ASR result to edit — avoid starting capture unnecessarily
+                    txtStatus?.text = getString(R.string.status_last_asr_not_found)
                     return@setOnClickListener
                 }
-                beforeLen = before.length
-                afterLen = after.length
             }
             aiEditState = AiEditState(targetIsSelection, beforeLen, afterLen)
             currentSessionKind = SessionKind.AiEdit
@@ -644,23 +650,31 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     return@launch
                 }
                 txtStatus?.text = getString(R.string.status_ai_editing)
-                // Build original text snapshot
+                // Build original text: selection or last ASR commit (no selection)
                 val original = try {
                     if (state.targetIsSelection) {
                         ic.getSelectedText(0)?.toString() ?: ""
                     } else {
-                        val before = ic.getTextBeforeCursor(state.beforeLen, 0)?.toString() ?: ""
-                        val after = ic.getTextAfterCursor(state.afterLen, 0)?.toString() ?: ""
-                        before + after
+                        lastAsrCommitText ?: ""
                     }
                 } catch (_: Throwable) { "" }
                 val instruction = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
                 val edited = try {
-                    postproc.editText(original, instruction, prefs).ifBlank { original }
-                } catch (_: Throwable) { original }
+                    postproc.editText(original, instruction, prefs)
+                } catch (_: Throwable) { "" }
                 if (original.isBlank()) {
                     // Safety: if we failed to reconstruct original text, do not delete anything
                     txtStatus?.text = getString(R.string.hint_cannot_read_text)
+                    vibrateTick()
+                    currentSessionKind = null
+                    aiEditState = null
+                    committedStableLen = 0
+                    updateUiIdle()
+                    return@launch
+                }
+                if (edited.isBlank()) {
+                    // LLM returned empty or failed — do not change
+                    txtStatus?.text = getString(R.string.status_llm_empty_result)
                     vibrateTick()
                     currentSessionKind = null
                     aiEditState = null
@@ -674,9 +688,51 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         // Replace current selection
                         ic.commitText(edited, 1)
                     } else {
-                        // Replace entire content using snapshot lengths
-                        ic.deleteSurroundingText(state.beforeLen, state.afterLen)
-                        ic.commitText(edited, 1)
+                        // Replace the last ASR committed segment when possible
+                        val lastText = lastAsrCommitText ?: ""
+                        val before = try { ic.getTextBeforeCursor(10000, 0)?.toString() } catch (_: Throwable) { null }
+                        val after = try { ic.getTextAfterCursor(10000, 0)?.toString() } catch (_: Throwable) { null }
+                        var replaced = false
+                        if (!lastText.isNullOrEmpty()) {
+                            if (!before.isNullOrEmpty() && before.endsWith(lastText)) {
+                                ic.deleteSurroundingText(lastText.length, 0)
+                                ic.commitText(edited, 1)
+                                replaced = true
+                            } else if (!after.isNullOrEmpty() && after.startsWith(lastText)) {
+                                ic.deleteSurroundingText(0, lastText.length)
+                                ic.commitText(edited, 1)
+                                replaced = true
+                            } else if (before != null && after != null) {
+                                // Attempt to find last occurrence in the surrounding context and move selection
+                                val combined = before + after
+                                val pos = combined.lastIndexOf(lastText)
+                                if (pos >= 0) {
+                                    val end = pos + lastText.length
+                                    try { ic.setSelection(end, end) } catch (_: Throwable) { }
+                                    // Recompute relative to the new cursor: ensure deletion still safe
+                                    val before2 = try { ic.getTextBeforeCursor(10000, 0)?.toString() } catch (_: Throwable) { null }
+                                    if (!before2.isNullOrEmpty() && before2.endsWith(lastText)) {
+                                        ic.deleteSurroundingText(lastText.length, 0)
+                                        ic.commitText(edited, 1)
+                                        replaced = true
+                                    }
+                                }
+                            }
+                        }
+                        if (!replaced) {
+                            // Fallback: do nothing but inform user for safety
+                            txtStatus?.text = getString(R.string.status_last_asr_not_found)
+                            ic.finishComposingText()
+                            ic.endBatchEdit()
+                            vibrateTick()
+                            currentSessionKind = null
+                            aiEditState = null
+                            committedStableLen = 0
+                            updateUiIdle()
+                            return@launch
+                        }
+                        // Update last ASR record to the new edited text for future edits
+                        lastAsrCommitText = edited
                     }
                     ic.finishComposingText()
                     ic.endBatchEdit()
@@ -704,6 +760,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 lastPostprocCommit = if (!processed.isNullOrEmpty() && processed != raw) PostprocCommit(processed, raw) else null
                 vibrateTick()
                 committedStableLen = 0
+                // Track last ASR commit as what we actually inserted
+                lastAsrCommitText = processed
                 updateUiIdle()
             } else {
                 val ic = currentInputConnection
@@ -725,6 +783,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 }
                 vibrateTick()
                 committedStableLen = 0
+                // Track last ASR commit as the full final text (not just remainder)
+                lastAsrCommitText = finalText
                 // Always return to idle after finalizing one utterance
                 updateUiIdle()
                 // Clear any previous postproc commit context
