@@ -151,6 +151,19 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_ELEVEN_MODEL_ID, "") ?: ""
         set(value) = sp.edit { putString(KEY_ELEVEN_MODEL_ID, value.trim()) }
 
+    // OpenAI 语音转文字（ASR）配置
+    var oaAsrEndpoint: String
+        get() = sp.getString(KEY_OA_ASR_ENDPOINT, DEFAULT_OA_ASR_ENDPOINT) ?: DEFAULT_OA_ASR_ENDPOINT
+        set(value) = sp.edit { putString(KEY_OA_ASR_ENDPOINT, value.trim()) }
+
+    var oaAsrApiKey: String
+        get() = sp.getString(KEY_OA_ASR_API_KEY, "") ?: ""
+        set(value) = sp.edit { putString(KEY_OA_ASR_API_KEY, value.trim()) }
+
+    var oaAsrModel: String
+        get() = sp.getString(KEY_OA_ASR_MODEL, DEFAULT_OA_ASR_MODEL) ?: DEFAULT_OA_ASR_MODEL
+        set(value) = sp.edit { putString(KEY_OA_ASR_MODEL, value.trim()) }
+
     // 选中的ASR供应商
     var asrVendor: AsrVendor
         get() = AsrVendor.fromId(sp.getString(KEY_ASR_VENDOR, AsrVendor.Volc.id))
@@ -159,10 +172,12 @@ class Prefs(context: Context) {
     fun hasVolcKeys(): Boolean = appKey.isNotBlank() && accessKey.isNotBlank()
     fun hasSfKeys(): Boolean = sfApiKey.isNotBlank()
     fun hasElevenKeys(): Boolean = elevenApiKey.isNotBlank()
+    fun hasOpenAiKeys(): Boolean = oaAsrApiKey.isNotBlank() && oaAsrEndpoint.isNotBlank() && oaAsrModel.isNotBlank()
     fun hasAsrKeys(): Boolean = when (asrVendor) {
         AsrVendor.Volc -> hasVolcKeys()
         AsrVendor.SiliconFlow -> hasSfKeys()
         AsrVendor.ElevenLabs -> hasElevenKeys()
+        AsrVendor.OpenAI -> hasOpenAiKeys()
     }
     fun hasLlmKeys(): Boolean = llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
 
@@ -206,6 +221,9 @@ class Prefs(context: Context) {
         private const val KEY_SF_MODEL = "sf_model"
         private const val KEY_ELEVEN_API_KEY = "eleven_api_key"
         private const val KEY_ELEVEN_MODEL_ID = "eleven_model_id"
+        private const val KEY_OA_ASR_ENDPOINT = "oa_asr_endpoint"
+        private const val KEY_OA_ASR_API_KEY = "oa_asr_api_key"
+        private const val KEY_OA_ASR_MODEL = "oa_asr_model"
         private const val KEY_PUNCT_1 = "punct_1"
         private const val KEY_PUNCT_2 = "punct_2"
         private const val KEY_PUNCT_3 = "punct_3"
@@ -214,6 +232,10 @@ class Prefs(context: Context) {
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
         const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
         const val DEFAULT_SF_MODEL = "FunAudioLLM/SenseVoiceSmall"
+
+        // OpenAI Audio Transcriptions 默认值
+        const val DEFAULT_OA_ASR_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions"
+        const val DEFAULT_OA_ASR_MODEL = "gpt-4o-mini-transcribe"
 
         // 合理的OpenAI格式默认值
         const val DEFAULT_LLM_ENDPOINT = "https://api.openai.com/v1"
@@ -290,6 +312,9 @@ class Prefs(context: Context) {
         o.put(KEY_SF_MODEL, sfModel)
         o.put(KEY_ELEVEN_API_KEY, elevenApiKey)
         o.put(KEY_ELEVEN_MODEL_ID, elevenModelId)
+        o.put(KEY_OA_ASR_ENDPOINT, oaAsrEndpoint)
+        o.put(KEY_OA_ASR_API_KEY, oaAsrApiKey)
+        o.put(KEY_OA_ASR_MODEL, oaAsrModel)
         // 自定义标点
         o.put(KEY_PUNCT_1, punct1)
         o.put(KEY_PUNCT_2, punct2)
@@ -336,6 +361,9 @@ class Prefs(context: Context) {
             optString(KEY_SF_MODEL)?.let { sfModel = it.ifBlank { DEFAULT_SF_MODEL } }
             optString(KEY_ELEVEN_API_KEY)?.let { elevenApiKey = it }
             optString(KEY_ELEVEN_MODEL_ID)?.let { elevenModelId = it }
+            optString(KEY_OA_ASR_ENDPOINT)?.let { oaAsrEndpoint = it.ifBlank { DEFAULT_OA_ASR_ENDPOINT } }
+            optString(KEY_OA_ASR_API_KEY)?.let { oaAsrApiKey = it }
+            optString(KEY_OA_ASR_MODEL)?.let { oaAsrModel = it.ifBlank { DEFAULT_OA_ASR_MODEL } }
             optString(KEY_PUNCT_1)?.let { punct1 = it }
             optString(KEY_PUNCT_2)?.let { punct2 = it }
             optString(KEY_PUNCT_3)?.let { punct3 = it }

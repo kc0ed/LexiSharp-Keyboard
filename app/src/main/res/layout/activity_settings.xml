@@ -294,6 +294,67 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
+            <!-- OpenAI settings group -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textColor="?attr/colorOnSurface"
+                android:text="@string/openai_section_title"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/groupOpenAI"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:boxBackgroundMode="outline"
+                    android:hint="@string/label_openai_asr_endpoint">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etOpenAiAsrEndpoint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textColorHint="?attr/colorOnSurfaceVariant" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:boxBackgroundMode="outline"
+                    android:hint="@string/label_openai_api_key">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etOpenAiApiKey"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textColorHint="?attr/colorOnSurfaceVariant" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:boxBackgroundMode="outline"
+                    android:hint="@string/label_openai_model">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etOpenAiModel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textColorHint="?attr/colorOnSurfaceVariant" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
 
             <TextView
                 android:layout_width="match_parent"
