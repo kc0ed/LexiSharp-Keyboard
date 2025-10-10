@@ -34,7 +34,8 @@ class ElevenLabsFileAsrEngine(
   private val context: Context,
   private val scope: CoroutineScope,
   private val prefs: Prefs,
-  private val listener: StreamingAsrEngine.Listener
+  private val listener: StreamingAsrEngine.Listener,
+  private val onRequestDuration: ((Long) -> Unit)? = null
 ) : StreamingAsrEngine {
 
   private val http: OkHttpClient = OkHttpClient.Builder()
@@ -154,6 +155,7 @@ class ElevenLabsFileAsrEngine(
           .post(multipartBuilder.build())
           .build()
 
+        val t0 = System.nanoTime()
         val resp = http.newCall(request).execute()
         resp.use { r ->
           val bodyStr = r.body?.string().orEmpty()
@@ -170,6 +172,8 @@ class ElevenLabsFileAsrEngine(
           }
           val text = parseTextFromResponse(bodyStr)
           if (text.isNotBlank()) {
+            val dt = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+            try { onRequestDuration?.invoke(dt) } catch (_: Throwable) {}
             listener.onFinal(text)
           } else {
             listener.onError("识别返回为空")

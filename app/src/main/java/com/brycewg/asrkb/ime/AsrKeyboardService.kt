@@ -86,6 +86,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     // Track last committed ASR result so AI Edit (no selection) can modify it
     private var lastAsrCommitText: String? = null
+    // 最近一次 ASR API 请求耗时（毫秒）
+    private var lastRequestDurationMs: Long? = null
 
     private enum class SessionKind { AiEdit }
     private data class AiEditState(
@@ -484,22 +486,22 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private fun buildEngineForCurrentMode(): StreamingAsrEngine? {
         return when (prefs.asrVendor) {
             AsrVendor.Volc -> if (prefs.hasVolcKeys()) {
-                VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             } else null
             AsrVendor.SiliconFlow -> if (prefs.hasSfKeys()) {
-                SiliconFlowFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                SiliconFlowFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             } else null
             AsrVendor.ElevenLabs -> if (prefs.hasElevenKeys()) {
-                ElevenLabsFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                ElevenLabsFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             } else null
             AsrVendor.OpenAI -> if (prefs.hasOpenAiKeys()) {
-                OpenAiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                OpenAiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             } else null
             AsrVendor.DashScope -> if (prefs.hasDashKeys()) {
-                DashscopeFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                DashscopeFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             } else null
             AsrVendor.Gemini -> if (prefs.hasGeminiKeys()) {
-                GeminiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                GeminiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             } else null
         }
     }
@@ -509,29 +511,47 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         return when (prefs.asrVendor) {
             AsrVendor.Volc -> when (current) {
                 is VolcFileAsrEngine -> current
-                else -> VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                else -> VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
             AsrVendor.SiliconFlow -> when (current) {
                 is SiliconFlowFileAsrEngine -> current
-                else -> SiliconFlowFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                else -> SiliconFlowFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
             AsrVendor.ElevenLabs -> when (current) {
                 is ElevenLabsFileAsrEngine -> current
-                else -> ElevenLabsFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                else -> ElevenLabsFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
             AsrVendor.OpenAI -> when (current) {
                 is OpenAiFileAsrEngine -> current
-                else -> OpenAiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                else -> OpenAiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
             AsrVendor.DashScope -> when (current) {
                 is DashscopeFileAsrEngine -> current
-                else -> DashscopeFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                else -> DashscopeFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
             AsrVendor.Gemini -> when (current) {
                 is GeminiFileAsrEngine -> current
-                else -> GeminiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                else -> GeminiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
         }
+    }
+
+    private fun onAsrRequestDuration(ms: Long) {
+        lastRequestDurationMs = ms
+    }
+
+    private fun goIdleWithTimingHint() {
+        updateUiIdle()
+        val ms = lastRequestDurationMs ?: return
+        try {
+            txtStatus?.text = getString(R.string.status_last_request_ms, ms)
+            val v = rootView ?: txtStatus
+            v?.postDelayed({
+                if (asrEngine?.isRunning != true) {
+                    txtStatus?.text = getString(R.string.status_idle)
+                }
+            }, 1500)
+        } catch (_: Throwable) { }
     }
 
     private fun updateUiIdle() {
@@ -667,7 +687,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 val ic = currentInputConnection
                 val state = aiEditState
                 if (ic == null || state == null) {
-                    updateUiIdle()
+                    goIdleWithTimingHint()
                     currentSessionKind = null
                     aiEditState = null
                     return@launch
@@ -692,7 +712,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     currentSessionKind = null
                     aiEditState = null
                     committedStableLen = 0
-                    updateUiIdle()
+                    goIdleWithTimingHint()
                     return@launch
                 }
                 if (edited.isBlank()) {
@@ -702,7 +722,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     currentSessionKind = null
                     aiEditState = null
                     committedStableLen = 0
-                    updateUiIdle()
+                    goIdleWithTimingHint()
                     return@launch
                 }
                 try {
@@ -751,7 +771,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                             currentSessionKind = null
                             aiEditState = null
                             committedStableLen = 0
-                            updateUiIdle()
+                            goIdleWithTimingHint()
                             return@launch
                         }
                         // Update last ASR record to the new edited text for future edits
@@ -765,7 +785,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 aiEditState = null
                 committedStableLen = 0
                 lastPostprocCommit = null
-                updateUiIdle()
+                goIdleWithTimingHint()
             } else if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
                 // Keep recognized text as composing while we post-process
                 currentInputConnection?.setComposingText(text, 1)
@@ -787,7 +807,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 committedStableLen = 0
                 // Track last ASR commit as what we actually inserted
                 lastAsrCommitText = finalProcessed
-                updateUiIdle()
+                goIdleWithTimingHint()
             } else {
                 val ic = currentInputConnection
                 val finalText = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
@@ -811,7 +831,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 // Track last ASR commit as the full final text (not just remainder)
                 lastAsrCommitText = finalText
                 // Always return to idle after finalizing one utterance
-                updateUiIdle()
+                goIdleWithTimingHint()
                 // Clear any previous postproc commit context
                 lastPostprocCommit = null
             }

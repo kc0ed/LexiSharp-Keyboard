@@ -32,7 +32,8 @@ class GeminiFileAsrEngine(
   private val context: Context,
   private val scope: CoroutineScope,
   private val prefs: Prefs,
-  private val listener: StreamingAsrEngine.Listener
+  private val listener: StreamingAsrEngine.Listener,
+  private val onRequestDuration: ((Long) -> Unit)? = null
 ) : StreamingAsrEngine {
 
   private val http: OkHttpClient = OkHttpClient.Builder()
@@ -138,6 +139,7 @@ class GeminiFileAsrEngine(
           .addHeader("Content-Type", "application/json; charset=utf-8")
           .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
           .build()
+        val t0 = System.nanoTime()
         val resp = http.newCall(req).execute()
         resp.use { r ->
           val str = r.body?.string().orEmpty()
@@ -154,6 +156,8 @@ class GeminiFileAsrEngine(
           }
           val text = parseGeminiText(str)
           if (text.isNotBlank()) {
+            val dt = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+            try { onRequestDuration?.invoke(dt) } catch (_: Throwable) {}
             listener.onFinal(text)
           } else {
             listener.onError("识别返回为空")
@@ -264,4 +268,3 @@ class GeminiFileAsrEngine(
     private const val DEFAULT_GEM_PROMPT = "请将以下音频逐字转写为文本，不要输出解释或前后缀。输入语言可能是中文、英文或其他语言"
   }
 }
-

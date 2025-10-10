@@ -41,7 +41,8 @@ class DashscopeFileAsrEngine(
   private val context: Context,
   private val scope: CoroutineScope,
   private val prefs: Prefs,
-  private val listener: StreamingAsrEngine.Listener
+  private val listener: StreamingAsrEngine.Listener,
+  private val onRequestDuration: ((Long) -> Unit)? = null
 ) : StreamingAsrEngine {
 
   private val http: OkHttpClient = OkHttpClient.Builder()
@@ -243,6 +244,7 @@ class DashscopeFileAsrEngine(
           .addHeader("X-DashScope-OssResourceResolve", "enable")
           .post(bodyObj.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
           .build()
+        val t0 = System.nanoTime()
         val genResp = http.newCall(genReq).execute()
         val genStr = genResp.body?.string().orEmpty()
         if (!genResp.isSuccessful) {
@@ -252,6 +254,8 @@ class DashscopeFileAsrEngine(
         }
         val text = parseDashscopeText(genStr)
         if (text.isNotBlank()) {
+          val dt = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+          try { onRequestDuration?.invoke(dt) } catch (_: Throwable) {}
           listener.onFinal(text)
         } else {
           listener.onError("识别返回为空")
@@ -323,4 +327,3 @@ class DashscopeFileAsrEngine(
     return bb.array()
   }
 }
-

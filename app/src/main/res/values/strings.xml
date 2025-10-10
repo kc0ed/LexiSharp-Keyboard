@@ -22,6 +22,7 @@
     <string name="status_ai_processing">AI后处理中…</string>
     <string name="status_ai_edit_listening">请说出编辑指令…</string>
     <string name="status_ai_editing">AI编辑中…</string>
+    <string name="status_last_request_ms">上次识别耗时：%1$d ms</string>
     <string name="status_reverted_to_raw">已切换为原始识别结果</string>
     <string name="status_llm_empty_result">AI编辑失败：未返回结果</string>
     <string name="status_last_asr_not_found">未找到上一次识别文本，已取消替换</string>
