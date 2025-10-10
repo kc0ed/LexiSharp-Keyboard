@@ -11,6 +11,20 @@
         app:titleCentered="true"
         app:title="@string/settings_title" />
 
+    <!-- ASR stats under title -->
+    <TextView
+        android:id="@+id/tvAsrTotalChars"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="14sp"
+        android:text="@string/label_asr_total_chars"
+        android:textAlignment="center" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -30,13 +44,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintWidth_max="@dimen/settings_form_max_width">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_instructions"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="14sp"
-                android:paddingBottom="12dp" />
+            <!-- Removed inline instructions; moved to guide dialog -->
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnEnable"

@@ -224,6 +224,18 @@ class Prefs(context: Context) {
         get() = (sp.getString(KEY_PUNCT_4, DEFAULT_PUNCT_4) ?: DEFAULT_PUNCT_4).trim()
         set(value) = sp.edit { putString(KEY_PUNCT_4, value.trim()) }
 
+    // 历史语音识别总字数（仅统计最终提交到编辑器的识别结果；AI编辑不计入）
+    var totalAsrChars: Long
+        get() = sp.getLong(KEY_TOTAL_ASR_CHARS, 0L).coerceAtLeast(0L)
+        set(value) = sp.edit { putLong(KEY_TOTAL_ASR_CHARS, value.coerceAtLeast(0L)) }
+
+    fun addAsrChars(delta: Int) {
+        if (delta <= 0) return
+        val cur = totalAsrChars
+        val next = (cur + delta).coerceAtLeast(0L)
+        totalAsrChars = next
+    }
+
     companion object {
         private const val KEY_APP_KEY = "app_key"
         private const val KEY_ACCESS_KEY = "access_key"
@@ -259,6 +271,7 @@ class Prefs(context: Context) {
         private const val KEY_PUNCT_2 = "punct_2"
         private const val KEY_PUNCT_3 = "punct_3"
         private const val KEY_PUNCT_4 = "punct_4"
+        private const val KEY_TOTAL_ASR_CHARS = "total_asr_chars"
 
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
         const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
@@ -362,6 +375,8 @@ class Prefs(context: Context) {
         o.put(KEY_PUNCT_2, punct2)
         o.put(KEY_PUNCT_3, punct3)
         o.put(KEY_PUNCT_4, punct4)
+        // 统计信息
+        o.put(KEY_TOTAL_ASR_CHARS, totalAsrChars)
         return o.toString()
     }
 
@@ -415,6 +430,12 @@ class Prefs(context: Context) {
             optString(KEY_PUNCT_2)?.let { punct2 = it }
             optString(KEY_PUNCT_3)?.let { punct3 = it }
             optString(KEY_PUNCT_4)?.let { punct4 = it }
+            // 统计信息（可选）
+            if (o.has(KEY_TOTAL_ASR_CHARS)) {
+                // 使用 optLong，若类型为字符串/浮点将尽力转换
+                val v = try { o.optLong(KEY_TOTAL_ASR_CHARS) } catch (_: Throwable) { 0L }
+                if (v >= 0L) totalAsrChars = v
+            }
             true
         } catch (_: Throwable) {
             false

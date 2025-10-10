@@ -18,6 +18,15 @@
             android:scaleType="fitCenter"
             android:src="@drawable/instruct" />
 
+        <!-- First-use steps moved from settings screen -->
+        <TextView
+            android:id="@+id/tvGuideSteps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="2dp"
+            android:text="@string/settings_instructions"/>
+            
         <TextView
             android:id="@+id/tvGuideHeader"
             android:layout_width="match_parent"
@@ -33,9 +42,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:lineSpacingExtra="2dp"
-            android:text="@string/guide_body"
-            android:textAlignment="center" />
-
+            android:text="@string/guide_body"/>
     </LinearLayout>
 
 </ScrollView>

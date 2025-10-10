@@ -807,6 +807,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 committedStableLen = 0
                 // Track last ASR commit as what we actually inserted
                 lastAsrCommitText = finalProcessed
+                // 统计：累加本次识别最终提交的字数（AI编辑不计入，上面分支已排除）
+                try { prefs.addAsrChars(finalProcessed.length) } catch (_: Throwable) { }
                 goIdleWithTimingHint()
             } else {
                 val ic = currentInputConnection
@@ -830,6 +832,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 committedStableLen = 0
                 // Track last ASR commit as the full final text (not just remainder)
                 lastAsrCommitText = finalText
+                // 统计：累加本次识别最终提交的字数
+                try { prefs.addAsrChars(finalText.length) } catch (_: Throwable) { }
                 // Always return to idle after finalizing one utterance
                 goIdleWithTimingHint()
                 // Clear any previous postproc commit context

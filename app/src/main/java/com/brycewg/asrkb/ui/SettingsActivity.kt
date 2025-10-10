@@ -10,6 +10,7 @@ import android.widget.EditText
 import android.widget.Toast
 import android.widget.Spinner
 import android.widget.ArrayAdapter
+import android.widget.TextView
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
 import androidx.appcompat.app.AppCompatActivity
@@ -85,6 +86,7 @@ class SettingsActivity : AppCompatActivity() {
         
         val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
         val spLanguage = findViewById<Spinner>(R.id.spLanguage)
+        val tvAsrTotalChars = findViewById<TextView>(R.id.tvAsrTotalChars)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
         val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
@@ -134,6 +136,10 @@ class SettingsActivity : AppCompatActivity() {
             etPunct2.setText(prefs.punct2)
             etPunct3.setText(prefs.punct3)
             etPunct4.setText(prefs.punct4)
+            // 统计：显示历史语音识别总字数
+            try {
+                tvAsrTotalChars.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
+            } catch (_: Throwable) { }
             // 注意：下拉框（Spinner）需在设置 adapter 后再更新 selection，
             // 这里仅更新输入框/开关等即时可用的视图。
         }
