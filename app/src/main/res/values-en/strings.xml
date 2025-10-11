@@ -102,14 +102,13 @@
     <!-- Quick guide (image + text) -->
     <string name="guide_header">From left to right, top to bottom</string>
     <string name="guide_body">Core usage: Press and hold to record, release to transcribe (centered button)
-Post-processing Prompt switch
-Enable post-processing
-Hide keyboard key
-Backspace key: slide up or left to delete all content, slide down to undo post-processing results
-Settings key
-Switch input method
-Edit key: tap to speak a command, then tap again when done; the LLM will modify the last transcribed/selected content according to the command
-
-Enter key
-The four areas below are customizable punctuation keys</string>
+\n 1. Post-processing Prompt switch
+\n 2. Enable post-processing
+\n 3. Hide keyboard key
+\n 4. Backspace key: slide up or left to delete all content, slide down to undo post-processing results
+\n 5. Settings key
+\n 6. Switch input method
+\n 7. Edit key: tap to speak a command, then tap again when done; the LLM will modify the last transcribed/selected content according to the command
+\n 8. Enter key
+\n 9. The four areas below are customizable punctuation keys</string>
 </resources>
