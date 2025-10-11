@@ -29,8 +29,11 @@ class ImePickerActivity : ComponentActivity() {
             } catch (_: Throwable) {
                 // 不再兜底跳系统设置，避免多次界面跳转造成割裂
             } finally {
-                // 延长一点时间，减少系统可能再启动设置页时的界面闪烁
-                handler.postDelayed({ finish() }, 500)
+                // 缩短延迟时间，立即关闭透明 Activity 避免闪烁
+                handler.postDelayed({
+                    finish()
+                    overridePendingTransition(0, 0)
+                }, 100)
             }
         }
     }

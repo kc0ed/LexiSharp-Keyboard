@@ -150,7 +150,7 @@ class FloatingImeSwitcherService : Service() {
             }
             // 从后台直接调 showInputMethodPicker 可能被系统忽略，改为启动透明 Activity 置前后再调
             val intent = Intent(this, ImePickerActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
             }
             startActivity(intent)
         } catch (_: Exception) {
