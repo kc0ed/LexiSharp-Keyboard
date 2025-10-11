@@ -205,7 +205,7 @@ class SettingsActivity : AppCompatActivity() {
         )
         spLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, languageItems)
         val savedTag = prefs.appLanguageTag
-        var languageSpinnerInitialized = false
+        var languageSpinnerInitialized: Boolean
         spLanguage.setSelection(
             when (savedTag) {
                 "zh", "zh-CN", "zh-Hans" -> 1

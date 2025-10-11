@@ -20,7 +20,6 @@
 
         <!-- First-use steps moved from settings screen -->
         <TextView
-            android:id="@+id/tvGuideSteps"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -28,7 +27,6 @@
             android:text="@string/settings_instructions"/>
             
         <TextView
-            android:id="@+id/tvGuideHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -37,7 +35,6 @@
             android:textAlignment="center" />
 
         <TextView
-            android:id="@+id/tvGuideBody"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"

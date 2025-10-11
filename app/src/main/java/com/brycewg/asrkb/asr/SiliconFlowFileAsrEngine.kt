@@ -165,7 +165,7 @@ class SiliconFlowFileAsrEngine(
                         obj.optString("text", "")
                     } catch (_: Throwable) { "" }
                     if (text.isNotBlank()) {
-                        val dt = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+                        val dt = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
                         try { onRequestDuration?.invoke(dt) } catch (_: Throwable) {}
                         listener.onFinal(text)
                     } else {

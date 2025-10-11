@@ -6,7 +6,6 @@ import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.util.Base64
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -17,7 +16,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
@@ -254,7 +252,7 @@ class DashscopeFileAsrEngine(
         }
         val text = parseDashscopeText(genStr)
         if (text.isNotBlank()) {
-          val dt = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+          val dt = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
           try { onRequestDuration?.invoke(dt) } catch (_: Throwable) {}
           listener.onFinal(text)
         } else {
