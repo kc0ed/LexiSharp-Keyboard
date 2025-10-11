@@ -43,15 +43,19 @@
     <string name="label_asr_vendor">ASR Provider</string>
     <string name="vendor_volc">Volcano Engine</string>
     <string name="vendor_sf">SiliconFlow</string>
+    <string name="vendor_dashscope">Alibaba Cloud DashScope</string>
     <string name="label_sf_api_key">API Key (Bearer)</string>
     <string name="label_sf_model">Model Name (e.g., FunAudioLLM/SenseVoiceSmall)</string>
+    <string name="dash_section_title">Alibaba Cloud DashScope ASR Parameters</string>
+    <string name="label_dash_api_key">DashScope API Key (Bearer)</string>
+    <string name="label_dash_model">Model (e.g., qwen3-asr-flash)</string>
+    <string name="status_last_request_ms">Last request time: %1$d ms</string>
     <string name="btn_save">Save</string>
     <string name="btn_close">Close</string>
     <string name="title_quick_guide">Quick Start Guide</string>
     <string name="label_trim_trailing_punct">Remove trailing punctuation on finish</string>
-    <string name="label_show_ime_switcher">Show “Switch Input Method” button</string>
+    <string name="label_show_ime_switcher">Show "Switch Input Method" button</string>
     <string name="label_mic_haptic">Haptic feedback on mic press</string>
-    <string name="tile_switch_ime">Switch Input Method</string>
     <string name="label_floating_switcher">Enable floating ball to switch IME</string>
     <string name="label_floating_alpha">Floating ball transparency</string>
     <string name="toast_need_overlay_perm">Please grant "Display over other apps" in system settings to enable the floating ball</string>
@@ -91,6 +95,9 @@
     <string name="toast_export_failed">Export failed</string>
     <string name="toast_import_success">Imported successfully and applied</string>
     <string name="toast_import_failed">Import failed or incorrect format</string>
+
+    <!-- Stats -->
+    <string name="label_asr_total_chars">Total characters from speech recognition: %1$d</string>
 
     <!-- Quick guide (image + text) -->
     <string name="guide_header">From left to right, top to bottom</string>
