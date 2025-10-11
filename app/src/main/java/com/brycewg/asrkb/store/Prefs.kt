@@ -3,18 +3,33 @@ package com.brycewg.asrkb.store
 import android.content.Context
 import androidx.core.content.edit
 import com.brycewg.asrkb.asr.AsrVendor
+import kotlin.reflect.KProperty
 
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("asr_prefs", Context.MODE_PRIVATE)
 
-    // 火山引擎凭证
-    var appKey: String
-        get() = sp.getString(KEY_APP_KEY, "") ?: ""
-        set(value) = sp.edit { putString(KEY_APP_KEY, value.trim()) }
+    // --- 小工具：统一的偏好项委托，减少重复 getter/setter 代码 ---
+    private fun stringPref(key: String, default: String = "") = object {
+        operator fun getValue(thisRef: Prefs, property: KProperty<*>): String =
+            sp.getString(key, default) ?: default
 
-    var accessKey: String
-        get() = sp.getString(KEY_ACCESS_KEY, "") ?: ""
-        set(value) = sp.edit { putString(KEY_ACCESS_KEY, value.trim()) }
+        operator fun setValue(thisRef: Prefs, property: KProperty<*>, value: String) {
+            sp.edit { putString(key, value.trim()) }
+        }
+    }
+
+    // 直接从 SP 读取字符串，供通用导入/导出和校验使用
+    private fun getPrefString(key: String, default: String = ""): String =
+        sp.getString(key, default) ?: default
+
+    private fun setPrefString(key: String, value: String) {
+        sp.edit { putString(key, value.trim()) }
+    }
+
+    // 火山引擎凭证
+    var appKey: String by stringPref(KEY_APP_KEY, "")
+
+    var accessKey: String by stringPref(KEY_ACCESS_KEY, "")
 
     var trimFinalTrailingPunct: Boolean
         get() = sp.getBoolean(KEY_TRIM_FINAL_TRAILING_PUNCT, false)
@@ -134,53 +149,31 @@ class Prefs(context: Context) {
         }
 
     // SiliconFlow凭证
-    var sfApiKey: String
-        get() = sp.getString(KEY_SF_API_KEY, "") ?: ""
-        set(value) = sp.edit { putString(KEY_SF_API_KEY, value.trim()) }
+    var sfApiKey: String by stringPref(KEY_SF_API_KEY, "")
 
-    var sfModel: String
-        get() = sp.getString(KEY_SF_MODEL, DEFAULT_SF_MODEL) ?: DEFAULT_SF_MODEL
-        set(value) = sp.edit { putString(KEY_SF_MODEL, value.trim()) }
+    var sfModel: String by stringPref(KEY_SF_MODEL, DEFAULT_SF_MODEL)
 
     // 阿里云百炼（DashScope）凭证
-    var dashApiKey: String
-        get() = sp.getString(KEY_DASH_API_KEY, "") ?: ""
-        set(value) = sp.edit { putString(KEY_DASH_API_KEY, value.trim()) }
+    var dashApiKey: String by stringPref(KEY_DASH_API_KEY, "")
 
-    var dashModel: String
-        get() = sp.getString(KEY_DASH_MODEL, DEFAULT_DASH_MODEL) ?: DEFAULT_DASH_MODEL
-        set(value) = sp.edit { putString(KEY_DASH_MODEL, value.trim()) }
+    var dashModel: String by stringPref(KEY_DASH_MODEL, DEFAULT_DASH_MODEL)
 
     // ElevenLabs凭证
-    var elevenApiKey: String
-        get() = sp.getString(KEY_ELEVEN_API_KEY, "") ?: ""
-        set(value) = sp.edit { putString(KEY_ELEVEN_API_KEY, value.trim()) }
+    var elevenApiKey: String by stringPref(KEY_ELEVEN_API_KEY, "")
 
-    var elevenModelId: String
-        get() = sp.getString(KEY_ELEVEN_MODEL_ID, "") ?: ""
-        set(value) = sp.edit { putString(KEY_ELEVEN_MODEL_ID, value.trim()) }
+    var elevenModelId: String by stringPref(KEY_ELEVEN_MODEL_ID, "")
 
     // OpenAI 语音转文字（ASR）配置
-    var oaAsrEndpoint: String
-        get() = sp.getString(KEY_OA_ASR_ENDPOINT, DEFAULT_OA_ASR_ENDPOINT) ?: DEFAULT_OA_ASR_ENDPOINT
-        set(value) = sp.edit { putString(KEY_OA_ASR_ENDPOINT, value.trim()) }
+    var oaAsrEndpoint: String by stringPref(KEY_OA_ASR_ENDPOINT, DEFAULT_OA_ASR_ENDPOINT)
 
-    var oaAsrApiKey: String
-        get() = sp.getString(KEY_OA_ASR_API_KEY, "") ?: ""
-        set(value) = sp.edit { putString(KEY_OA_ASR_API_KEY, value.trim()) }
+    var oaAsrApiKey: String by stringPref(KEY_OA_ASR_API_KEY, "")
 
-    var oaAsrModel: String
-        get() = sp.getString(KEY_OA_ASR_MODEL, DEFAULT_OA_ASR_MODEL) ?: DEFAULT_OA_ASR_MODEL
-        set(value) = sp.edit { putString(KEY_OA_ASR_MODEL, value.trim()) }
+    var oaAsrModel: String by stringPref(KEY_OA_ASR_MODEL, DEFAULT_OA_ASR_MODEL)
 
     // Google Gemini 语音理解（通过提示词转写）
-    var gemApiKey: String
-        get() = sp.getString(KEY_GEM_API_KEY, "") ?: ""
-        set(value) = sp.edit { putString(KEY_GEM_API_KEY, value.trim()) }
+    var gemApiKey: String by stringPref(KEY_GEM_API_KEY, "")
 
-    var gemModel: String
-        get() = sp.getString(KEY_GEM_MODEL, DEFAULT_GEM_MODEL) ?: DEFAULT_GEM_MODEL
-        set(value) = sp.edit { putString(KEY_GEM_MODEL, value.trim()) }
+    var gemModel: String by stringPref(KEY_GEM_MODEL, DEFAULT_GEM_MODEL)
 
     var gemPrompt: String
         get() = sp.getString(KEY_GEM_PROMPT, DEFAULT_GEM_PROMPT) ?: DEFAULT_GEM_PROMPT
@@ -191,20 +184,52 @@ class Prefs(context: Context) {
         get() = AsrVendor.fromId(sp.getString(KEY_ASR_VENDOR, AsrVendor.Volc.id))
         set(value) = sp.edit { putString(KEY_ASR_VENDOR, value.id) }
 
-    fun hasVolcKeys(): Boolean = appKey.isNotBlank() && accessKey.isNotBlank()
-    fun hasSfKeys(): Boolean = sfApiKey.isNotBlank()
-    fun hasDashKeys(): Boolean = dashApiKey.isNotBlank()
-    fun hasElevenKeys(): Boolean = elevenApiKey.isNotBlank()
-    fun hasOpenAiKeys(): Boolean = oaAsrApiKey.isNotBlank() && oaAsrEndpoint.isNotBlank() && oaAsrModel.isNotBlank()
-    fun hasGeminiKeys(): Boolean = gemApiKey.isNotBlank() && gemModel.isNotBlank()
-    fun hasAsrKeys(): Boolean = when (asrVendor) {
-        AsrVendor.Volc -> hasVolcKeys()
-        AsrVendor.SiliconFlow -> hasSfKeys()
-        AsrVendor.ElevenLabs -> hasElevenKeys()
-        AsrVendor.OpenAI -> hasOpenAiKeys()
-        AsrVendor.DashScope -> hasDashKeys()
-        AsrVendor.Gemini -> hasGeminiKeys()
+    // --- 供应商配置通用化 ---
+    private data class VendorField(val key: String, val required: Boolean = false, val default: String = "")
+
+    private val vendorFields: Map<AsrVendor, List<VendorField>> = mapOf(
+        AsrVendor.Volc to listOf(
+            VendorField(KEY_APP_KEY, required = true),
+            VendorField(KEY_ACCESS_KEY, required = true)
+        ),
+        AsrVendor.SiliconFlow to listOf(
+            VendorField(KEY_SF_API_KEY, required = true),
+            VendorField(KEY_SF_MODEL, default = DEFAULT_SF_MODEL)
+        ),
+        AsrVendor.ElevenLabs to listOf(
+            VendorField(KEY_ELEVEN_API_KEY, required = true),
+            VendorField(KEY_ELEVEN_MODEL_ID)
+        ),
+        AsrVendor.OpenAI to listOf(
+            VendorField(KEY_OA_ASR_ENDPOINT, required = true, default = DEFAULT_OA_ASR_ENDPOINT),
+            VendorField(KEY_OA_ASR_API_KEY, required = true),
+            VendorField(KEY_OA_ASR_MODEL, required = true, default = DEFAULT_OA_ASR_MODEL)
+        ),
+        AsrVendor.DashScope to listOf(
+            VendorField(KEY_DASH_API_KEY, required = true),
+            VendorField(KEY_DASH_MODEL, default = DEFAULT_DASH_MODEL)
+        ),
+        AsrVendor.Gemini to listOf(
+            VendorField(KEY_GEM_API_KEY, required = true),
+            VendorField(KEY_GEM_MODEL, required = true, default = DEFAULT_GEM_MODEL),
+            VendorField(KEY_GEM_PROMPT, default = DEFAULT_GEM_PROMPT)
+        )
+    )
+
+    fun hasVendorKeys(v: AsrVendor): Boolean {
+        val fields = vendorFields[v] ?: return false
+        return fields.filter { it.required }.all { f ->
+            getPrefString(f.key, f.default).isNotBlank()
+        }
     }
+
+    fun hasVolcKeys(): Boolean = hasVendorKeys(AsrVendor.Volc)
+    fun hasSfKeys(): Boolean = hasVendorKeys(AsrVendor.SiliconFlow)
+    fun hasDashKeys(): Boolean = hasVendorKeys(AsrVendor.DashScope)
+    fun hasElevenKeys(): Boolean = hasVendorKeys(AsrVendor.ElevenLabs)
+    fun hasOpenAiKeys(): Boolean = hasVendorKeys(AsrVendor.OpenAI)
+    fun hasGeminiKeys(): Boolean = hasVendorKeys(AsrVendor.Gemini)
+    fun hasAsrKeys(): Boolean = hasVendorKeys(asrVendor)
     fun hasLlmKeys(): Boolean = llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
 
     // 自定义标点按钮（4个位置）
@@ -356,20 +381,12 @@ class Prefs(context: Context) {
         o.put(KEY_LLM_PROMPT, llmPrompt)
         o.put(KEY_LLM_PROMPT_PRESETS, promptPresetsJson)
         o.put(KEY_LLM_PROMPT_ACTIVE_ID, activePromptId)
-        // 供应商设置
+        // 供应商设置（通用导出）
         o.put(KEY_ASR_VENDOR, asrVendor.id)
-        o.put(KEY_SF_API_KEY, sfApiKey)
-        o.put(KEY_SF_MODEL, sfModel)
-        o.put(KEY_DASH_API_KEY, dashApiKey)
-        o.put(KEY_DASH_MODEL, dashModel)
-        o.put(KEY_ELEVEN_API_KEY, elevenApiKey)
-        o.put(KEY_ELEVEN_MODEL_ID, elevenModelId)
-        o.put(KEY_OA_ASR_ENDPOINT, oaAsrEndpoint)
-        o.put(KEY_OA_ASR_API_KEY, oaAsrApiKey)
-        o.put(KEY_OA_ASR_MODEL, oaAsrModel)
-        o.put(KEY_GEM_API_KEY, gemApiKey)
-        o.put(KEY_GEM_MODEL, gemModel)
-        o.put(KEY_GEM_PROMPT, gemPrompt)
+        // 遍历所有供应商字段，统一导出，避免逐个硬编码
+        vendorFields.values.flatten().forEach { f ->
+            o.put(f.key, getPrefString(f.key, f.default))
+        }
         // 自定义标点
         o.put(KEY_PUNCT_1, punct1)
         o.put(KEY_PUNCT_2, punct2)
@@ -414,18 +431,13 @@ class Prefs(context: Context) {
             }
 
             optString(KEY_ASR_VENDOR)?.let { asrVendor = AsrVendor.fromId(it) }
-            optString(KEY_SF_API_KEY)?.let { sfApiKey = it }
-            optString(KEY_SF_MODEL)?.let { sfModel = it.ifBlank { DEFAULT_SF_MODEL } }
-            optString(KEY_DASH_API_KEY)?.let { dashApiKey = it }
-            optString(KEY_DASH_MODEL)?.let { dashModel = it.ifBlank { DEFAULT_DASH_MODEL } }
-            optString(KEY_ELEVEN_API_KEY)?.let { elevenApiKey = it }
-            optString(KEY_ELEVEN_MODEL_ID)?.let { elevenModelId = it }
-            optString(KEY_OA_ASR_ENDPOINT)?.let { oaAsrEndpoint = it.ifBlank { DEFAULT_OA_ASR_ENDPOINT } }
-            optString(KEY_OA_ASR_API_KEY)?.let { oaAsrApiKey = it }
-            optString(KEY_OA_ASR_MODEL)?.let { oaAsrModel = it.ifBlank { DEFAULT_OA_ASR_MODEL } }
-            optString(KEY_GEM_API_KEY)?.let { gemApiKey = it }
-            optString(KEY_GEM_MODEL)?.let { gemModel = it.ifBlank { DEFAULT_GEM_MODEL } }
-            optString(KEY_GEM_PROMPT)?.let { gemPrompt = it.ifBlank { DEFAULT_GEM_PROMPT } }
+            // 供应商设置（通用导入）
+            vendorFields.values.flatten().forEach { f ->
+                optString(f.key)?.let { v ->
+                    val final = if (v.isBlank()) f.default else v
+                    setPrefString(f.key, final)
+                }
+            }
             optString(KEY_PUNCT_1)?.let { punct1 = it }
             optString(KEY_PUNCT_2)?.let { punct2 = it }
             optString(KEY_PUNCT_3)?.let { punct3 = it }

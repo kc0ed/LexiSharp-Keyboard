@@ -178,6 +178,15 @@ class SettingsActivity : AppCompatActivity() {
         refreshSpinnerSelection()
 
         // ASR供应商选择器设置
+        // 统一的供应商顺序，便于 index<->vendor 互转与复用
+        val vendorOrder = listOf(
+            AsrVendor.Volc,
+            AsrVendor.SiliconFlow,
+            AsrVendor.ElevenLabs,
+            AsrVendor.OpenAI,
+            AsrVendor.DashScope,
+            AsrVendor.Gemini
+        )
         val vendorItems = listOf(
             getString(R.string.vendor_volc),
             getString(R.string.vendor_sf),
@@ -187,16 +196,7 @@ class SettingsActivity : AppCompatActivity() {
             getString(R.string.vendor_gemini)
         )
         spAsrVendor.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, vendorItems)
-        spAsrVendor.setSelection(
-            when (prefs.asrVendor) {
-                AsrVendor.Volc -> 0
-                AsrVendor.SiliconFlow -> 1
-                AsrVendor.ElevenLabs -> 2
-                AsrVendor.OpenAI -> 3
-                AsrVendor.DashScope -> 4
-                AsrVendor.Gemini -> 5
-            }
-        )
+        spAsrVendor.setSelection(vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0))
         // 应用语言选择器设置
         val languageItems = listOf(
             getString(R.string.lang_follow_system),
@@ -215,38 +215,25 @@ class SettingsActivity : AppCompatActivity() {
         )
         languageSpinnerInitialized = true
         fun applyVendorVisibility(v: AsrVendor) {
-            fun vis(target: AsrVendor) = if (v == target) View.VISIBLE else View.GONE
-            // Volc
-            titleVolc.visibility = vis(AsrVendor.Volc)
-            groupVolc.visibility = vis(AsrVendor.Volc)
-            // SiliconFlow
-            titleSf.visibility = vis(AsrVendor.SiliconFlow)
-            groupSf.visibility = vis(AsrVendor.SiliconFlow)
-            // ElevenLabs
-            titleEleven.visibility = vis(AsrVendor.ElevenLabs)
-            groupEleven.visibility = vis(AsrVendor.ElevenLabs)
-            // OpenAI
-            titleOpenAi.visibility = vis(AsrVendor.OpenAI)
-            groupOpenAi.visibility = vis(AsrVendor.OpenAI)
-            // DashScope
-            titleDash.visibility = vis(AsrVendor.DashScope)
-            groupDash.visibility = vis(AsrVendor.DashScope)
-            // Gemini
-            titleGemini.visibility = vis(AsrVendor.Gemini)
-            groupGemini.visibility = vis(AsrVendor.Gemini)
+            // 通过映射统一控制各供应商标题与内容分组可见性
+            val groups = mapOf(
+                AsrVendor.Volc to listOf(titleVolc, groupVolc),
+                AsrVendor.SiliconFlow to listOf(titleSf, groupSf),
+                AsrVendor.ElevenLabs to listOf(titleEleven, groupEleven),
+                AsrVendor.OpenAI to listOf(titleOpenAi, groupOpenAi),
+                AsrVendor.DashScope to listOf(titleDash, groupDash),
+                AsrVendor.Gemini to listOf(titleGemini, groupGemini)
+            )
+            groups.forEach { (vendor, views) ->
+                val vis = if (vendor == v) View.VISIBLE else View.GONE
+                views.forEach { it.visibility = vis }
+            }
         }
         applyVendorVisibility(prefs.asrVendor)
 
         spAsrVendor.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val vendor = when (position) {
-                    1 -> AsrVendor.SiliconFlow
-                    2 -> AsrVendor.ElevenLabs
-                    3 -> AsrVendor.OpenAI
-                    4 -> AsrVendor.DashScope
-                    5 -> AsrVendor.Gemini
-                    else -> AsrVendor.Volc
-                }
+                val vendor = vendorOrder.getOrNull(position) ?: AsrVendor.Volc
                 prefs.asrVendor = vendor
                 applyVendorVisibility(vendor)
             }
@@ -410,16 +397,7 @@ class SettingsActivity : AppCompatActivity() {
                         // 刷新提示词预设
                         refreshSpinnerSelection()
                         // 同步 ASR 供应商选择与可见性
-                        spAsrVendor.setSelection(
-                            when (prefs.asrVendor) {
-                                AsrVendor.Volc -> 0
-                                AsrVendor.SiliconFlow -> 1
-                                AsrVendor.ElevenLabs -> 2
-                                AsrVendor.OpenAI -> 3
-                                AsrVendor.DashScope -> 4
-                                AsrVendor.Gemini -> 5
-                            }
-                        )
+                        spAsrVendor.setSelection(vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0))
                         // 同步语言选择（将触发 onItemSelected 从而应用语言）
                         val tag = prefs.appLanguageTag
                         spLanguage.setSelection(
