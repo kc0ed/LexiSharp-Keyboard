@@ -20,6 +20,16 @@ import com.brycewg.asrkb.store.Prefs
  */
 class AsrAccessibilityService : AccessibilityService() {
 
+    /**
+     * 焦点输入框上下文：用于在悬浮球语音识别期间进行“前缀 + 预览 + 后缀”的拼接写入。
+     * - prefix：选区前文本
+     * - suffix：选区后文本
+     */
+    data class FocusContext(
+        val prefix: String,
+        val suffix: String
+    )
+
     companion object {
         private const val TAG = "AsrAccessibilityService"
         const val ACTION_INSERT_TEXT = "com.brycewg.asrkb.action.INSERT_TEXT"
@@ -28,6 +38,33 @@ class AsrAccessibilityService : AccessibilityService() {
         private var instance: AsrAccessibilityService? = null
 
         fun isEnabled(): Boolean = instance != null
+
+        /**
+         * 读取当前焦点可编辑节点的文本与选区，转换为前后缀快照；
+         * 若无可编辑焦点，则返回 null（不进行预览）。
+         */
+        fun getCurrentFocusContext(): FocusContext? {
+            val svc = instance ?: return null
+            return try {
+                val root = svc.rootInActiveWindow ?: return null
+                val focused = svc.findFocusedEditableNode(root)
+                if (focused != null) {
+                    val full = focused.text?.toString() ?: ""
+                    val selStart = focused.textSelectionStart.takeIf { it >= 0 } ?: full.length
+                    val selEnd = focused.textSelectionEnd.takeIf { it >= 0 } ?: full.length
+                    val start = selStart.coerceIn(0, full.length)
+                    val end = selEnd.coerceIn(0, full.length)
+                    val s = minOf(start, end)
+                    val e = maxOf(start, end)
+                    @Suppress("DEPRECATION")
+                    focused.recycle()
+                    FocusContext(
+                        prefix = full.substring(0, s),
+                        suffix = full.substring(e, full.length)
+                    )
+                } else null
+            } catch (_: Throwable) { null }
+        }
 
         fun insertText(context: Context, text: String): Boolean {
             Log.d(TAG, "insertText called with: $text, service enabled: ${instance != null}")
@@ -41,6 +78,15 @@ class AsrAccessibilityService : AccessibilityService() {
             }
 
             return service.performInsertText(text)
+        }
+
+        /**
+         * 静默写入文本：不弹 Toast、不复制到剪贴板（用于中间结果预览）。
+         * 返回是否写入成功。
+         */
+        fun insertTextSilent(text: String): Boolean {
+            val service = instance ?: return false
+            return service.performInsertTextSilent(text)
         }
         
         private fun copyToClipboard(context: Context, text: String) {
@@ -175,6 +221,22 @@ class AsrAccessibilityService : AccessibilityService() {
             Toast.makeText(this, getString(com.brycewg.asrkb.R.string.floating_asr_copied), Toast.LENGTH_SHORT).show()
             return false
         }
+    }
+
+    // 静默版本：仅尝试设置文本，不做 Toast/复制
+    private fun performInsertTextSilent(text: String): Boolean {
+        return try {
+            val rootNode = rootInActiveWindow ?: return false
+            val focusedNode = findFocusedEditableNode(rootNode)
+            if (focusedNode != null) {
+                val arguments = Bundle()
+                arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+                val success = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+                @Suppress("DEPRECATION")
+                focusedNode.recycle()
+                success
+            } else false
+        } catch (_: Throwable) { false }
     }
 
     private fun findFocusedEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {

@@ -38,6 +38,7 @@ import com.brycewg.asrkb.asr.GeminiFileAsrEngine
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.ui.AsrAccessibilityService.FocusContext
 import com.brycewg.asrkb.asr.VolcStreamAsrEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,6 +73,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private var isProcessing = false
     private var progressAnimator: ObjectAnimator? = null
     private var currentToast: Toast? = null
+    // 预览会话上下文：记录焦点输入框前后缀与上次中间结果，便于动态预览
+    private var focusContext: FocusContext? = null
+    private var lastPartialForPreview: String? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private var imeVisible: Boolean = false
@@ -295,6 +299,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
 
         asrEngine = buildEngineForCurrentMode()
         Log.d(TAG, "ASR engine created: ${asrEngine?.javaClass?.simpleName}")
+        // 流式预览仅在存在焦点可编辑框时启用；若无焦点则不进行预览（按用户期望）
+        focusContext = if (prefs.volcStreamingEnabled) AsrAccessibilityService.getCurrentFocusContext() else null
+        lastPartialForPreview = null
         asrEngine?.start()
     }
 
@@ -402,15 +409,36 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             isRecording = false
             updateBallState()
 
-            // 插入文本
+            // 插入文本（若存在焦点快照，则进行“前缀 + 最终结果 + 后缀”的拼接写入）
             if (finalText.isNotEmpty()) {
-                Log.d(TAG, "Inserting text: $finalText")
-                AsrAccessibilityService.insertText(this@FloatingAsrService, finalText)
+                val ctx = focusContext
+                val toWrite = if (ctx != null) ctx.prefix + finalText + ctx.suffix else finalText
+                Log.d(TAG, "Inserting text: $toWrite (previewCtx=${ctx != null})")
+                AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
                 showToast(getString(R.string.floating_asr_completed))
             } else {
                 Log.w(TAG, "Final text is empty")
             }
+            // 结束会话，清理状态
+            focusContext = null
+            lastPartialForPreview = null
         }
+    }
+
+    override fun onPartial(text: String) {
+        // 仅在录音中且存在焦点可编辑框时进行动态预览；
+        // 无焦点时按需忽略（不预览）。
+        if (!isRecording) return
+        val ctx = focusContext ?: return
+        if (text.isEmpty()) return
+        if (lastPartialForPreview == text) return
+        val toWrite = ctx.prefix + text + ctx.suffix
+        Log.d(TAG, "onPartial preview: $text")
+        // 切到主线程，静默写入，避免 Toast/Looper 异常与刷屏
+        serviceScope.launch {
+            AsrAccessibilityService.insertTextSilent(toWrite)
+        }
+        lastPartialForPreview = text
     }
 
     override fun onError(message: String) {
@@ -420,6 +448,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             isProcessing = false
             updateBallState()
             showToast(getString(R.string.floating_asr_error, message))
+            focusContext = null
+            lastPartialForPreview = null
         }
     }
 
