@@ -2,12 +2,12 @@ name: Release on Version Bump
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
     paths:
-      - 'app/build.gradle'
-      - 'app/build.gradle.kts'
-      - 'gradle.properties'
-      - 'app/src/main/AndroidManifest.xml'
+      - "app/build.gradle"
+      - "app/build.gradle.kts"
+      - "gradle.properties"
+      - "app/src/main/AndroidManifest.xml"
   workflow_dispatch: {}
 
 concurrency:
@@ -21,17 +21,19 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Checkout
+      - name: Checkout with full history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 获取完整历史以便生成 changelog
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
+          distribution: "temurin"
+          java-version: "17"
+          cache: "gradle"
 
-      - name: Validate Gradle Wrapper (non-blocking)
+      - name: Validate Gradle Wrapper
         uses: gradle/wrapper-validation-action@v2
         continue-on-error: true
         timeout-minutes: 2
@@ -111,52 +113,35 @@ jobs:
                   break
           vn_prev, vc_prev = parse_versions(text_prev)
 
+          # 只检查 versionCode 是否变化
           changed = False
-          if vn_head and (vn_head != (vn_prev or '')):
-              changed = True
-          elif vc_head and (vc_head != (vc_prev or '')):
+          if vc_head and (vc_head != (vc_prev or '')):
               changed = True
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f'version_name={vn_head or ""}\n')
               f.write(f'version_code={vc_head or ""}\n')
+              f.write(f'prev_version_name={vn_prev or ""}\n')
+              f.write(f'prev_version_code={vc_prev or ""}\n')
               f.write(f'changed={"true" if changed else "false"}\n')
           PY
 
-      - name: Stop if version didn't change
+      - name: Stop if versionCode didn't change
         if: steps.version.outputs.changed != 'true'
         run: |
-          echo "Version did not change. Skipping release."
+          echo "versionCode 未变化,跳过 release。"
+          echo "当前 versionCode: ${{ steps.version.outputs.version_code }}"
           exit 0
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 34
-          build-tools: 34.0.0
-
-      - name: Make Gradle wrapper executable
+      - name: Get previous tag
+        id: prev_tag
         run: |
-          chmod +x ./gradlew || true
-          sed -i -e 's/\r$//' ./gradlew || true
+          # 获取上一个 tag
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+          echo "上一个 tag: $PREV_TAG"
 
-      - name: Build debug APK (no signing keys required)
-        run: ./gradlew --no-daemon clean assembleDebug
-        continue-on-error: true
-
-      - name: Locate built APK (if any)
-        id: locate_apk
-        run: |
-          APK_PATH=$(ls app/build/outputs/apk/debug/*.apk 2>/dev/null || true)
-          if [ -n "$APK_PATH" ]; then
-            echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
-            echo "Found APK: $APK_PATH"
-          else
-            echo "apk_path=" >> "$GITHUB_OUTPUT"
-            echo "No APK built; will release notes only."
-          fi
-
-      - name: Compose tag
+      - name: Compose current tag
         id: tag
         run: |
           V="${{ steps.version.outputs.version_name }}"
@@ -164,24 +149,139 @@ jobs:
           if [ -z "$V" ]; then V="$(date +%Y%m%d)-${{ github.sha }}"; fi
           echo "tag=v$V" >> "$GITHUB_OUTPUT"
           echo "version_display=$V" >> "$GITHUB_OUTPUT"
+          echo "当前 tag: v$V"
 
-      - name: Create GitHub release (with APK)
-        if: steps.locate_apk.outputs.apk_path != ''
-        uses: softprops/action-gh-release@v2
+      - name: Generate changelog between tags
+        id: changelog
+        run: |
+          PREV_TAG="${{ steps.prev_tag.outputs.prev_tag }}"
+          CURRENT_TAG="${{ steps.tag.outputs.tag }}"
+
+          if [ -z "$PREV_TAG" ]; then
+            echo "## 📝 更新日志" > changelog.md
+            echo "" >> changelog.md
+            echo "这是首个发布版本。" >> changelog.md
+            echo "" >> changelog.md
+            echo "### 所有提交" >> changelog.md
+            git log --pretty=format:"- %s (%h) - %an" --no-merges >> changelog.md
+          else
+            echo "## 📝 更新日志 ($PREV_TAG → $CURRENT_TAG)" > changelog.md
+            echo "" >> changelog.md
+            echo "### 🎯 版本信息" >> changelog.md
+            echo "- **版本号**: ${{ steps.version.outputs.version_name }}" >> changelog.md
+            echo "- **版本代码**: ${{ steps.version.outputs.version_code }}" >> changelog.md
+            echo "- **上一版本**: ${{ steps.version.outputs.prev_version_name }} (code: ${{ steps.version.outputs.prev_version_code }})" >> changelog.md
+            echo "" >> changelog.md
+            echo "### 📋 提交记录" >> changelog.md
+            git log $PREV_TAG..HEAD --pretty=format:"- %s (%h) - %an" --no-merges >> changelog.md
+            echo "" >> changelog.md
+            echo "" >> changelog.md
+            echo "### 📊 统计信息" >> changelog.md
+            COMMIT_COUNT=$(git rev-list $PREV_TAG..HEAD --count)
+            echo "- 提交数量: $COMMIT_COUNT" >> changelog.md
+            FILES_CHANGED=$(git diff --shortstat $PREV_TAG..HEAD | sed 's/^[[:space:]]*//')
+            if [ -n "$FILES_CHANGED" ]; then
+              echo "- 文件变更: $FILES_CHANGED" >> changelog.md
+            fi
+          fi
+
+          # 输出到 GitHub output
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          cat changelog.md >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: ${{ steps.tag.outputs.tag }}
-          generate_release_notes: true
-          files: ${{ steps.locate_apk.outputs.apk_path }}
+          api-level: 34
+          build-tools: 34.0.0
+
+      - name: Decode and setup keystore
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "解码签名密钥..."
+          echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+          echo "KEYSTORE_FILE=${{ github.workspace }}/release.keystore" >> $GITHUB_ENV
+          ls -lh release.keystore
 
-      - name: Create GitHub release (notes only)
-        if: steps.locate_apk.outputs.apk_path == ''
+      - name: Make Gradle wrapper executable
+        run: |
+          chmod +x ./gradlew || true
+          sed -i -e 's/\r$//' ./gradlew || true
+
+      - name: Build Release APK with signing
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "使用签名密钥构建 Release APK..."
+          ./gradlew --no-daemon clean assembleRelease
+          ls -lh app/build/outputs/apk/release/
+
+      - name: Build Debug APK (fallback)
+        if: ${{ secrets.KEYSTORE_BASE64 == '' }}
+        run: |
+          echo "未配置签名密钥,构建 Debug APK..."
+          ./gradlew --no-daemon clean assembleDebug
+
+      - name: Locate built APK
+        id: locate_apk
+        run: |
+          # 优先查找 release APK
+          RELEASE_APK=$(ls app/build/outputs/apk/release/*.apk 2>/dev/null | grep -v unaligned | head -n 1 || true)
+          DEBUG_APK=$(ls app/build/outputs/apk/debug/*.apk 2>/dev/null | head -n 1 || true)
+
+          if [ -n "$RELEASE_APK" ]; then
+            APK_PATH="$RELEASE_APK"
+            APK_TYPE="release"
+          elif [ -n "$DEBUG_APK" ]; then
+            APK_PATH="$DEBUG_APK"
+            APK_TYPE="debug"
+          else
+            APK_PATH=""
+            APK_TYPE="none"
+          fi
+
+          echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
+          echo "apk_type=$APK_TYPE" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$APK_PATH" ]; then
+            echo "找到 APK ($APK_TYPE): $APK_PATH"
+            ls -lh "$APK_PATH"
+          else
+            echo "未找到 APK 文件"
+          fi
+
+      - name: Rename APK
+        if: steps.locate_apk.outputs.apk_path != ''
+        id: rename_apk
+        run: |
+          APK_PATH="${{ steps.locate_apk.outputs.apk_path }}"
+          APK_TYPE="${{ steps.locate_apk.outputs.apk_type }}"
+          VERSION="${{ steps.version.outputs.version_name }}"
+
+          # 生成新文件名
+          NEW_NAME="asr-keyboard-${VERSION}-${APK_TYPE}.apk"
+          NEW_PATH="app/build/outputs/apk/${NEW_NAME}"
+
+          cp "$APK_PATH" "$NEW_PATH"
+          echo "renamed_apk_path=$NEW_PATH" >> "$GITHUB_OUTPUT"
+          echo "重命名 APK: $NEW_NAME"
+          ls -lh "$NEW_PATH"
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: ${{ steps.tag.outputs.tag }}
-          generate_release_notes: true
+          name: "Release ${{ steps.tag.outputs.version_display }}"
+          body: ${{ steps.changelog.outputs.changelog }}
+          files: ${{ steps.rename_apk.outputs.renamed_apk_path }}
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

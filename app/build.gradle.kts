@@ -11,8 +11,18 @@ android {
         applicationId = "com.brycewg.asrkb"
         minSdk =31
         targetSdk = 34
-        versionCode = 36
-        versionName = "2.6.2"
+        versionCode = 37
+        versionName = "2.6.3"
+    }
+
+    signingConfigs {
+        create("release") {
+            // 从环境变量读取签名配置
+            storeFile = System.getenv("KEYSTORE_FILE")?.let { file(it) }
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
     }
 
     buildTypes {
@@ -22,6 +32,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 如果签名配置可用,则使用签名
+            signingConfig = signingConfigs.findByName("release")?.takeIf {
+                it.storeFile?.exists() == true
+            }
         }
         debug {
             isMinifyEnabled = false
