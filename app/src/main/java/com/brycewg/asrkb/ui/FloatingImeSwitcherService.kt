@@ -29,11 +29,14 @@ class FloatingImeSwitcherService : Service() {
     companion object {
         const val ACTION_SHOW = "com.brycewg.asrkb.action.FLOATING_SHOW"
         const val ACTION_HIDE = "com.brycewg.asrkb.action.FLOATING_HIDE"
+        const val ACTION_HINT_IME_VISIBLE = "com.brycewg.asrkb.action.IME_VISIBLE"
+        const val ACTION_HINT_IME_HIDDEN = "com.brycewg.asrkb.action.IME_HIDDEN"
     }
 
     private lateinit var windowManager: WindowManager
     private var ballView: View? = null
     private var lp: WindowManager.LayoutParams? = null
+    private var imeVisible: Boolean = false
 
     private val handler = Handler(Looper.getMainLooper())
     private val settingsObserver = object : android.database.ContentObserver(handler) {
@@ -53,6 +56,14 @@ class FloatingImeSwitcherService : Service() {
                 settingsObserver
             )
         } catch (_: Throwable) { }
+        // 监听无障碍服务发来的“IME显示/隐藏”提示
+        try {
+            val filter = android.content.IntentFilter().apply {
+                addAction(ACTION_HINT_IME_VISIBLE)
+                addAction(ACTION_HINT_IME_HIDDEN)
+            }
+            registerReceiver(hintReceiver, filter)
+        } catch (_: Throwable) { }
         updateBallVisibility()
     }
 
@@ -60,6 +71,14 @@ class FloatingImeSwitcherService : Service() {
         when (intent?.action) {
             ACTION_SHOW -> updateBallVisibility()
             ACTION_HIDE -> removeBall()
+            ACTION_HINT_IME_VISIBLE -> {
+                imeVisible = true
+                updateBallVisibility()
+            }
+            ACTION_HINT_IME_HIDDEN -> {
+                imeVisible = false
+                updateBallVisibility()
+            }
             else -> updateBallVisibility()
         }
         return START_STICKY
@@ -68,6 +87,7 @@ class FloatingImeSwitcherService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         try { contentResolver.unregisterContentObserver(settingsObserver) } catch (_: Throwable) { }
+        try { unregisterReceiver(hintReceiver) } catch (_: Throwable) { }
         removeBall()
     }
 
@@ -90,6 +110,12 @@ class FloatingImeSwitcherService : Service() {
             return
         }
 
+        // 开启“仅在输入法面板显示时显示”，但当前未检测到输入场景 -> 隐藏
+        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible) {
+            removeBall()
+            return
+        }
+
         if (isOurImeCurrent()) {
             removeBall()
             return
@@ -97,6 +123,21 @@ class FloatingImeSwitcherService : Service() {
         ensureBall()
         applyBallSize()
         applyBallAlpha()
+    }
+
+    private val hintReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: Intent?) {
+            when (intent?.action) {
+                ACTION_HINT_IME_VISIBLE -> {
+                    imeVisible = true
+                    updateBallVisibility()
+                }
+                ACTION_HINT_IME_HIDDEN -> {
+                    imeVisible = false
+                    updateBallVisibility()
+                }
+            }
+        }
     }
 
     private fun ensureBall() {

@@ -72,19 +72,49 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private var currentToast: Toast? = null
 
     private val handler = Handler(Looper.getMainLooper())
+    private var imeVisible: Boolean = false
+    private val hintReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                FloatingImeSwitcherService.ACTION_HINT_IME_VISIBLE -> {
+                    imeVisible = true
+                    updateVisibilityByPref()
+                }
+                FloatingImeSwitcherService.ACTION_HINT_IME_HIDDEN -> {
+                    imeVisible = false
+                    updateVisibilityByPref()
+                }
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WindowManager::class.java)
         prefs = Prefs(this)
         asrEngine = buildEngineForCurrentMode()
+        try {
+            val filter = android.content.IntentFilter().apply {
+                addAction(FloatingImeSwitcherService.ACTION_HINT_IME_VISIBLE)
+                addAction(FloatingImeSwitcherService.ACTION_HINT_IME_HIDDEN)
+            }
+            registerReceiver(hintReceiver, filter)
+        } catch (_: Throwable) { }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand: action=${intent?.action}, floatingAsrEnabled=${prefs.floatingAsrEnabled}")
         when (intent?.action) {
-            ACTION_SHOW -> showBall()
+            ACTION_SHOW -> updateVisibilityByPref()
             ACTION_HIDE -> hideBall()
+            FloatingImeSwitcherService.ACTION_HINT_IME_VISIBLE -> {
+                imeVisible = true
+                updateVisibilityByPref()
+            }
+            FloatingImeSwitcherService.ACTION_HINT_IME_HIDDEN -> {
+                imeVisible = false
+                updateVisibilityByPref()
+            }
             else -> showBall()
         }
         return START_STICKY
@@ -95,6 +125,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         hideBall()
         asrEngine?.stop()
         serviceScope.cancel()
+        try { unregisterReceiver(hintReceiver) } catch (_: Throwable) { }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -103,6 +134,12 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         Log.d(TAG, "showBall called: floatingAsrEnabled=${prefs.floatingAsrEnabled}, hasOverlay=${hasOverlayPermission()}")
         if (!prefs.floatingAsrEnabled || !hasOverlayPermission()) {
             Log.w(TAG, "Cannot show ball: permission or setting issue")
+            hideBall()
+            return
+        }
+
+        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible) {
+            Log.d(TAG, "Pref requires IME visible; hiding for now")
             hideBall()
             return
         }
@@ -147,6 +184,16 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to add ball view", e)
         }
+    }
+
+    private fun updateVisibilityByPref() {
+        if (!prefs.floatingAsrEnabled) {
+            hideBall(); return
+        }
+        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible) {
+            hideBall(); return
+        }
+        showBall()
     }
 
     private fun hideBall() {

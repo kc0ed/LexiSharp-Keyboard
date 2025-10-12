@@ -6,10 +6,14 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
+import com.brycewg.asrkb.store.Prefs
 
 /**
  * 无障碍服务,用于悬浮球语音识别后将文本插入到当前焦点的输入框中
@@ -52,6 +56,8 @@ class AsrAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         Log.d(TAG, "Accessibility service connected")
+        // 刚连接时推送一次当前输入场景状态
+        try { handler.post { tryDispatchImeVisibilityHint() } } catch (_: Throwable) { }
     }
 
     override fun onDestroy() {
@@ -60,8 +66,54 @@ class AsrAccessibilityService : AccessibilityService() {
         Log.d(TAG, "Accessibility service destroyed")
     }
 
+    private val handler = Handler(Looper.getMainLooper())
+    private var pendingCheck = false
+    private var lastImeSceneActive: Boolean? = null
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // 不需要监听事件,仅用于插入文本
+        // 现用于辅助判断“仅在输入法面板显示时显示悬浮球”的场景
+        // 为避免频繁遍历树，做轻量节流
+        if (event == null) return
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
+            event.eventType != AccessibilityEvent.TYPE_VIEW_FOCUSED) {
+            return
+        }
+        if (!pendingCheck) {
+            pendingCheck = true
+            handler.postDelayed({
+                pendingCheck = false
+                tryDispatchImeVisibilityHint()
+            }, 120)
+        }
+    }
+
+    private fun tryDispatchImeVisibilityHint() {
+        val prefs = try { Prefs(this) } catch (_: Throwable) { null } ?: return
+        if (!prefs.floatingSwitcherOnlyWhenImeVisible) return
+        val anyFloatingEnabled = prefs.floatingSwitcherEnabled || prefs.floatingAsrEnabled
+        if (!anyFloatingEnabled) return
+
+        // 优先：是否存在输入法窗口（更接近“键盘显示”）
+        val active = isImeWindowVisible() || hasEditableFocusNow()
+        val prev = lastImeSceneActive
+        if (prev == null || prev != active) {
+            lastImeSceneActive = active
+            try {
+                val action = if (active) FloatingImeSwitcherService.ACTION_HINT_IME_VISIBLE
+                             else FloatingImeSwitcherService.ACTION_HINT_IME_HIDDEN
+                // 通知输入法切换悬浮球
+                try {
+                    val i1 = Intent(this, FloatingImeSwitcherService::class.java).apply { this.action = action }
+                    startService(i1)
+                } catch (_: Throwable) { }
+                // 通知语音识别悬浮球
+                try {
+                    val i2 = Intent(this, FloatingAsrService::class.java).apply { this.action = action }
+                    startService(i2)
+                } catch (_: Throwable) { }
+            } catch (_: Throwable) { }
+        }
     }
 
     override fun onInterrupt() {
@@ -157,5 +209,41 @@ class AsrAccessibilityService : AccessibilityService() {
 
         return null
     }
-}
 
+    private fun hasEditableFocusNow(): Boolean {
+        return try {
+            val root = rootInActiveWindow ?: return false
+            val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            if (focused != null) {
+                val ok = focused.isEditable || (focused.className?.toString()?.contains("EditText", true) == true)
+                @Suppress("DEPRECATION")
+                focused.recycle()
+                if (ok) return true
+            }
+            // 回退：遍历查找是否存在可编辑且聚焦的节点
+            val found = findEditableNodeRecursive(root)
+            @Suppress("DEPRECATION")
+            root.recycle()
+            found != null
+        } catch (_: Throwable) { false }
+    }
+
+    private fun isImeWindowVisible(): Boolean {
+        return try {
+            val ws = windows ?: return false
+            var visible = false
+            for (w in ws) {
+                try {
+                    if (w?.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+                        // 兼容性判定：活跃/聚焦任一为真则认为可见
+                        if (w.isActive || w.isFocused) {
+                            visible = true
+                            break
+                        }
+                    }
+                } catch (_: Throwable) { }
+            }
+            visible
+        } catch (_: Throwable) { false }
+    }
+}

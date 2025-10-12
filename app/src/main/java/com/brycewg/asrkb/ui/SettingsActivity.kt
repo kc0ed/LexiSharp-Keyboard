@@ -98,6 +98,7 @@ class SettingsActivity : AppCompatActivity() {
         val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchFloating = findViewById<MaterialSwitch>(R.id.switchFloatingSwitcher)
+        val switchFloatingOnlyWhenImeVisible = findViewById<MaterialSwitch>(R.id.switchFloatingOnlyWhenImeVisible)
         val sliderFloatingAlpha = findViewById<Slider>(R.id.sliderFloatingAlpha)
         val sliderFloatingSize = findViewById<Slider>(R.id.sliderFloatingSize)
         val switchFloatingAsr = findViewById<MaterialSwitch>(R.id.switchFloatingAsr)
@@ -138,6 +139,7 @@ class SettingsActivity : AppCompatActivity() {
             switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
             switchMicHaptic.isChecked = prefs.micHapticEnabled
             switchFloating.isChecked = prefs.floatingSwitcherEnabled
+            switchFloatingOnlyWhenImeVisible.isChecked = prefs.floatingSwitcherOnlyWhenImeVisible
             sliderFloatingAlpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
             try { sliderFloatingSize.value = prefs.floatingBallSizeDp.toFloat() } catch (_: Throwable) { }
             switchFloatingAsr.isChecked = prefs.floatingAsrEnabled
@@ -204,9 +206,13 @@ class SettingsActivity : AppCompatActivity() {
                     } catch (_: Throwable) { }
                     return@setOnCheckedChangeListener
                 }
-                // 提示用户需要无障碍权限,但不强制要求
+                // 需要无障碍权限，直接引导前往设置
                 if (!isAccessibilityServiceEnabled()) {
-                    Toast.makeText(this, "提示:需要授予无障碍权限才能自动插入文本", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
+                    try {
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        startActivity(intent)
+                    } catch (_: Throwable) { }
                 }
                 // 互斥：关闭切换输入法悬浮球
                 if (switchFloating.isChecked) {
@@ -437,6 +443,15 @@ class SettingsActivity : AppCompatActivity() {
 
             prefs.floatingAsrEnabled = newFloatingAsr
             prefs.floatingSwitcherEnabled = newFloating
+            prefs.floatingSwitcherOnlyWhenImeVisible = switchFloatingOnlyWhenImeVisible.isChecked
+            // 若用户开启“仅在键盘显示时显示悬浮球”，引导打开无障碍服务用于场景判定
+            if (prefs.floatingSwitcherOnlyWhenImeVisible && !isAccessibilityServiceEnabled()) {
+                Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
+                try {
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    startActivity(intent)
+                } catch (_: Throwable) { }
+            }
             if (newFloating != wasFloating) {
                 if (newFloating) {
                     // 检查悬浮窗权限
@@ -480,9 +495,13 @@ class SettingsActivity : AppCompatActivity() {
                         } catch (_: Throwable) { }
                     }
 
-                    // 提示无障碍权限(不强制)
+                    // 需要无障碍权限，直接引导前往设置
                     if (!isAccessibilityServiceEnabled()) {
-                        Toast.makeText(this, "提示:需要授予无障碍权限才能自动插入文本", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
+                        try {
+                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            startActivity(intent)
+                        } catch (_: Throwable) { }
                     }
                 } else {
                     try {
@@ -543,7 +562,7 @@ class SettingsActivity : AppCompatActivity() {
                 prefs.activePromptId = created.id
             }
             refreshSpinnerSelection()
-            try { (spLlmProfiles.adapter as? ArrayAdapter<String>)?.clear() } catch (_: Throwable) {}
+            try { (spLlmProfiles.adapter as? ArrayAdapter<*>)?.clear() } catch (_: Throwable) {}
             refreshLlmProfilesSpinner()
             Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
         }
@@ -585,7 +604,7 @@ class SettingsActivity : AppCompatActivity() {
                         // 刷新提示词预设
                         refreshSpinnerSelection()
                         // 刷新 LLM 配置列表
-                        try { (spLlmProfiles.adapter as? ArrayAdapter<String>)?.clear() } catch (_: Throwable) {}
+                        try { (spLlmProfiles.adapter as? ArrayAdapter<*>)?.clear() } catch (_: Throwable) {}
                         // 函数在上方定义
                         run {
                             val profiles = prefs.getLlmProviders()

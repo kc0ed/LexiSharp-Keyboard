@@ -119,6 +119,13 @@
                 android:text="@string/label_floating_switcher" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchFloatingOnlyWhenImeVisible"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/label_floating_only_when_ime_visible" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switchFloatingAsr"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

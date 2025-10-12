@@ -59,6 +59,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_FLOATING_SWITCHER_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_SWITCHER_ENABLED, value) }
 
+    // 仅在输入法面板显示时显示悬浮球
+    var floatingSwitcherOnlyWhenImeVisible: Boolean
+        get() = sp.getBoolean(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE, false)
+        set(value) = sp.edit { putBoolean(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE, value) }
+
     // 悬浮球透明度（0.2f - 1.0f）
     var floatingSwitcherAlpha: Float
         get() = sp.getFloat(KEY_FLOATING_SWITCHER_ALPHA, 1.0f).coerceIn(0.2f, 1.0f)
@@ -362,6 +367,7 @@ class Prefs(context: Context) {
         private const val KEY_FLOATING_SWITCHER_ALPHA = "floating_switcher_alpha"
         private const val KEY_FLOATING_BALL_SIZE_DP = "floating_ball_size_dp"
         private const val KEY_FLOATING_ASR_ENABLED = "floating_asr_enabled"
+        private const val KEY_FLOATING_ONLY_WHEN_IME_VISIBLE = "floating_only_when_ime_visible"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_APP_LANGUAGE_TAG = "app_language_tag"
         private const val KEY_LLM_ENDPOINT = "llm_endpoint"
@@ -471,6 +477,7 @@ class Prefs(context: Context) {
         o.put(KEY_FLOATING_SWITCHER_ALPHA, floatingSwitcherAlpha)
         o.put(KEY_FLOATING_BALL_SIZE_DP, floatingBallSizeDp)
         o.put(KEY_FLOATING_ASR_ENABLED, floatingAsrEnabled)
+        o.put(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE, floatingSwitcherOnlyWhenImeVisible)
         o.put(KEY_POSTPROC_ENABLED, postProcessEnabled)
         o.put(KEY_LLM_ENDPOINT, llmEndpoint)
         o.put(KEY_LLM_API_KEY, llmApiKey)
@@ -524,6 +531,7 @@ class Prefs(context: Context) {
             optFloat(KEY_FLOATING_SWITCHER_ALPHA)?.let { floatingSwitcherAlpha = it.coerceIn(0.2f, 1.0f) }
             optInt(KEY_FLOATING_BALL_SIZE_DP)?.let { floatingBallSizeDp = it.coerceIn(28, 96) }
             optBool(KEY_FLOATING_ASR_ENABLED)?.let { floatingAsrEnabled = it }
+            optBool(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE)?.let { floatingSwitcherOnlyWhenImeVisible = it }
 
             optString(KEY_LLM_ENDPOINT)?.let { llmEndpoint = it.ifBlank { DEFAULT_LLM_ENDPOINT } }
             optString(KEY_LLM_API_KEY)?.let { llmApiKey = it }

@@ -59,9 +59,11 @@
     <string name="label_show_ime_switcher">Show "Switch Input Method" button</string>
     <string name="label_mic_haptic">Haptic feedback on mic press</string>
     <string name="label_floating_switcher">Enable floating ball to switch IME</string>
+    <string name="label_floating_only_when_ime_visible">Only show floating ball when keyboard is visible</string>
     <string name="label_floating_alpha">Floating ball transparency</string>
     <string name="label_floating_size">Floating ball size</string>
     <string name="toast_need_overlay_perm">Please grant "Display over other apps" in system settings to enable the floating ball</string>
+    <string name="toast_need_accessibility_perm">Please enable Accessibility Service in system settings to support this feature</string>
     <string name="cd_floating_switcher">Quick switch to LexiSharp keyboard</string>
 
     <!-- LLM settings -->
@@ -142,4 +144,5 @@
 \n 7. Edit key: tap to speak a command, then tap again when done; the LLM will modify the last transcribed/selected content according to the command
 \n 8. Enter key
 \n 9. The four areas below are customizable punctuation keys</string>
+    <string name="accessibility_service_description">Allow floating ball to insert ASR results into the current input field. No data is collected or uploaded.</string>
 </resources>
