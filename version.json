@@ -1,9 +1,8 @@
 {
-  "version": "2.6.5",
-  "version_code": 39,
-  "download_url": "https://github.com/BryceWG/asr-keyboard/releases/tag/v2.6.5",
-  "release_notes": "版本 2.6.5 已发布",
+  "version": "2.6.6",
+  "version_code": 40,
+  "download_url": "https://github.com/BryceWG/asr-keyboard/releases/tag/v2.6.6",
+  "release_notes": "版本 2.6.6 已发布",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-01-12T08:30:00Z"
+  "update_time": "2025-10-12T12:30:27Z"
 }
-
