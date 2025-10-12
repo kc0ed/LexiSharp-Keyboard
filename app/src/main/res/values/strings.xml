@@ -91,6 +91,13 @@
     <string name="btn_add_preset">新增/另存为预设</string>
     <string name="btn_export_settings">导出设置</string>
     <string name="btn_import_settings">导入设置</string>
+    <string name="label_llm_choose_profile">选择后处理模型</string>
+    <string name="label_llm_profile_name">配置名称</string>
+    <string name="btn_llm_add_profile">新增配置</string>
+    <string name="btn_llm_delete_profile">删除配置</string>
+    <string name="toast_llm_profile_added">已新增配置</string>
+    <string name="toast_llm_profile_deleted">已删除配置</string>
+    <string name="untitled_profile">未命名配置</string>
 
     <!-- Custom punctuation settings -->
     <string name="custom_punct_section_title">自定义标点按钮</string>

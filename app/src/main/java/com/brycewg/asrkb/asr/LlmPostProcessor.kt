@@ -28,10 +28,11 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
 
   suspend fun process(input: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
     if (input.isBlank()) return@withContext input
-    val apiKey = prefs.llmApiKey
-    val endpoint = prefs.llmEndpoint
-    val model = prefs.llmModel
-    val temperature = prefs.llmTemperature.toDouble()
+    val active = prefs.getActiveLlmProvider()
+    val apiKey = active?.apiKey ?: prefs.llmApiKey
+    val endpoint = active?.endpoint ?: prefs.llmEndpoint
+    val model = active?.model ?: prefs.llmModel
+    val temperature = (active?.temperature ?: prefs.llmTemperature).toDouble()
     val prompt = prefs.activePromptContent.ifBlank { Prefs.DEFAULT_LLM_PROMPT }
 
     val url = resolveUrl(endpoint)
@@ -92,10 +93,11 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
    */
   suspend fun editText(original: String, instruction: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
     if (original.isBlank() || instruction.isBlank()) return@withContext original
-    val apiKey = prefs.llmApiKey
-    val endpoint = prefs.llmEndpoint
-    val model = prefs.llmModel
-    val temperature = prefs.llmTemperature.toDouble()
+    val active = prefs.getActiveLlmProvider()
+    val apiKey = active?.apiKey ?: prefs.llmApiKey
+    val endpoint = active?.endpoint ?: prefs.llmEndpoint
+    val model = active?.model ?: prefs.llmModel
+    val temperature = (active?.temperature ?: prefs.llmTemperature).toDouble()
 
     val url = resolveUrl(endpoint)
     val systemPrompt = """

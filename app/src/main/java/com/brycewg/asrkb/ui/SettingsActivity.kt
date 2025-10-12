@@ -104,6 +104,8 @@ class SettingsActivity : AppCompatActivity() {
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
 
         // LLM相关字段
+        val spLlmProfiles = findViewById<Spinner>(R.id.spLlmProfiles)
+        val etLlmProfileName = findViewById<EditText>(R.id.etLlmProfileName)
         val etLlmEndpoint = findViewById<EditText>(R.id.etLlmEndpoint)
         val etLlmApiKey = findViewById<EditText>(R.id.etLlmApiKey)
         val etLlmModel = findViewById<EditText>(R.id.etLlmModel)
@@ -143,10 +145,12 @@ class SettingsActivity : AppCompatActivity() {
             if (switchFloating.isChecked && switchFloatingAsr.isChecked) {
                 switchFloating.isChecked = false
             }
-            etLlmEndpoint.setText(prefs.llmEndpoint)
-            etLlmApiKey.setText(prefs.llmApiKey)
-            etLlmModel.setText(prefs.llmModel)
-            etLlmTemperature.setText(prefs.llmTemperature.toString())
+            val activeLlm = prefs.getActiveLlmProvider()
+            etLlmProfileName.setText(activeLlm?.name ?: "")
+            etLlmEndpoint.setText(activeLlm?.endpoint ?: prefs.llmEndpoint)
+            etLlmApiKey.setText(activeLlm?.apiKey ?: prefs.llmApiKey)
+            etLlmModel.setText(activeLlm?.model ?: prefs.llmModel)
+            etLlmTemperature.setText(((activeLlm?.temperature ?: prefs.llmTemperature)).toString())
             etPunct1.setText(prefs.punct1)
             etPunct2.setText(prefs.punct2)
             etPunct3.setText(prefs.punct3)
@@ -232,6 +236,32 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
         refreshSpinnerSelection()
+
+        // LLM 多配置下拉与初始化
+        fun refreshLlmProfilesSpinner() {
+            val profiles = prefs.getLlmProviders()
+            val titles = profiles.map { it.name }
+            spLlmProfiles.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
+            val idx = profiles.indexOfFirst { it.id == prefs.activeLlmId }.let { if (it < 0) 0 else it }
+            if (idx in titles.indices) spLlmProfiles.setSelection(idx)
+        }
+        refreshLlmProfilesSpinner()
+
+        spLlmProfiles.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val profiles = prefs.getLlmProviders()
+                val p = profiles.getOrNull(position)
+                if (p != null) {
+                    prefs.activeLlmId = p.id
+                    etLlmProfileName.setText(p.name)
+                    etLlmEndpoint.setText(p.endpoint)
+                    etLlmApiKey.setText(p.apiKey)
+                    etLlmModel.setText(p.model)
+                    etLlmTemperature.setText(p.temperature.toString())
+                }
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
 
         // ASR供应商选择器设置
         // 统一的供应商顺序，便于 index<->vendor 互转与复用
@@ -324,6 +354,42 @@ class SettingsActivity : AppCompatActivity() {
             }
 
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) { }
+        }
+
+        findViewById<Button>(R.id.btnLlmAddProfile).setOnClickListener {
+            val name = etLlmProfileName.text?.toString()?.ifBlank { getString(R.string.untitled_profile) } ?: getString(R.string.untitled_profile)
+            val endpoint = etLlmEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT
+            val apiKey = etLlmApiKey.text?.toString() ?: ""
+            val model = etLlmModel.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_MODEL } ?: Prefs.DEFAULT_LLM_MODEL
+            val temp = etLlmTemperature.text?.toString()?.toFloatOrNull()?.coerceIn(0f, 2f) ?: Prefs.DEFAULT_LLM_TEMPERATURE
+            val id = java.util.UUID.randomUUID().toString()
+            val cur = prefs.getLlmProviders().toMutableList()
+            cur.add(Prefs.LlmProvider(id, name, endpoint, apiKey, model, temp))
+            prefs.setLlmProviders(cur)
+            prefs.activeLlmId = id
+            refreshLlmProfilesSpinner()
+            Toast.makeText(this, getString(R.string.toast_llm_profile_added), Toast.LENGTH_SHORT).show()
+        }
+
+        findViewById<Button>(R.id.btnLlmDeleteProfile).setOnClickListener {
+            val cur = prefs.getLlmProviders().toMutableList()
+            if (cur.isEmpty()) return@setOnClickListener
+            val idx = cur.indexOfFirst { it.id == prefs.activeLlmId }
+            if (idx >= 0) {
+                cur.removeAt(idx)
+                prefs.setLlmProviders(cur)
+                // 同步旧字段到新的活动项
+                val active = prefs.getActiveLlmProvider()
+                if (active != null) {
+                    prefs.llmEndpoint = active.endpoint
+                    prefs.llmApiKey = active.apiKey
+                    prefs.llmModel = active.model
+                    prefs.llmTemperature = active.temperature
+                }
+                applyPrefsToUi()
+                refreshLlmProfilesSpinner()
+                Toast.makeText(this, getString(R.string.toast_llm_profile_deleted), Toast.LENGTH_SHORT).show()
+            }
         }
 
         findViewById<Button>(R.id.btnSaveKeys).setOnClickListener {
@@ -433,12 +499,28 @@ class SettingsActivity : AppCompatActivity() {
                     startService(intent)
                 } catch (_: Throwable) { }
             }
-            // 大语言模型相关设置
-            prefs.llmEndpoint = etLlmEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT
-            prefs.llmApiKey = etLlmApiKey.text?.toString() ?: ""
-            prefs.llmModel = etLlmModel.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_MODEL } ?: Prefs.DEFAULT_LLM_MODEL
-            val tempVal = etLlmTemperature.text?.toString()?.toFloatOrNull()
-            prefs.llmTemperature = (tempVal ?: Prefs.DEFAULT_LLM_TEMPERATURE).coerceIn(0f, 2f)
+            // 大语言模型相关设置（保存为当前选中配置，同时同步旧字段）
+            val endpoint = etLlmEndpoint.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT
+            val apiKey = etLlmApiKey.text?.toString() ?: ""
+            val model = etLlmModel.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_MODEL } ?: Prefs.DEFAULT_LLM_MODEL
+            val tempVal = etLlmTemperature.text?.toString()?.toFloatOrNull()?.coerceIn(0f, 2f) ?: Prefs.DEFAULT_LLM_TEMPERATURE
+            val name = etLlmProfileName.text?.toString()?.ifBlank { getString(R.string.untitled_profile) } ?: getString(R.string.untitled_profile)
+            val curProfiles = prefs.getLlmProviders().toMutableList()
+            val idxProfile = curProfiles.indexOfFirst { it.id == prefs.activeLlmId }
+            if (idxProfile >= 0) {
+                val id = curProfiles[idxProfile].id
+                curProfiles[idxProfile] = Prefs.LlmProvider(id, name, endpoint, apiKey, model, tempVal)
+            } else {
+                val id = java.util.UUID.randomUUID().toString()
+                curProfiles.add(Prefs.LlmProvider(id, name, endpoint, apiKey, model, tempVal))
+                prefs.activeLlmId = id
+            }
+            prefs.setLlmProviders(curProfiles)
+            // 同步旧字段用于兼容
+            prefs.llmEndpoint = endpoint
+            prefs.llmApiKey = apiKey
+            prefs.llmModel = model
+            prefs.llmTemperature = tempVal
             // 自定义标点符号按钮
             prefs.punct1 = etPunct1.text?.toString() ?: Prefs.DEFAULT_PUNCT_1
             prefs.punct2 = etPunct2.text?.toString() ?: Prefs.DEFAULT_PUNCT_2
@@ -461,6 +543,8 @@ class SettingsActivity : AppCompatActivity() {
                 prefs.activePromptId = created.id
             }
             refreshSpinnerSelection()
+            try { (spLlmProfiles.adapter as? ArrayAdapter<String>)?.clear() } catch (_: Throwable) {}
+            refreshLlmProfilesSpinner()
             Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
         }
 
@@ -500,6 +584,16 @@ class SettingsActivity : AppCompatActivity() {
                         applyPrefsToUi()
                         // 刷新提示词预设
                         refreshSpinnerSelection()
+                        // 刷新 LLM 配置列表
+                        try { (spLlmProfiles.adapter as? ArrayAdapter<String>)?.clear() } catch (_: Throwable) {}
+                        // 函数在上方定义
+                        run {
+                            val profiles = prefs.getLlmProviders()
+                            val titles = profiles.map { it.name }
+                            spLlmProfiles.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
+                            val idx = profiles.indexOfFirst { it.id == prefs.activeLlmId }.let { if (it < 0) 0 else it }
+                            if (idx in titles.indices) spLlmProfiles.setSelection(idx)
+                        }
                         // 同步 ASR 供应商选择与可见性
                         spAsrVendor.setSelection(vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0))
                         // 同步语言选择（将触发 onItemSelected 从而应用语言）

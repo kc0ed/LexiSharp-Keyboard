@@ -74,7 +74,7 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_FLOATING_ASR_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_ASR_ENABLED, value) }
 
-    // LLM后处理设置
+    // LLM后处理设置（旧版单一字段；当存在多配置且已选择活动项时仅作回退）
     var postProcessEnabled: Boolean
         get() = sp.getBoolean(KEY_POSTPROC_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_POSTPROC_ENABLED, value) }
@@ -94,6 +94,79 @@ class Prefs(context: Context) {
     var llmTemperature: Float
         get() = sp.getFloat(KEY_LLM_TEMPERATURE, DEFAULT_LLM_TEMPERATURE)
         set(value) = sp.edit { putFloat(KEY_LLM_TEMPERATURE, value) }
+
+    // 多 LLM 配置（OpenAI 兼容 API）
+    var llmProvidersJson: String
+        get() = sp.getString(KEY_LLM_PROVIDERS, "") ?: ""
+        set(value) = sp.edit { putString(KEY_LLM_PROVIDERS, value) }
+
+    var activeLlmId: String
+        get() = sp.getString(KEY_LLM_ACTIVE_ID, "") ?: ""
+        set(value) = sp.edit { putString(KEY_LLM_ACTIVE_ID, value) }
+
+    data class LlmProvider(
+        val id: String,
+        val name: String,
+        val endpoint: String,
+        val apiKey: String,
+        val model: String,
+        val temperature: Float
+    )
+
+    fun getLlmProviders(): List<LlmProvider> {
+        // 首次使用：若未初始化，迁移旧字段为一个默认配置
+        if (llmProvidersJson.isBlank()) {
+            val migrated = LlmProvider(
+                id = "default",
+                name = "默认",
+                endpoint = llmEndpoint.ifBlank { DEFAULT_LLM_ENDPOINT },
+                apiKey = llmApiKey,
+                model = llmModel.ifBlank { DEFAULT_LLM_MODEL },
+                temperature = llmTemperature
+            )
+            setLlmProviders(listOf(migrated))
+            if (activeLlmId.isBlank()) activeLlmId = migrated.id
+        }
+        return try {
+            val arr = org.json.JSONArray(llmProvidersJson)
+            val list = mutableListOf<LlmProvider>()
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val id = o.optString("id").ifBlank { continue }
+                val name = o.optString("name").ifBlank { id }
+                val endpoint = o.optString("endpoint", DEFAULT_LLM_ENDPOINT)
+                val apiKey = o.optString("apiKey", "")
+                val model = o.optString("model", DEFAULT_LLM_MODEL)
+                val temp = o.optDouble("temperature", DEFAULT_LLM_TEMPERATURE.toDouble()).toFloat()
+                list.add(LlmProvider(id, name, endpoint, apiKey, model, temp))
+            }
+            list
+        } catch (_: Throwable) { emptyList() }
+    }
+
+    fun setLlmProviders(list: List<LlmProvider>) {
+        val arr = org.json.JSONArray()
+        list.forEach { p ->
+            val o = org.json.JSONObject()
+            o.put("id", p.id)
+            o.put("name", p.name)
+            o.put("endpoint", p.endpoint)
+            o.put("apiKey", p.apiKey)
+            o.put("model", p.model)
+            o.put("temperature", p.temperature.toDouble())
+            arr.put(o)
+        }
+        llmProvidersJson = arr.toString()
+        if (list.none { it.id == activeLlmId }) {
+            activeLlmId = list.firstOrNull()?.id ?: ""
+        }
+    }
+
+    fun getActiveLlmProvider(): LlmProvider? {
+        val id = activeLlmId
+        val list = getLlmProviders()
+        return list.firstOrNull { it.id == id } ?: list.firstOrNull()
+    }
 
     // 已弃用：单一提示词。保留用于向后兼容/迁移。
     var llmPrompt: String
@@ -240,7 +313,14 @@ class Prefs(context: Context) {
     fun hasOpenAiKeys(): Boolean = hasVendorKeys(AsrVendor.OpenAI)
     fun hasGeminiKeys(): Boolean = hasVendorKeys(AsrVendor.Gemini)
     fun hasAsrKeys(): Boolean = hasVendorKeys(asrVendor)
-    fun hasLlmKeys(): Boolean = llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
+    fun hasLlmKeys(): Boolean {
+        val p = getActiveLlmProvider()
+        return if (p != null) {
+            p.apiKey.isNotBlank() && p.endpoint.isNotBlank() && p.model.isNotBlank()
+        } else {
+            llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
+        }
+    }
 
     // 自定义标点按钮（4个位置）
     var punct1: String
@@ -288,6 +368,8 @@ class Prefs(context: Context) {
         private const val KEY_LLM_API_KEY = "llm_api_key"
         private const val KEY_LLM_MODEL = "llm_model"
         private const val KEY_LLM_TEMPERATURE = "llm_temperature"
+        private const val KEY_LLM_PROVIDERS = "llm_providers"
+        private const val KEY_LLM_ACTIVE_ID = "llm_active_id"
         private const val KEY_LLM_PROMPT = "llm_prompt"
         private const val KEY_LLM_PROMPT_PRESETS = "llm_prompt_presets"
         private const val KEY_LLM_PROMPT_ACTIVE_ID = "llm_prompt_active_id"
@@ -394,6 +476,9 @@ class Prefs(context: Context) {
         o.put(KEY_LLM_API_KEY, llmApiKey)
         o.put(KEY_LLM_MODEL, llmModel)
         o.put(KEY_LLM_TEMPERATURE, llmTemperature.toDouble())
+        // 多 LLM 配置
+        o.put(KEY_LLM_PROVIDERS, llmProvidersJson)
+        o.put(KEY_LLM_ACTIVE_ID, activeLlmId)
         // 兼容旧字段
         o.put(KEY_LLM_PROMPT, llmPrompt)
         o.put(KEY_LLM_PROMPT_PRESETS, promptPresetsJson)
@@ -444,6 +529,9 @@ class Prefs(context: Context) {
             optString(KEY_LLM_API_KEY)?.let { llmApiKey = it }
             optString(KEY_LLM_MODEL)?.let { llmModel = it.ifBlank { DEFAULT_LLM_MODEL } }
             optFloat(KEY_LLM_TEMPERATURE)?.let { llmTemperature = it.coerceIn(0f, 2f) }
+            // 多 LLM 配置（优先于旧字段，仅当存在时覆盖）
+            optString(KEY_LLM_PROVIDERS)?.let { llmProvidersJson = it }
+            optString(KEY_LLM_ACTIVE_ID)?.let { activeLlmId = it }
             // 兼容：先读新预设；未提供时退回旧单一 Prompt
             optString(KEY_LLM_PROMPT_PRESETS)?.let { promptPresetsJson = it }
             optString(KEY_LLM_PROMPT_ACTIVE_ID)?.let { activePromptId = it }

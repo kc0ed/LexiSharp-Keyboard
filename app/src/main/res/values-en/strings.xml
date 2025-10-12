@@ -76,6 +76,13 @@
     <string name="btn_add_preset">Add/Save as Preset</string>
     <string name="btn_export_settings">Export Settings</string>
     <string name="btn_import_settings">Import Settings</string>
+    <string name="label_llm_choose_profile">Select post-processing model</string>
+    <string name="label_llm_profile_name">Profile name</string>
+    <string name="btn_llm_add_profile">Add profile</string>
+    <string name="btn_llm_delete_profile">Delete profile</string>
+    <string name="toast_llm_profile_added">Profile added</string>
+    <string name="toast_llm_profile_deleted">Profile deleted</string>
+    <string name="untitled_profile">Untitled profile</string>
 
     <!-- Custom punctuation settings -->
     <string name="custom_punct_section_title">Custom Punctuation Buttons</string>
