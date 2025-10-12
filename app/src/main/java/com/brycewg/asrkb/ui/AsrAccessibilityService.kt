@@ -49,7 +49,12 @@ class AsrAccessibilityService : AccessibilityService() {
                 val root = svc.rootInActiveWindow ?: return null
                 val focused = svc.findFocusedEditableNode(root)
                 if (focused != null) {
-                    val full = focused.text?.toString() ?: ""
+                    // 检查是否正在显示提示文本(hint text)，如果是则视为空字符串
+                    val full = if (focused.isShowingHintText) {
+                        ""
+                    } else {
+                        focused.text?.toString() ?: ""
+                    }
                     val selStart = focused.textSelectionStart.takeIf { it >= 0 } ?: full.length
                     val selEnd = focused.textSelectionEnd.takeIf { it >= 0 } ?: full.length
                     val start = selStart.coerceIn(0, full.length)
