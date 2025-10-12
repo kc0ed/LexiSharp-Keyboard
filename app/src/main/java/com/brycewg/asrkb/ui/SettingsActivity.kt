@@ -29,9 +29,14 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.net.toUri
 
 class SettingsActivity : AppCompatActivity() {
+
+    private var wasAccessibilityEnabled = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
+
+        wasAccessibilityEnabled = isAccessibilityServiceEnabled()
 
         findViewById<Button>(R.id.btnEnable).setOnClickListener {
             startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
@@ -85,7 +90,7 @@ class SettingsActivity : AppCompatActivity() {
         val titleOpenAi = findViewById<View>(R.id.titleOpenAI)
         val titleDash = findViewById<View>(R.id.titleDash)
         val titleGemini = findViewById<View>(R.id.titleGemini)
-        
+
         val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
         val spLanguage = findViewById<Spinner>(R.id.spLanguage)
         val tvAsrTotalChars = findViewById<TextView>(R.id.tvAsrTotalChars)
@@ -94,6 +99,7 @@ class SettingsActivity : AppCompatActivity() {
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchFloating = findViewById<MaterialSwitch>(R.id.switchFloatingSwitcher)
         val sliderFloatingAlpha = findViewById<Slider>(R.id.sliderFloatingAlpha)
+        val sliderFloatingSize = findViewById<Slider>(R.id.sliderFloatingSize)
         val switchFloatingAsr = findViewById<MaterialSwitch>(R.id.switchFloatingAsr)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
 
@@ -131,7 +137,12 @@ class SettingsActivity : AppCompatActivity() {
             switchMicHaptic.isChecked = prefs.micHapticEnabled
             switchFloating.isChecked = prefs.floatingSwitcherEnabled
             sliderFloatingAlpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
+            try { sliderFloatingSize.value = prefs.floatingBallSizeDp.toFloat() } catch (_: Throwable) { }
             switchFloatingAsr.isChecked = prefs.floatingAsrEnabled
+            // 互斥兜底：若导入配置造成两者同开，优先显示语音识别，关闭输入法切换
+            if (switchFloating.isChecked && switchFloatingAsr.isChecked) {
+                switchFloating.isChecked = false
+            }
             etLlmEndpoint.setText(prefs.llmEndpoint)
             etLlmApiKey.setText(prefs.llmApiKey)
             etLlmModel.setText(prefs.llmModel)
@@ -148,39 +159,56 @@ class SettingsActivity : AppCompatActivity() {
             // 这里仅更新输入框/开关等即时可用的视图。
         }
         applyPrefsToUi()
-        // 开启悬浮球时主动引导申请悬浮窗权限
+        // 使两个悬浮球开关互斥，并在开启时检查悬浮窗权限
+        var suppressSwitchChange = false
+        // 开启悬浮球时主动引导申请悬浮窗权限 + 互斥
         switchFloating.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressSwitchChange) return@setOnCheckedChangeListener
             if (isChecked) {
-                if (true && !Settings.canDrawOverlays(this)) {
+                if (!Settings.canDrawOverlays(this)) {
                     Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
+                    suppressSwitchChange = true
+                    switchFloating.isChecked = false
+                    suppressSwitchChange = false
                     try {
                         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
                         startActivity(intent)
                     } catch (_: Throwable) { }
+                    return@setOnCheckedChangeListener
+                }
+                // 互斥：关闭语音识别悬浮球
+                if (switchFloatingAsr.isChecked) {
+                    suppressSwitchChange = true
+                    switchFloatingAsr.isChecked = false
+                    suppressSwitchChange = false
                 }
             }
         }
 
-        // 开启悬浮球语音识别时引导申请无障碍权限
+        // 开启悬浮球语音识别时检查悬浮窗权限 + 互斥
         switchFloatingAsr.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressSwitchChange) return@setOnCheckedChangeListener
             if (isChecked) {
                 if (!Settings.canDrawOverlays(this)) {
                     Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
+                    suppressSwitchChange = true
                     switchFloatingAsr.isChecked = false
+                    suppressSwitchChange = false
                     try {
                         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
                         startActivity(intent)
                     } catch (_: Throwable) { }
                     return@setOnCheckedChangeListener
                 }
+                // 提示用户需要无障碍权限,但不强制要求
                 if (!isAccessibilityServiceEnabled()) {
-                    Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
-                    switchFloatingAsr.isChecked = false
-                    try {
-                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                        startActivity(intent)
-                    } catch (_: Throwable) { }
-                    return@setOnCheckedChangeListener
+                    Toast.makeText(this, "提示:需要授予无障碍权限才能自动插入文本", Toast.LENGTH_LONG).show()
+                }
+                // 互斥：关闭切换输入法悬浮球
+                if (switchFloating.isChecked) {
+                    suppressSwitchChange = true
+                    switchFloating.isChecked = false
+                    suppressSwitchChange = false
                 }
             }
         }
@@ -323,15 +351,25 @@ class SettingsActivity : AppCompatActivity() {
             prefs.micHapticEnabled = switchMicHaptic.isChecked
             // 悬浮球透明度（百分比转 0-1）
             prefs.floatingSwitcherAlpha = (sliderFloatingAlpha.value / 100f).coerceIn(0.2f, 1.0f)
+            // 悬浮球大小（dp）
+            prefs.floatingBallSizeDp = sliderFloatingSize.value.toInt().coerceIn(28, 96)
 
             // 悬浮球语音识别开关
-            val newFloatingAsr = switchFloatingAsr.isChecked
+            var newFloatingAsr = switchFloatingAsr.isChecked
             val wasFloatingAsr = prefs.floatingAsrEnabled
-            prefs.floatingAsrEnabled = newFloatingAsr
 
-            // 悬浮球开关：保存状态并根据权限与当前输入法情况启动/隐藏
-            val newFloating = switchFloating.isChecked
+            // 悬浮球切换输入法开关
+            var newFloating = switchFloating.isChecked
             val wasFloating = prefs.floatingSwitcherEnabled
+            
+            // 互斥：若两者均为开，则优先保留最后操作后仍为开的那个（UI层已互斥，这里兜底）
+            if (newFloating && newFloatingAsr) {
+                // 默认优先语音识别悬浮球
+                newFloating = false
+                switchFloating.isChecked = false
+            }
+
+            prefs.floatingAsrEnabled = newFloatingAsr
             prefs.floatingSwitcherEnabled = newFloating
             if (newFloating != wasFloating) {
                 if (newFloating) {
@@ -366,24 +404,19 @@ class SettingsActivity : AppCompatActivity() {
             // 悬浮球语音识别服务管理
             if (newFloatingAsr != wasFloatingAsr) {
                 if (newFloatingAsr) {
-                    // 检查权限,只在权限都满足时才启动服务
-                    var hasAllPermissions = true
-
+                    // 检查悬浮窗权限
                     if (!Settings.canDrawOverlays(this)) {
                         Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
-                        hasAllPermissions = false
-                    }
-
-                    if (!isAccessibilityServiceEnabled()) {
-                        Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
-                        hasAllPermissions = false
-                    }
-
-                    if (hasAllPermissions) {
+                    } else {
                         try {
                             val intent = Intent(this, FloatingAsrService::class.java).apply { action = FloatingAsrService.ACTION_SHOW }
                             startService(intent)
                         } catch (_: Throwable) { }
+                    }
+
+                    // 提示无障碍权限(不强制)
+                    if (!isAccessibilityServiceEnabled()) {
+                        Toast.makeText(this, "提示:需要授予无障碍权限才能自动插入文本", Toast.LENGTH_LONG).show()
                     }
                 } else {
                     try {
@@ -393,8 +426,8 @@ class SettingsActivity : AppCompatActivity() {
                     } catch (_: Throwable) { }
                 }
             }
-            // 刷新悬浮球语音识别服务(仅在权限满足时)
-            if (prefs.floatingAsrEnabled && Settings.canDrawOverlays(this) && isAccessibilityServiceEnabled()) {
+            // 刷新悬浮球语音识别服务(仅需要悬浮窗权限)
+            if (prefs.floatingAsrEnabled && Settings.canDrawOverlays(this)) {
                 try {
                     val intent = Intent(this, FloatingAsrService::class.java).apply { action = FloatingAsrService.ACTION_SHOW }
                     startService(intent)
@@ -494,6 +527,23 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnImportSettings).setOnClickListener {
             importLauncher.launch(arrayOf("application/json", "text/plain"))
         }
+    }
+
+
+    override fun onResume() {
+        super.onResume()
+
+        // 检查无障碍服务是否刚刚被启用
+        val prefs = Prefs(this)
+        val isNowEnabled = isAccessibilityServiceEnabled()
+
+        if (!wasAccessibilityEnabled && isNowEnabled) {
+            // 无障碍服务刚刚被启用
+            Log.d("SettingsActivity", "Accessibility service just enabled")
+            Toast.makeText(this, "无障碍服务已启用,现在可以自动插入文本了", Toast.LENGTH_SHORT).show()
+        }
+
+        wasAccessibilityEnabled = isNowEnabled
     }
 
     private fun requestAllPermissions() {

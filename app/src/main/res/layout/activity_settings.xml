@@ -97,35 +97,6 @@
                 android:text="@string/label_show_ime_switcher" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switchFloatingSwitcher"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/label_floating_switcher" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/label_floating_alpha" />
-
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderFloatingAlpha"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:valueFrom="30"
-                android:valueTo="100"
-                android:stepSize="5" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switchFloatingAsr"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/label_floating_asr" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switchAutoSwitchPassword"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -138,6 +109,51 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/label_mic_haptic" />
+
+            <!-- 悬浮球设置分组（移到第一个设置区域之后） -->
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchFloatingSwitcher"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/label_floating_switcher" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchFloatingAsr"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/label_floating_asr" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/label_floating_alpha" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderFloatingAlpha"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:valueFrom="30"
+                android:valueTo="100"
+                android:stepSize="5" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/label_floating_size" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderFloatingSize"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:valueFrom="28"
+                android:valueTo="96"
+                android:stepSize="4" />
 
             <com.google.android.material.divider.MaterialDivider
                 android:layout_width="match_parent"

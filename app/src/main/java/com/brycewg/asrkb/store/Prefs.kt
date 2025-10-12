@@ -64,6 +64,11 @@ class Prefs(context: Context) {
         get() = sp.getFloat(KEY_FLOATING_SWITCHER_ALPHA, 1.0f).coerceIn(0.2f, 1.0f)
         set(value) = sp.edit { putFloat(KEY_FLOATING_SWITCHER_ALPHA, value.coerceIn(0.2f, 1.0f)) }
 
+    // 悬浮球大小（单位 dp，范围 28 - 96，默认 56）
+    var floatingBallSizeDp: Int
+        get() = sp.getInt(KEY_FLOATING_BALL_SIZE_DP, DEFAULT_FLOATING_BALL_SIZE_DP).coerceIn(28, 96)
+        set(value) = sp.edit { putInt(KEY_FLOATING_BALL_SIZE_DP, value.coerceIn(28, 96)) }
+
     // 悬浮球语音识别模式开关
     var floatingAsrEnabled: Boolean
         get() = sp.getBoolean(KEY_FLOATING_ASR_ENABLED, false)
@@ -275,6 +280,7 @@ class Prefs(context: Context) {
         private const val KEY_MIC_HAPTIC_ENABLED = "mic_haptic_enabled"
         private const val KEY_FLOATING_SWITCHER_ENABLED = "floating_switcher_enabled"
         private const val KEY_FLOATING_SWITCHER_ALPHA = "floating_switcher_alpha"
+        private const val KEY_FLOATING_BALL_SIZE_DP = "floating_ball_size_dp"
         private const val KEY_FLOATING_ASR_ENABLED = "floating_asr_enabled"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_APP_LANGUAGE_TAG = "app_language_tag"
@@ -330,6 +336,9 @@ class Prefs(context: Context) {
         const val DEFAULT_PUNCT_3 = "！"
         const val DEFAULT_PUNCT_4 = "？"
 
+        // 悬浮球默认大小（dp）
+        const val DEFAULT_FLOATING_BALL_SIZE_DP = 56
+
         private fun buildDefaultPromptPresets(): List<PromptPreset> {
             val p1 = PromptPreset(
                 id = java.util.UUID.randomUUID().toString(),
@@ -378,6 +387,7 @@ class Prefs(context: Context) {
         o.put(KEY_APP_LANGUAGE_TAG, appLanguageTag)
         o.put(KEY_FLOATING_SWITCHER_ENABLED, floatingSwitcherEnabled)
         o.put(KEY_FLOATING_SWITCHER_ALPHA, floatingSwitcherAlpha)
+        o.put(KEY_FLOATING_BALL_SIZE_DP, floatingBallSizeDp)
         o.put(KEY_FLOATING_ASR_ENABLED, floatingAsrEnabled)
         o.put(KEY_POSTPROC_ENABLED, postProcessEnabled)
         o.put(KEY_LLM_ENDPOINT, llmEndpoint)
@@ -414,6 +424,8 @@ class Prefs(context: Context) {
                 if (o.has(key)) o.optString(key) else default
             fun optFloat(key: String, default: Float? = null): Float? =
                 if (o.has(key)) o.optDouble(key).toFloat() else default
+            fun optInt(key: String, default: Int? = null): Int? =
+                if (o.has(key)) o.optInt(key) else default
 
             optString(KEY_APP_KEY)?.let { appKey = it }
             optString(KEY_ACCESS_KEY)?.let { accessKey = it }
@@ -425,6 +437,7 @@ class Prefs(context: Context) {
             optBool(KEY_POSTPROC_ENABLED)?.let { postProcessEnabled = it }
             optBool(KEY_FLOATING_SWITCHER_ENABLED)?.let { floatingSwitcherEnabled = it }
             optFloat(KEY_FLOATING_SWITCHER_ALPHA)?.let { floatingSwitcherAlpha = it.coerceIn(0.2f, 1.0f) }
+            optInt(KEY_FLOATING_BALL_SIZE_DP)?.let { floatingBallSizeDp = it.coerceIn(28, 96) }
             optBool(KEY_FLOATING_ASR_ENABLED)?.let { floatingAsrEnabled = it }
 
             optString(KEY_LLM_ENDPOINT)?.let { llmEndpoint = it.ifBlank { DEFAULT_LLM_ENDPOINT } }

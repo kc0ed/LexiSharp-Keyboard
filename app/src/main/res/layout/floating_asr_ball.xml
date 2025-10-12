@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="56dp"
-    android:layout_height="56dp">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
-    <ImageView
-        android:id="@+id/ballIcon"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:src="@drawable/logo"
-        android:scaleType="centerInside"
-        android:padding="8dp"
-        android:background="@drawable/bg_floating_ball"
-        android:contentDescription="@string/cd_floating_asr" />
+        android:background="@drawable/bg_floating_ball">
+
+        <ImageView
+            android:id="@+id/ballIcon"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_mic"
+            android:scaleType="fitCenter"
+            android:tint="#757575"
+            android:contentDescription="@string/cd_floating_asr" />
+    </FrameLayout>
 
     <ProgressBar
         android:id="@+id/ballProgress"
@@ -25,4 +31,3 @@
         android:visibility="gone" />
 
 </FrameLayout>
-

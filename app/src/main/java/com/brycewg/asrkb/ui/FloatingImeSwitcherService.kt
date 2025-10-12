@@ -92,6 +92,7 @@ class FloatingImeSwitcherService : Service() {
             return
         }
         ensureBall()
+        applyBallSize()
         applyBallAlpha()
     }
 
@@ -110,8 +111,9 @@ class FloatingImeSwitcherService : Service() {
 
         val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
 
+        val size = try { Prefs(this).floatingBallSizeDp } catch (_: Throwable) { 28 }
         val params = WindowManager.LayoutParams(
-            dp(28), dp(28),
+            dp(size), dp(size),
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -143,6 +145,15 @@ class FloatingImeSwitcherService : Service() {
         if (v != null) {
             try { v.alpha = a } catch (_: Throwable) { }
         }
+    }
+
+    private fun applyBallSize() {
+        val v = ballView ?: return
+        val p = lp ?: return
+        val size = try { Prefs(this).floatingBallSizeDp } catch (_: Throwable) { 28 }
+        p.width = dp(size)
+        p.height = dp(size)
+        try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
     }
 
     private fun onBallClick() {
@@ -236,8 +247,9 @@ class FloatingImeSwitcherService : Service() {
         val dm = resources.displayMetrics
         val screenW = dm.widthPixels
         val screenH = dm.heightPixels
-        val vw = if (v.width > 0) v.width else dp(28)
-        val vh = if (v.height > 0) v.height else dp(28)
+        val def = try { Prefs(this).floatingBallSizeDp } catch (_: Throwable) { 28 }
+        val vw = if (v.width > 0) v.width else dp(def)
+        val vh = if (v.height > 0) v.height else dp(def)
         val margin = dp(0)
 
         // 计算目标X：吸附到左或右

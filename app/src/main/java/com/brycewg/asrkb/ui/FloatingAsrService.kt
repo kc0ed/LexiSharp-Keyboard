@@ -67,7 +67,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private var isRecording = false
     private var isProcessing = false
     private var progressAnimator: ObjectAnimator? = null
-    
+    private var currentToast: Toast? = null
+
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
@@ -105,7 +106,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         }
 
         if (ballView != null) {
-            Log.d(TAG, "Ball already shown")
+            Log.d(TAG, "Ball already shown; updating alpha/size")
+            applyBallAlpha()
+            applyBallSize()
             return
         }
         
@@ -117,8 +120,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         attachDrag(view)
         
         val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        val size = try { prefs.floatingBallSizeDp } catch (_: Throwable) { 56 }
         val params = WindowManager.LayoutParams(
-            dp(56), dp(56),
+            dp(size), dp(size),
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -134,6 +138,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             ballView = view
             lp = params
             applyBallAlpha()
+            applyBallSize()
             Log.d(TAG, "Ball view added successfully")
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to add ball view", e)
@@ -152,7 +157,31 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         ballView?.alpha = a
     }
 
+    private fun applyBallSize() {
+        val v = ballView ?: return
+        val p = lp ?: return
+        val size = try { prefs.floatingBallSizeDp } catch (_: Throwable) { 56 }
+        p.width = dp(size)
+        p.height = dp(size)
+        try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
+    }
+
     private fun onBallClick() {
+        // 检查无障碍权限
+        if (!AsrAccessibilityService.isEnabled()) {
+            Log.w(TAG, "Accessibility service not enabled")
+            showToast(getString(R.string.toast_need_accessibility_perm))
+            // 跳转到无障碍设置
+            try {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+            } catch (e: Throwable) {
+                Log.e(TAG, "Failed to open accessibility settings", e)
+            }
+            return
+        }
+
         if (isRecording) {
             // 停止录音
             stopRecording()
@@ -205,7 +234,11 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private fun showToast(message: String) {
         handler.post {
             try {
-                Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+                // 取消之前的 Toast
+                currentToast?.cancel()
+                // 创建并显示新的 Toast
+                currentToast = Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT)
+                currentToast?.show()
             } catch (e: Throwable) {
                 Log.e(TAG, "Failed to show toast: $message", e)
             }
@@ -216,15 +249,15 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         handler.post {
             Log.d(TAG, "updateBallState: recording=$isRecording, processing=$isProcessing")
             if (isRecording) {
-                // 录音中:背景变浅红色,顺时针旋转动画
-                ballIcon?.setColorFilter(Color.parseColor("#FFCDD2"))
+                // 录音中:图标变红色,顺时针旋转动画
+                ballIcon?.setColorFilter(Color.parseColor("#F44336"))
                 startProgressAnimation(false)
             } else if (isProcessing) {
-                // 处理中:背景恢复,逆时针旋转动画
-                ballIcon?.clearColorFilter()
+                // 处理中:图标变蓝色,逆时针旋转动画
+                ballIcon?.setColorFilter(Color.parseColor("#2196F3"))
                 startProgressAnimation(true)
             } else {
-                // 空闲:背景恢复,停止动画
+                // 空闲:图标恢复默认颜色,停止动画
                 ballIcon?.clearColorFilter()
                 stopProgressAnimation()
             }
@@ -394,8 +427,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         val dm = resources.displayMetrics
         val screenW = dm.widthPixels
         val screenH = dm.heightPixels
-        val vw = if (v.width > 0) v.width else dp(56)
-        val vh = if (v.height > 0) v.height else dp(56)
+        val def = try { prefs.floatingBallSizeDp } catch (_: Throwable) { 56 }
+        val vw = if (v.width > 0) v.width else dp(def)
+        val vh = if (v.height > 0) v.height else dp(def)
         val margin = dp(0)
 
         val centerX = p.x + vw / 2
@@ -414,4 +448,3 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         return (v * d + 0.5f).toInt()
     }
 }
-
