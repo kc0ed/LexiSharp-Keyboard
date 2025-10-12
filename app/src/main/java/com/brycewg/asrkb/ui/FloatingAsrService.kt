@@ -25,6 +25,7 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
+import android.view.inputmethod.InputMethodManager
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.StreamingAsrEngine
@@ -242,6 +243,36 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         }
     }
 
+    private fun invokeImePicker() {
+        try {
+            val imm = getSystemService(InputMethodManager::class.java)
+            if (!isOurImeEnabled(imm)) {
+                val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                startActivity(intent)
+                return
+            }
+            val intent = Intent(this, ImePickerActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+            }
+            startActivity(intent)
+        } catch (_: Throwable) {
+            try {
+                val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                startActivity(intent)
+            } catch (_: Throwable) { }
+        }
+    }
+
+    private fun isOurImeEnabled(imm: InputMethodManager?): Boolean {
+        val list = try { imm?.enabledInputMethodList } catch (_: Throwable) { null }
+        if (list?.any { it.packageName == packageName } == true) return true
+        return try {
+            val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_INPUT_METHODS)
+            val id = "$packageName/.ime.AsrKeyboardService"
+            enabled?.contains(id) == true || (enabled?.split(':')?.any { it.startsWith(packageName) } == true)
+        } catch (_: Throwable) { false }
+    }
+
     private fun startRecording() {
         Log.d(TAG, "startRecording called")
         // 检查权限
@@ -440,12 +471,22 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         var startY = 0
         var moved = false
         var isDragging = false
+        var longActionFired = false // 是否已触发2s长按动作（呼出输入法选择器）
         val touchSlop = dp(4)
+        val tinyMoveSlop = dp(6) // “极小范围移动”阈值
         val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+        val longHoldSwitchTimeout = 2000L // 2 秒长按触发输入法选择器
         var longPressPosted = false
+        var switchImePosted = false
         val longPressRunnable = Runnable {
             isDragging = true
             longPressPosted = false
+        }
+        val switchImeRunnable = Runnable {
+            switchImePosted = false
+            longActionFired = true
+            // 触发输入法选择器
+            invokeImePicker()
         }
 
         target.setOnTouchListener { v, e ->
@@ -455,6 +496,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                     edgeAnimator?.cancel()
                     moved = false
                     isDragging = false
+                    longActionFired = false
                     downX = e.rawX
                     downY = e.rawY
                     startX = p.x
@@ -463,12 +505,22 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                         handler.postDelayed(longPressRunnable, longPressTimeout)
                         longPressPosted = true
                     }
+                    if (!switchImePosted) {
+                        handler.postDelayed(switchImeRunnable, longHoldSwitchTimeout)
+                        switchImePosted = true
+                    }
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (e.rawX - downX).toInt()
                     val dy = (e.rawY - downY).toInt()
                     if (!moved && (kotlin.math.abs(dx) > touchSlop || kotlin.math.abs(dy) > touchSlop)) moved = true
+
+                    // 若在2秒长按触发前移动超过“极小阈值”，则取消输入法选择器触发
+                    if ((kotlin.math.abs(dx) > tinyMoveSlop || kotlin.math.abs(dy) > tinyMoveSlop) && switchImePosted) {
+                        handler.removeCallbacks(switchImeRunnable)
+                        switchImePosted = false
+                    }
 
                     if (!isDragging) {
                         if (moved && longPressPosted) {
@@ -496,7 +548,13 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                         handler.removeCallbacks(longPressRunnable)
                         longPressPosted = false
                     }
-                    if (!isDragging && !moved) {
+                    if (switchImePosted) {
+                        handler.removeCallbacks(switchImeRunnable)
+                        switchImePosted = false
+                    }
+                    if (longActionFired) {
+                        // 已触发2秒长按动作，抬起时不再处理点击或吸附
+                    } else if (!isDragging && !moved) {
                         // 由根视图处理点击，避免子视图消费导致拖动无法触发
                         onBallClick()
                     } else if (isDragging) {
@@ -504,6 +562,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                     }
                     moved = false
                     isDragging = false
+                    longActionFired = false
                     true
                 }
                 else -> false
