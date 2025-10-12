@@ -279,7 +279,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version_name }}"
 
           # 生成新文件名
-          NEW_NAME="asr-keyboard-${VERSION}-${APK_TYPE}.apk"
+          NEW_NAME="lexisharp-keyboard-${VERSION}-${APK_TYPE}.apk"
           NEW_PATH="app/build/outputs/apk/${NEW_NAME}"
 
           cp "$APK_PATH" "$NEW_PATH"
