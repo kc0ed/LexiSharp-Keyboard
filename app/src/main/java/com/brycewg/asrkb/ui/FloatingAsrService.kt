@@ -45,6 +45,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import androidx.core.graphics.toColorInt
 
 /**
  * 悬浮球语音识别服务
@@ -341,16 +342,13 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             Log.d(TAG, "updateBallState: recording=$isRecording, processing=$isProcessing")
             if (isRecording) {
                 // 录音中:图标变红色,顺时针旋转动画
-                ballIcon?.setColorFilter(Color.parseColor("#F44336"))
-                startProgressAnimation(false)
+                ballIcon?.setColorFilter("#F44336".toColorInt())
             } else if (isProcessing) {
                 // 处理中:图标变蓝色,逆时针旋转动画
-                ballIcon?.setColorFilter(Color.parseColor("#2196F3"))
-                startProgressAnimation(true)
+                ballIcon?.setColorFilter("#2196F3".toColorInt())
             } else {
                 // 空闲:图标恢复默认颜色,停止动画
                 ballIcon?.clearColorFilter()
-                stopProgressAnimation()
             }
         }
     }

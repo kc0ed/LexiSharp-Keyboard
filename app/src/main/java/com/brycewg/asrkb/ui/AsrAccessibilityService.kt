@@ -91,7 +91,7 @@ class AsrAccessibilityService : AccessibilityService() {
         
         private fun copyToClipboard(context: Context, text: String) {
             try {
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clipboard = context.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("ASR Result", text)
                 clipboard.setPrimaryClip(clip)
             } catch (_: Throwable) { }

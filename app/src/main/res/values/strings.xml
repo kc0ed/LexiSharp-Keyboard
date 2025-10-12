@@ -36,7 +36,7 @@
     <string name="btn_enable">启用键盘</string>
     <string name="btn_choose">选择键盘</string>
     <string name="btn_grant_mic">授予麦克风权限</string>
-    <string name="btn_show_guide">查看使用指南</string>
+  <string name="btn_show_guide">查看使用指南</string>
     <!-- Material UI additions -->
     <string name="settings_title">言犀键盘设置</string>
     <string name="volc_section_title">Volcano Engine 鉴权参数</string>
@@ -78,8 +78,8 @@
     <string name="floating_asr_error">识别失败: %1$s</string>
     <string name="floating_asr_copied">已复制到剪贴板</string>
     <string name="floating_asr_inserted">已插入文本</string>
-    <string name="floating_asr_no_text_field">未找到可输入的文本框</string>
-    <string name="accessibility_service_description">允许言犀键盘悬浮球将语音识别结果自动插入到当前输入框中。不会收集或上传任何数据。</string>
+    <string name="floating_asr_no_text_field">未找到文本输入框</string>
+  <string name="accessibility_service_description">允许言犀键盘悬浮球将语音识别结果自动插入到当前输入框中。不会收集或上传任何数据。</string>
 
     <!-- LLM settings -->
     <string name="llm_section_title">AI 后处理配置</string>

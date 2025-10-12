@@ -66,6 +66,19 @@
     <string name="toast_need_overlay_perm">Please grant "Display over other apps" in system settings to enable the floating ball</string>
     <string name="toast_need_accessibility_perm">Please enable Accessibility Service in system settings to support this feature</string>
     <string name="cd_floating_switcher">Quick switch to LexiSharp keyboard</string>
+    <string name="label_floating_asr">Use floating ball for voice recognition</string>
+    <string name="cd_floating_asr">Floating ball voice recognition</string>
+    <string name="btn_grant_all_permissions">Grant all required permissions</string>
+
+    <!-- Floating ASR status messages -->
+    <string name="floating_asr_recording">Recording…</string>
+    <string name="floating_asr_recognizing">Recognizing…</string>
+    <string name="floating_asr_processing">AI processing…</string>
+    <string name="floating_asr_completed">Recognition completed</string>
+    <string name="floating_asr_error">Recognition failed: %1$s</string>
+    <string name="floating_asr_copied">Copied to clipboard</string>
+    <string name="floating_asr_inserted">Text inserted</string>
+    <string name="floating_asr_no_text_field">No text field found</string>
 
     <!-- LLM settings -->
     <string name="llm_section_title">AI Post-processing</string>

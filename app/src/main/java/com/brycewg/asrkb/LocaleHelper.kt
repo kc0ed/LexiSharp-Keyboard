@@ -2,7 +2,6 @@ package com.brycewg.asrkb
 
 import android.content.Context
 import android.content.res.Configuration
-import android.os.Build
 import android.os.LocaleList
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
@@ -20,7 +19,7 @@ object LocaleHelper {
   private fun applyLocales(config: Configuration, locales: LocaleListCompat) {
     if (locales.isEmpty) return
     val tags = locales.toLanguageTags()
-    if (tags.isNullOrEmpty()) return
+    if (tags.isEmpty()) return
     val localeList = LocaleList.forLanguageTags(tags)
     if (localeList.isEmpty) return
     config.setLocales(localeList)

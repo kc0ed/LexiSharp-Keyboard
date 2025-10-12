@@ -49,6 +49,7 @@
     <string name="dash_section_title">阿里云百炼 ASR 参数</string>
     <string name="label_dash_api_key">DashScope API Key（Bearer）</string>
     <string name="label_dash_model">模型（如：qwen3-asr-flash）</string>
+    <string name="label_volc_streaming">使用流式识别（WebSocket）</string>
     <string name="status_last_request_ms">上次识别耗时：%1$d ms</string>
     <string name="btn_save">保存</string>
     <string name="btn_close">关闭</string>
@@ -59,8 +60,24 @@
     <string name="label_floating_switcher">启用悬浮球快速切换输入法</string>
     <string name="label_floating_alpha">悬浮球透明度</string>
     <string name="label_floating_size">悬浮球大小</string>
+    <string name="label_floating_only_when_ime_visible">仅在键盘显示时显示悬浮球</string>
     <string name="toast_need_overlay_perm">请在系统设置中授予"在其他应用上层显示"权限以启用悬浮球</string>
     <string name="cd_floating_switcher">快速切换到 言犀键盘</string>
+    <string name="label_floating_asr">使用悬浮球进行语音识别</string>
+    <string name="toast_need_accessibility_perm">请在系统设置中授予"无障碍服务"权限以支持此功能</string>
+    <string name="cd_floating_asr">悬浮球语音识别</string>
+    <string name="btn_grant_all_permissions">授予所有需要的权限</string>
+
+    <!-- Floating ASR status messages -->
+    <string name="floating_asr_recording">正在录音…</string>
+    <string name="floating_asr_recognizing">识别中…</string>
+    <string name="floating_asr_processing">AI处理中…</string>
+    <string name="floating_asr_completed">识别完成</string>
+    <string name="floating_asr_error">识别失败: %1$s</string>
+    <string name="floating_asr_copied">已复制到剪贴板</string>
+    <string name="floating_asr_inserted">已插入文本</string>
+    <string name="floating_asr_no_text_field">未找到文本输入框</string>
+    <string name="accessibility_service_description">允许言犀键盘悬浮球将语音识别结果自动插入到当前输入框中。不会收集或上传任何数据。</string>
 
     <string name="llm_section_title">AI 后处理配置</string>
     <string name="label_llm_endpoint">OpenAI Endpoint（例如：https://api.openai.com/v1 或包含 /chat/completions）</string>
@@ -73,6 +90,13 @@
     <string name="btn_add_preset">新增/另存为预设</string>
     <string name="btn_export_settings">导出设置</string>
     <string name="btn_import_settings">导入设置</string>
+    <string name="label_llm_choose_profile">选择后处理模型</string>
+    <string name="label_llm_profile_name">配置名称</string>
+    <string name="btn_llm_add_profile">新增配置</string>
+    <string name="btn_llm_delete_profile">删除配置</string>
+    <string name="toast_llm_profile_added">已新增配置</string>
+    <string name="toast_llm_profile_deleted">已删除配置</string>
+    <string name="untitled_profile">未命名配置</string>
 
     <string name="custom_punct_section_title">自定义标点按钮</string>
     <string name="label_custom_punct_1">按钮1（字符或标点）</string>

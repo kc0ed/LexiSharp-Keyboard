@@ -78,7 +78,7 @@ class SettingsActivity : AppCompatActivity() {
         val etGeminiApiKey = findViewById<EditText>(R.id.etGeminiApiKey)
         val etGeminiModel = findViewById<EditText>(R.id.etGeminiModel)
         val groupVolc = findViewById<View>(R.id.groupVolc)
-        val switchVolcStreaming = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchVolcStreaming)
+        val switchVolcStreaming = findViewById<MaterialSwitch>(R.id.switchVolcStreaming)
         val groupSf = findViewById<View>(R.id.groupSf)
         val groupEleven = findViewById<View>(R.id.groupEleven)
         val groupDash = findViewById<View>(R.id.groupDashScope)
@@ -306,7 +306,7 @@ class SettingsActivity : AppCompatActivity() {
                 else -> 0
             }
         )
-        var languageSpinnerInitialized: Boolean = true
+        val languageSpinnerInitialized = true
         fun applyVendorVisibility(v: AsrVendor) {
             // 通过映射统一控制各供应商标题与内容分组可见性
             val groups = mapOf(
@@ -429,7 +429,7 @@ class SettingsActivity : AppCompatActivity() {
             prefs.floatingBallSizeDp = sliderFloatingSize.value.toInt().coerceIn(28, 96)
 
             // 悬浮球语音识别开关
-            var newFloatingAsr = switchFloatingAsr.isChecked
+            val newFloatingAsr = switchFloatingAsr.isChecked
             val wasFloatingAsr = prefs.floatingAsrEnabled
 
             // 悬浮球切换输入法开关
@@ -651,7 +651,7 @@ class SettingsActivity : AppCompatActivity() {
         super.onResume()
 
         // 检查无障碍服务是否刚刚被启用
-        val prefs = Prefs(this)
+        Prefs(this)
         val isNowEnabled = isAccessibilityServiceEnabled()
 
         if (!wasAccessibilityEnabled && isNowEnabled) {
