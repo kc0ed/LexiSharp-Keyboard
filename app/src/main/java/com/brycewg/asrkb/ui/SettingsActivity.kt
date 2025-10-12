@@ -205,7 +205,6 @@ class SettingsActivity : AppCompatActivity() {
         )
         spLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, languageItems)
         val savedTag = prefs.appLanguageTag
-        var languageSpinnerInitialized: Boolean
         spLanguage.setSelection(
             when (savedTag) {
                 "zh", "zh-CN", "zh-Hans" -> 1
@@ -213,7 +212,7 @@ class SettingsActivity : AppCompatActivity() {
                 else -> 0
             }
         )
-        languageSpinnerInitialized = true
+        var languageSpinnerInitialized: Boolean = true
         fun applyVendorVisibility(v: AsrVendor) {
             // 通过映射统一控制各供应商标题与内容分组可见性
             val groups = mapOf(

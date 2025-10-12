@@ -7,6 +7,7 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import androidx.core.content.ContextCompat
+import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +72,7 @@ class VolcFileAsrEngine(
                 Manifest.permission.RECORD_AUDIO
             ) == PackageManager.PERMISSION_GRANTED
             if (!hasPermission) {
-                listener.onError("录音权限未授予")
+                listener.onError(context.getString(R.string.error_record_permission_denied))
                 running.set(false)
                 return@launch
             }
@@ -89,12 +90,12 @@ class VolcFileAsrEngine(
                     bufferSize
                 )
             } catch (t: Throwable) {
-                listener.onError("无法初始化录音: ${t.message}")
+                listener.onError(context.getString(R.string.error_audio_init_cannot, t.message ?: ""))
                 running.set(false)
                 return@launch
             }
             if (recorder.state != AudioRecord.STATE_INITIALIZED) {
-                listener.onError("录音初始化失败")
+                listener.onError(context.getString(R.string.error_audio_init_failed))
                 running.set(false)
                 return@launch
             }
@@ -117,7 +118,7 @@ class VolcFileAsrEngine(
                     }
                 }
             } catch (t: Throwable) {
-                listener.onError("录音错误: ${t.message}")
+                listener.onError(context.getString(R.string.error_audio_error, t.message ?: ""))
             } finally {
                 try { recorder.stop() } catch (_: Throwable) {}
                 try { recorder.release() } catch (_: Throwable) {}
@@ -126,7 +127,7 @@ class VolcFileAsrEngine(
             // 如果有数据，准备音频并上传
             val pcmBytes = pcmBuffer.toByteArray()
             if (pcmBytes.isEmpty()) {
-                listener.onError("空音频")
+                listener.onError(context.getString(R.string.error_audio_empty))
                 return@launch
             }
 
@@ -152,7 +153,10 @@ class VolcFileAsrEngine(
                 resp.use { r ->
                     if (!r.isSuccessful) {
                         val msg = r.header("X-Api-Message") ?: r.message
-                        listener.onError("识别请求失败: HTTP ${r.code}${if (msg.isBlank()) "" else ": $msg"}")
+                        val detail = formatHttpDetail(msg)
+                        listener.onError(
+                            context.getString(R.string.error_request_failed_http, r.code, detail)
+                        )
                         return@launch
                     }
                     val bodyStr = r.body?.string() ?: ""
@@ -167,11 +171,13 @@ class VolcFileAsrEngine(
                         try { onRequestDuration?.invoke(dt) } catch (_: Throwable) {}
                         listener.onFinal(text)
                     } else {
-                        listener.onError("识别返回为空")
+                        listener.onError(context.getString(R.string.error_asr_empty_result))
                     }
                 }
             } catch (t: Throwable) {
-                listener.onError("识别失败: ${t.message}")
+                listener.onError(
+                    context.getString(R.string.error_recognize_failed_with_reason, t.message ?: "")
+                )
             }
         }
     }
