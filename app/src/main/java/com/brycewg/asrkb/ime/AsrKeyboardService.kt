@@ -33,6 +33,7 @@ import com.brycewg.asrkb.asr.DashscopeFileAsrEngine
 import com.brycewg.asrkb.asr.GeminiFileAsrEngine
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.asr.LlmPostProcessor
+import com.brycewg.asrkb.asr.VolcStreamAsrEngine
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.SettingsActivity
 import kotlinx.coroutines.CoroutineScope
@@ -92,6 +93,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     // Track last committed ASR result so AI Edit (no selection) can modify it
     private var lastAsrCommitText: String? = null
+    // 记录最近一次流式中间结果，用于合并最终结果
+    private var lastPartialText: String? = null
     // 最近一次 ASR API 请求耗时（毫秒）
     private var lastRequestDurationMs: Long? = null
 
@@ -493,7 +496,11 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private fun buildEngineForCurrentMode(): StreamingAsrEngine? {
         return when (prefs.asrVendor) {
             AsrVendor.Volc -> if (prefs.hasVolcKeys()) {
-                VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+                if (prefs.volcStreamingEnabled) {
+                    VolcStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                } else {
+                    VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+                }
             } else null
             AsrVendor.SiliconFlow -> if (prefs.hasSfKeys()) {
                 SiliconFlowFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
@@ -517,8 +524,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         if (!prefs.hasAsrKeys()) return null
         return when (prefs.asrVendor) {
             AsrVendor.Volc -> when (current) {
-                is VolcFileAsrEngine -> current
-                else -> VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+                is VolcFileAsrEngine -> if (!prefs.volcStreamingEnabled) current else VolcStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                is VolcStreamAsrEngine -> if (prefs.volcStreamingEnabled) current else VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+                else -> if (prefs.volcStreamingEnabled) VolcStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                        else VolcFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
             AsrVendor.SiliconFlow -> when (current) {
                 is SiliconFlowFileAsrEngine -> current
@@ -820,25 +829,37 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             } else {
                 val ic = currentInputConnection
                 val finalText = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
-                val trimDelta = text.length - finalText.length
-                // If some trailing punctuation was already committed as stable before final,
-                // delete it from the editor so the final result matches the trimmed output.
-                if (prefs.trimFinalTrailingPunct && trimDelta > 0) {
-                    val alreadyCommittedOverrun = (committedStableLen - finalText.length).coerceAtLeast(0)
-                    if (alreadyCommittedOverrun > 0) {
-                        ic?.deleteSurroundingText(alreadyCommittedOverrun, 0)
-                        committedStableLen -= alreadyCommittedOverrun
+                val partial = lastPartialText
+                if (!partial.isNullOrEmpty()) {
+                    // 已有流式中间结果作为 composing
+                    ic?.finishComposingText()
+                    if (finalText.startsWith(partial)) {
+                        val remainder = finalText.substring(partial.length)
+                        if (remainder.isNotEmpty()) ic?.commitText(remainder, 1)
+                    } else {
+                        // 结果发生回退/改写：移除已显示的中间结果，直接写入最终
+                        ic?.deleteSurroundingText(partial.length, 0)
+                        ic?.commitText(finalText, 1)
                     }
-                }
-                val remainder = if (finalText.length > committedStableLen) finalText.substring(committedStableLen) else ""
-                ic?.finishComposingText()
-                if (remainder.isNotEmpty()) {
-                    ic?.commitText(remainder, 1)
+                } else {
+                    // 传统一次性文件识别路径
+                    val trimDelta = text.length - finalText.length
+                    if (prefs.trimFinalTrailingPunct && trimDelta > 0) {
+                        val alreadyCommittedOverrun = (committedStableLen - finalText.length).coerceAtLeast(0)
+                        if (alreadyCommittedOverrun > 0) {
+                            ic?.deleteSurroundingText(alreadyCommittedOverrun, 0)
+                            committedStableLen -= alreadyCommittedOverrun
+                        }
+                    }
+                    val remainder = if (finalText.length > committedStableLen) finalText.substring(committedStableLen) else ""
+                    ic?.finishComposingText()
+                    if (remainder.isNotEmpty()) ic?.commitText(remainder, 1)
                 }
                 vibrateTick()
                 committedStableLen = 0
                 // Track last ASR commit as the full final text (not just remainder)
                 lastAsrCommitText = finalText
+                lastPartialText = null
                 // 统计：累加本次识别最终提交的字数
                 try { prefs.addAsrChars(finalText.length) } catch (_: Throwable) { }
                 // Always return to idle after finalizing one utterance
@@ -846,6 +867,15 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 // Clear any previous postproc commit context
                 lastPostprocCommit = null
             }
+        }
+    }
+
+    override fun onPartial(text: String) {
+        // 主线程更新 composing（实时预览）
+        serviceScope.launch {
+            val ic = currentInputConnection
+            ic?.setComposingText(text, 1)
+            lastPartialText = text
         }
     }
 

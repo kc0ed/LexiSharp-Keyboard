@@ -78,6 +78,7 @@ class SettingsActivity : AppCompatActivity() {
         val etGeminiApiKey = findViewById<EditText>(R.id.etGeminiApiKey)
         val etGeminiModel = findViewById<EditText>(R.id.etGeminiModel)
         val groupVolc = findViewById<View>(R.id.groupVolc)
+        val switchVolcStreaming = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchVolcStreaming)
         val groupSf = findViewById<View>(R.id.groupSf)
         val groupEleven = findViewById<View>(R.id.groupEleven)
         val groupDash = findViewById<View>(R.id.groupDashScope)
@@ -138,6 +139,7 @@ class SettingsActivity : AppCompatActivity() {
             switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
             switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
             switchMicHaptic.isChecked = prefs.micHapticEnabled
+            switchVolcStreaming.isChecked = prefs.volcStreamingEnabled
             switchFloating.isChecked = prefs.floatingSwitcherEnabled
             switchFloatingOnlyWhenImeVisible.isChecked = prefs.floatingSwitcherOnlyWhenImeVisible
             sliderFloatingAlpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
@@ -564,6 +566,8 @@ class SettingsActivity : AppCompatActivity() {
             refreshSpinnerSelection()
             try { (spLlmProfiles.adapter as? ArrayAdapter<*>)?.clear() } catch (_: Throwable) {}
             refreshLlmProfilesSpinner()
+            // 保存火山引擎流式开关
+            prefs.volcStreamingEnabled = switchVolcStreaming.isChecked
             Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
         }
 

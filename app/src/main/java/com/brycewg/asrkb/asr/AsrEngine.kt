@@ -27,5 +27,8 @@ interface StreamingAsrEngine : AsrEngine {
 
         /** 处理识别过程中的错误 */
         fun onError(message: String)
+
+        /** 接收中间结果（可选实现） */
+        fun onPartial(text: String) { /* default no-op */ }
     }
 }

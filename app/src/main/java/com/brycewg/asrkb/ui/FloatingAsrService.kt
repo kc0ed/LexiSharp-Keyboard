@@ -38,6 +38,7 @@ import com.brycewg.asrkb.asr.GeminiFileAsrEngine
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.asr.VolcStreamAsrEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -431,7 +432,11 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private fun buildEngineForCurrentMode(): StreamingAsrEngine? {
         return when (prefs.asrVendor) {
             AsrVendor.Volc -> if (prefs.hasVolcKeys()) {
-                VolcFileAsrEngine(this, serviceScope, prefs, this) { }
+                if (prefs.volcStreamingEnabled) {
+                    VolcStreamAsrEngine(this, serviceScope, prefs, this)
+                } else {
+                    VolcFileAsrEngine(this, serviceScope, prefs, this) { }
+                }
             } else null
             AsrVendor.SiliconFlow -> if (prefs.hasSfKeys()) {
                 SiliconFlowFileAsrEngine(this, serviceScope, prefs, this) { }

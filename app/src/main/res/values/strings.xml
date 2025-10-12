@@ -52,6 +52,7 @@
     <string name="dash_section_title">阿里云百炼 ASR 参数</string>
     <string name="label_dash_api_key">DashScope API Key（Bearer）</string>
     <string name="label_dash_model">模型（如：qwen3-asr-flash）</string>
+    <string name="label_volc_streaming">使用流式识别（WebSocket）</string>
     <string name="btn_save">保存</string>
     <string name="btn_close">关闭</string>
     <string name="title_quick_guide">快速上手教程</string>

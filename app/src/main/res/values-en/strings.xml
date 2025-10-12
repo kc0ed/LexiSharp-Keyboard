@@ -51,6 +51,7 @@
     <string name="dash_section_title">Alibaba Cloud DashScope ASR Parameters</string>
     <string name="label_dash_api_key">DashScope API Key (Bearer)</string>
     <string name="label_dash_model">Model (e.g., qwen3-asr-flash)</string>
+    <string name="label_volc_streaming">Use streaming recognition (WebSocket)</string>
     <string name="status_last_request_ms">Last request time: %1$d ms</string>
     <string name="btn_save">Save</string>
     <string name="btn_close">Close</string>

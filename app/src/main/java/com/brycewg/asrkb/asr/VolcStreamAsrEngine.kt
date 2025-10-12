@@ -1,0 +1,370 @@
+package com.brycewg.asrkb.asr
+
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
+import androidx.core.content.ContextCompat
+import com.brycewg.asrkb.R
+import com.brycewg.asrkb.store.Prefs
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import okhttp3.Headers
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okio.ByteString
+import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
+
+/**
+ * 火山引擎 WebSocket 流式 ASR 实现（bigmodel_async 二进制协议）。
+ * - 启动后通过 WS 建连，先发送 full client request，再按 200ms 分包发送音频（gzip 压缩）。
+ * - 接收服务端 JSON 结果，onPartial/onFinal 回调到 IME。
+ */
+class VolcStreamAsrEngine(
+    private val context: Context,
+    private val scope: CoroutineScope,
+    private val prefs: Prefs,
+    private val listener: StreamingAsrEngine.Listener
+) : StreamingAsrEngine {
+
+    private val http: OkHttpClient = OkHttpClient.Builder()
+        .pingInterval(15, TimeUnit.SECONDS)
+        .callTimeout(0, TimeUnit.MILLISECONDS) // 持久流式
+        .build()
+
+    private val running = AtomicBoolean(false)
+    private val wsReady = AtomicBoolean(false)
+    private var ws: WebSocket? = null
+    private var audioJob: Job? = null
+
+    private val sampleRate = 16000
+    private val channelConfig = AudioFormat.CHANNEL_IN_MONO
+    private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
+
+    override val isRunning: Boolean
+        get() = running.get()
+
+    override fun start() {
+        if (running.get()) return
+        // 权限校验
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!hasPermission) {
+            listener.onError(context.getString(R.string.error_record_permission_denied))
+            return
+        }
+        running.set(true)
+        openWebSocketAndStartAudio()
+    }
+
+    override fun stop() {
+        if (!running.get()) return
+        running.set(false)
+        // 发送最后一包标记位的空音频以结束（若可能）
+        try { sendAudioFrame(byteArrayOf(), last = true) } catch (_: Throwable) { }
+        // 稍等服务端返回最终结果后再关闭连接
+        scope.launch(Dispatchers.IO) {
+            delay(200)
+            try { ws?.close(1000, "stop") } catch (_: Throwable) { }
+            ws = null
+            wsReady.set(false)
+        }
+        audioJob?.cancel()
+        audioJob = null
+    }
+
+    private fun openWebSocketAndStartAudio() {
+        val connectId = UUID.randomUUID().toString()
+        val req = Request.Builder()
+            .url(DEFAULT_WS_ENDPOINT)
+            .headers(
+                Headers.headersOf(
+                    "X-Api-App-Key", prefs.appKey,
+                    "X-Api-Access-Key", prefs.accessKey,
+                    // 使用小时版资源（可根据需要切换并发版）
+                    "X-Api-Resource-Id", DEFAULT_STREAM_RESOURCE,
+                    "X-Api-Connect-Id", connectId
+                )
+            )
+            .build()
+
+        ws = http.newWebSocket(req, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                wsReady.set(true)
+                // 发送 full client request
+                try {
+                    val full = buildFullClientRequestJson()
+                    val payload = gzip(full.toByteArray(Charsets.UTF_8))
+                    val frame = buildClientFrame(
+                        messageType = MSG_TYPE_FULL_CLIENT_REQ,
+                        flags = 0,
+                        serialization = SERIALIZE_JSON,
+                        compression = COMPRESS_GZIP,
+                        payload = payload
+                    )
+                    webSocket.send(ByteString.of(*frame))
+                } catch (t: Throwable) {
+                    listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
+                    stop()
+                    return
+                }
+                // 启动录音并流式发送
+                startAudioStreaming(webSocket)
+            }
+
+            override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                try {
+                    handleServerMessage(bytes)
+                } catch (t: Throwable) {
+                    listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
+                }
+            }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                try { webSocket.close(code, reason) } catch (_: Throwable) { }
+                wsReady.set(false)
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                wsReady.set(false)
+                if (running.get()) {
+                    listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
+                }
+                running.set(false)
+            }
+        })
+    }
+
+    private fun startAudioStreaming(webSocket: WebSocket) {
+        audioJob?.cancel()
+        audioJob = scope.launch(Dispatchers.IO) {
+            val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+            val chunkBytes = ((sampleRate / 5) * 2) // 200ms * 16k * 16bit mono
+            val bufferSize = maxOf(minBuffer, chunkBytes)
+            val recorder = try {
+                AudioRecord(
+                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                    sampleRate,
+                    channelConfig,
+                    audioFormat,
+                    bufferSize
+                )
+            } catch (t: Throwable) {
+                listener.onError(context.getString(R.string.error_audio_init_cannot, t.message ?: ""))
+                running.set(false)
+                return@launch
+            }
+            if (recorder.state != AudioRecord.STATE_INITIALIZED) {
+                listener.onError(context.getString(R.string.error_audio_init_failed))
+                running.set(false)
+                return@launch
+            }
+
+            try {
+                // 等待 WS 就绪
+                var tries = 0
+                while (isActive && !wsReady.get() && tries < 50) {
+                    delay(10)
+                    tries++
+                }
+                if (!wsReady.get()) {
+                    listener.onError(context.getString(R.string.error_recognize_failed_with_reason, "WebSocket not ready"))
+                    running.set(false)
+                    return@launch
+                }
+                recorder.startRecording()
+                val buf = ByteArray(chunkBytes)
+                while (isActive && running.get()) {
+                    val read = recorder.read(buf, 0, buf.size)
+                    if (read > 0) {
+                        sendAudioFrame(buf.copyOf(read), last = false)
+                    } else if (read < 0) {
+                        throw IOException("AudioRecord read error: $read")
+                    }
+                }
+                // stop() 会再发最后一包
+            } catch (t: Throwable) {
+                listener.onError(context.getString(R.string.error_audio_error, t.message ?: ""))
+            } finally {
+                try { recorder.stop() } catch (_: Throwable) {}
+                try { recorder.release() } catch (_: Throwable) {}
+            }
+        }
+    }
+
+    private fun sendAudioFrame(pcm: ByteArray, last: Boolean) {
+        val webSocket = ws ?: return
+        if (!wsReady.get()) return
+        // audio-only client request: raw bytes + gzip
+        val payload = gzip(pcm)
+        val flags = if (last) FLAG_AUDIO_LAST else 0
+        val frame = buildClientFrame(
+            messageType = MSG_TYPE_AUDIO_ONLY_CLIENT_REQ,
+            flags = flags,
+            serialization = SERIALIZE_NONE,
+            compression = COMPRESS_GZIP,
+            payload = payload
+        )
+        webSocket.send(ByteString.of(*frame))
+    }
+
+    private fun buildFullClientRequestJson(): String {
+        val user = JSONObject().apply { put("uid", prefs.appKey) }
+        val audio = JSONObject().apply {
+            put("format", "pcm")
+            put("rate", sampleRate)
+            put("bits", 16)
+            put("channel", 1)
+            put("language", "zh-CN")
+        }
+        val request = JSONObject().apply {
+            put("model_name", "bigmodel")
+            put("enable_itn", true)
+            put("enable_punc", true)
+            put("enable_ddc", false)
+        }
+        return JSONObject().apply {
+            put("user", user)
+            put("audio", audio)
+            put("request", request)
+        }.toString()
+    }
+
+    private fun handleServerMessage(bytes: ByteString) {
+        val arr = bytes.toByteArray()
+        if (arr.size < 8) return // 至少 header(4)+size(4)
+        val b0 = arr[0].toInt() and 0xFF
+        val b1 = arr[1].toInt() and 0xFF
+        val b2 = arr[2].toInt() and 0xFF
+        val headerSizeBytes = (b0 and 0x0F) * 4
+        val msgType = (b1 ushr 4) and 0x0F
+        val flags = b1 and 0x0F
+        val serialization = (b2 ushr 4) and 0x0F
+        val compression = b2 and 0x0F
+        var offset = headerSizeBytes
+        if (msgType == MSG_TYPE_FULL_SERVER_RESP) {
+            // 跳过 sequence(4)
+            if (arr.size < offset + 4) return
+            offset += 4
+            if (arr.size < offset + 4) return
+            val payloadSize = readUInt32BE(arr, offset)
+            offset += 4
+            if (arr.size < offset + payloadSize) return
+            var payload = arr.copyOfRange(offset, offset + payloadSize)
+            if (compression == COMPRESS_GZIP) {
+                payload = gunzip(payload)
+            }
+            if (serialization == SERIALIZE_JSON) {
+                val text = parseTextFromJson(String(payload, Charsets.UTF_8))
+                if (text.isNotBlank()) {
+                    val isFinal = (flags and FLAG_SERVER_FINAL_MASK) == FLAG_SERVER_FINAL_MASK
+                    if (isFinal || !running.get()) listener.onFinal(text) else listener.onPartial(text)
+                    if (isFinal) {
+                        running.set(false)
+                    }
+                }
+            }
+        } else if (msgType == MSG_TYPE_ERROR_SERVER) {
+            // 错误消息：code(4) + size(4) + msg
+            if (arr.size < offset + 8) return
+            val code = readUInt32BE(arr, offset)
+            val size = readUInt32BE(arr, offset + 4)
+            val start = offset + 8
+            val end = (start + size).coerceAtMost(arr.size)
+            val msg = try { String(arr.copyOfRange(start, end), Charsets.UTF_8) } catch (_: Throwable) { "" }
+            listener.onError("ASR Error $code: $msg")
+        }
+    }
+
+    private fun parseTextFromJson(json: String): String {
+        return try {
+            val o = JSONObject(json)
+            if (o.has("result")) {
+                val r = o.getJSONObject("result")
+                r.optString("text", "")
+            } else ""
+        } catch (_: Throwable) { "" }
+    }
+
+    private fun buildClientFrame(
+        messageType: Int,
+        flags: Int,
+        serialization: Int,
+        compression: Int,
+        payload: ByteArray
+    ): ByteArray {
+        val header = ByteArray(4)
+        header[0] = (((PROTOCOL_VERSION and 0x0F) shl 4) or (HEADER_SIZE_UNITS and 0x0F)).toByte()
+        header[1] = (((messageType and 0x0F) shl 4) or (flags and 0x0F)).toByte()
+        header[2] = (((serialization and 0x0F) shl 4) or (compression and 0x0F)).toByte()
+        header[3] = 0
+        val size = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(payload.size).array()
+        return header + size + payload
+    }
+
+    private fun readUInt32BE(arr: ByteArray, offset: Int): Int {
+        return ((arr[offset].toInt() and 0xFF) shl 24) or
+            ((arr[offset + 1].toInt() and 0xFF) shl 16) or
+            ((arr[offset + 2].toInt() and 0xFF) shl 8) or
+            (arr[offset + 3].toInt() and 0xFF)
+    }
+
+    private fun gzip(data: ByteArray): ByteArray {
+        val bos = ByteArrayOutputStream()
+        GZIPOutputStream(bos).use { it.write(data) }
+        return bos.toByteArray()
+    }
+
+    private fun gunzip(data: ByteArray): ByteArray {
+        return try {
+            GZIPInputStream(data.inputStream()).readBytes()
+        } catch (_: Throwable) { data }
+    }
+
+    companion object {
+        private const val DEFAULT_WS_ENDPOINT = "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel_async"
+        private const val DEFAULT_STREAM_RESOURCE = "volc.bigasr.sauc.duration"
+
+        private const val PROTOCOL_VERSION = 0x1
+        private const val HEADER_SIZE_UNITS = 0x1 // 4 bytes
+
+        // Message types
+        private const val MSG_TYPE_FULL_CLIENT_REQ = 0x1
+        private const val MSG_TYPE_AUDIO_ONLY_CLIENT_REQ = 0x2
+        private const val MSG_TYPE_FULL_SERVER_RESP = 0x9
+        private const val MSG_TYPE_ERROR_SERVER = 0xF
+
+        // Serialization
+        private const val SERIALIZE_NONE = 0x0
+        private const val SERIALIZE_JSON = 0x1
+
+        // Compression
+        private const val COMPRESS_NONE = 0x0
+        private const val COMPRESS_GZIP = 0x1
+
+        // Flags
+        private const val FLAG_AUDIO_LAST = 0x2 // 客户端音频最后一包
+        private const val FLAG_SERVER_FINAL_MASK = 0x3 // 服务端最终结果标志
+    }
+}
+

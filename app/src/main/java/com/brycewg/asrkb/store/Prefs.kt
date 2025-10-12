@@ -267,6 +267,11 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_GEM_PROMPT, DEFAULT_GEM_PROMPT) ?: DEFAULT_GEM_PROMPT
         set(value) = sp.edit { putString(KEY_GEM_PROMPT, value) }
 
+    // 火山引擎：流式识别开关（与文件模式共享凭证）
+    var volcStreamingEnabled: Boolean
+        get() = sp.getBoolean(KEY_VOLC_STREAMING_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_VOLC_STREAMING_ENABLED, value) }
+
     // 选中的ASR供应商
     var asrVendor: AsrVendor
         get() = AsrVendor.fromId(sp.getString(KEY_ASR_VENDOR, AsrVendor.Volc.id))
@@ -390,6 +395,7 @@ class Prefs(context: Context) {
         private const val KEY_GEM_API_KEY = "gem_api_key"
         private const val KEY_GEM_MODEL = "gem_model"
         private const val KEY_GEM_PROMPT = "gem_prompt"
+        private const val KEY_VOLC_STREAMING_ENABLED = "volc_streaming_enabled"
         private const val KEY_DASH_API_KEY = "dash_api_key"
         private const val KEY_DASH_MODEL = "dash_model"
         private const val KEY_PUNCT_1 = "punct_1"
@@ -483,6 +489,8 @@ class Prefs(context: Context) {
         o.put(KEY_LLM_API_KEY, llmApiKey)
         o.put(KEY_LLM_MODEL, llmModel)
         o.put(KEY_LLM_TEMPERATURE, llmTemperature.toDouble())
+        // Volcano streaming toggle
+        o.put(KEY_VOLC_STREAMING_ENABLED, volcStreamingEnabled)
         // 多 LLM 配置
         o.put(KEY_LLM_PROVIDERS, llmProvidersJson)
         o.put(KEY_LLM_ACTIVE_ID, activeLlmId)
@@ -537,6 +545,7 @@ class Prefs(context: Context) {
             optString(KEY_LLM_API_KEY)?.let { llmApiKey = it }
             optString(KEY_LLM_MODEL)?.let { llmModel = it.ifBlank { DEFAULT_LLM_MODEL } }
             optFloat(KEY_LLM_TEMPERATURE)?.let { llmTemperature = it.coerceIn(0f, 2f) }
+            optBool(KEY_VOLC_STREAMING_ENABLED)?.let { volcStreamingEnabled = it }
             // 多 LLM 配置（优先于旧字段，仅当存在时覆盖）
             optString(KEY_LLM_PROVIDERS)?.let { llmProvidersJson = it }
             optString(KEY_LLM_ACTIVE_ID)?.let { activeLlmId = it }
