@@ -62,12 +62,12 @@
                 android:text="@string/btn_choose" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnMicPermission"
+                android:id="@+id/btnAllPermissions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 style="@style/Widget.Material3.Button.TonalButton"
-                android:text="@string/btn_grant_mic" />
+                android:text="@string/btn_grant_all_permissions" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnShowGuide"
@@ -117,6 +117,13 @@
                 android:valueFrom="30"
                 android:valueTo="100"
                 android:stepSize="5" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchFloatingAsr"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/label_floating_asr" />
 
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switchAutoSwitchPassword"

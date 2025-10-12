@@ -1,9 +1,11 @@
 package com.brycewg.asrkb.ui
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
@@ -40,8 +42,8 @@ class SettingsActivity : AppCompatActivity() {
             imm.showInputMethodPicker()
         }
 
-        findViewById<Button>(R.id.btnMicPermission).setOnClickListener {
-            startActivity(Intent(this, PermissionActivity::class.java))
+        findViewById<Button>(R.id.btnAllPermissions).setOnClickListener {
+            requestAllPermissions()
         }
 
         findViewById<Button>(R.id.btnShowGuide).setOnClickListener {
@@ -92,6 +94,7 @@ class SettingsActivity : AppCompatActivity() {
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchFloating = findViewById<MaterialSwitch>(R.id.switchFloatingSwitcher)
         val sliderFloatingAlpha = findViewById<Slider>(R.id.sliderFloatingAlpha)
+        val switchFloatingAsr = findViewById<MaterialSwitch>(R.id.switchFloatingAsr)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
 
         // LLM相关字段
@@ -128,6 +131,7 @@ class SettingsActivity : AppCompatActivity() {
             switchMicHaptic.isChecked = prefs.micHapticEnabled
             switchFloating.isChecked = prefs.floatingSwitcherEnabled
             sliderFloatingAlpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
+            switchFloatingAsr.isChecked = prefs.floatingAsrEnabled
             etLlmEndpoint.setText(prefs.llmEndpoint)
             etLlmApiKey.setText(prefs.llmApiKey)
             etLlmModel.setText(prefs.llmModel)
@@ -153,6 +157,30 @@ class SettingsActivity : AppCompatActivity() {
                         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
                         startActivity(intent)
                     } catch (_: Throwable) { }
+                }
+            }
+        }
+
+        // 开启悬浮球语音识别时引导申请无障碍权限
+        switchFloatingAsr.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                if (!Settings.canDrawOverlays(this)) {
+                    Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
+                    switchFloatingAsr.isChecked = false
+                    try {
+                        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
+                        startActivity(intent)
+                    } catch (_: Throwable) { }
+                    return@setOnCheckedChangeListener
+                }
+                if (!isAccessibilityServiceEnabled()) {
+                    Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
+                    switchFloatingAsr.isChecked = false
+                    try {
+                        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        startActivity(intent)
+                    } catch (_: Throwable) { }
+                    return@setOnCheckedChangeListener
                 }
             }
         }
@@ -295,6 +323,12 @@ class SettingsActivity : AppCompatActivity() {
             prefs.micHapticEnabled = switchMicHaptic.isChecked
             // 悬浮球透明度（百分比转 0-1）
             prefs.floatingSwitcherAlpha = (sliderFloatingAlpha.value / 100f).coerceIn(0.2f, 1.0f)
+
+            // 悬浮球语音识别开关
+            val newFloatingAsr = switchFloatingAsr.isChecked
+            val wasFloatingAsr = prefs.floatingAsrEnabled
+            prefs.floatingAsrEnabled = newFloatingAsr
+
             // 悬浮球开关：保存状态并根据权限与当前输入法情况启动/隐藏
             val newFloating = switchFloating.isChecked
             val wasFloating = prefs.floatingSwitcherEnabled
@@ -325,6 +359,44 @@ class SettingsActivity : AppCompatActivity() {
             if (prefs.floatingSwitcherEnabled) {
                 try {
                     val intent = Intent(this, FloatingImeSwitcherService::class.java).apply { action = FloatingImeSwitcherService.ACTION_SHOW }
+                    startService(intent)
+                } catch (_: Throwable) { }
+            }
+
+            // 悬浮球语音识别服务管理
+            if (newFloatingAsr != wasFloatingAsr) {
+                if (newFloatingAsr) {
+                    // 检查权限,只在权限都满足时才启动服务
+                    var hasAllPermissions = true
+
+                    if (!Settings.canDrawOverlays(this)) {
+                        Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
+                        hasAllPermissions = false
+                    }
+
+                    if (!isAccessibilityServiceEnabled()) {
+                        Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
+                        hasAllPermissions = false
+                    }
+
+                    if (hasAllPermissions) {
+                        try {
+                            val intent = Intent(this, FloatingAsrService::class.java).apply { action = FloatingAsrService.ACTION_SHOW }
+                            startService(intent)
+                        } catch (_: Throwable) { }
+                    }
+                } else {
+                    try {
+                        val intent = Intent(this, FloatingAsrService::class.java).apply { action = FloatingAsrService.ACTION_HIDE }
+                        startService(intent)
+                        stopService(Intent(this, FloatingAsrService::class.java))
+                    } catch (_: Throwable) { }
+                }
+            }
+            // 刷新悬浮球语音识别服务(仅在权限满足时)
+            if (prefs.floatingAsrEnabled && Settings.canDrawOverlays(this) && isAccessibilityServiceEnabled()) {
+                try {
+                    val intent = Intent(this, FloatingAsrService::class.java).apply { action = FloatingAsrService.ACTION_SHOW }
                     startService(intent)
                 } catch (_: Throwable) { }
             }
@@ -422,5 +494,52 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnImportSettings).setOnClickListener {
             importLauncher.launch(arrayOf("application/json", "text/plain"))
         }
+    }
+
+    private fun requestAllPermissions() {
+        val prefs = Prefs(this)
+
+        // 1. 麦克风权限
+        startActivity(Intent(this, PermissionActivity::class.java))
+
+        // 2. 悬浮窗权限
+        if (!Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
+            try {
+                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
+                startActivity(intent)
+            } catch (_: Throwable) { }
+        }
+
+        // 3. 通知权限 (Android 13+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+            }
+        }
+
+        // 4. 如果启用了悬浮球语音识别,还需要无障碍权限
+        if (prefs.floatingAsrEnabled && !isAccessibilityServiceEnabled()) {
+            Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
+            try {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                startActivity(intent)
+            } catch (_: Throwable) { }
+        }
+    }
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val expectedComponentName = "$packageName/com.brycewg.asrkb.ui.AsrAccessibilityService"
+        val enabledServicesSetting = try {
+            Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        } catch (_: Throwable) {
+            Log.e("SettingsActivity", "Failed to get accessibility services")
+            return false
+        }
+        Log.d("SettingsActivity", "Expected: $expectedComponentName")
+        Log.d("SettingsActivity", "Enabled services: $enabledServicesSetting")
+        val result = enabledServicesSetting?.contains(expectedComponentName) == true
+        Log.d("SettingsActivity", "Accessibility service enabled: $result")
+        return result
     }
 }

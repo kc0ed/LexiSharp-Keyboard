@@ -80,6 +80,13 @@ class FloatingImeSwitcherService : Service() {
             removeBall()
             return
         }
+
+        // 如果启用了悬浮球语音识别模式,则不显示切换输入法的悬浮球
+        if (prefs.floatingAsrEnabled) {
+            removeBall()
+            return
+        }
+
         if (isOurImeCurrent()) {
             removeBall()
             return

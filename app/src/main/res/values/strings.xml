@@ -62,6 +62,21 @@
     <string name="label_floating_alpha">悬浮球透明度</string>
     <string name="toast_need_overlay_perm">请在系统设置中授予“在其他应用上层显示”权限以启用悬浮球</string>
     <string name="cd_floating_switcher">快速切换到 言犀键盘</string>
+    <string name="label_floating_asr">使用悬浮球进行语音识别</string>
+    <string name="toast_need_accessibility_perm">请在系统设置中授予"无障碍服务"权限以使用悬浮球语音识别</string>
+    <string name="cd_floating_asr">悬浮球语音识别</string>
+    <string name="btn_grant_all_permissions">授予所有需要的权限</string>
+
+    <!-- Floating ASR status messages -->
+    <string name="floating_asr_recording">正在录音…</string>
+    <string name="floating_asr_recognizing">识别中…</string>
+    <string name="floating_asr_processing">AI处理中…</string>
+    <string name="floating_asr_completed">识别完成</string>
+    <string name="floating_asr_error">识别失败: %1$s</string>
+    <string name="floating_asr_copied">已复制到剪贴板</string>
+    <string name="floating_asr_inserted">已插入文本</string>
+    <string name="floating_asr_no_text_field">未找到可输入的文本框</string>
+    <string name="accessibility_service_description">允许言犀键盘悬浮球将语音识别结果自动插入到当前输入框中。不会收集或上传任何数据。</string>
 
     <!-- LLM settings -->
     <string name="llm_section_title">AI 后处理配置</string>
