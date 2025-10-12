@@ -1,6 +1,7 @@
 package com.brycewg.asrkb.ime
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
@@ -40,8 +41,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import com.google.android.material.color.MaterialColors
+import com.brycewg.asrkb.LocaleHelper
 
 class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
+    override fun attachBaseContext(newBase: Context?) {
+        val wrapped = newBase?.let { LocaleHelper.wrap(it) }
+        super.attachBaseContext(wrapped ?: newBase)
+    }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var asrEngine: StreamingAsrEngine? = null
@@ -408,8 +414,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 prefs.postProcessEnabled = enabled
                 isSelected = enabled
                 alpha = if (enabled) 1f else 0.45f
-                // Provide quick feedback via status line
-                txtStatus?.text = if (enabled) getString(R.string.cd_postproc_toggle) + ": ON" else getString(R.string.cd_postproc_toggle) + ": OFF"
+                // 本地化开关提示
+                val state = if (enabled) getString(R.string.toggle_on) else getString(R.string.toggle_off)
+                txtStatus?.text = getString(R.string.status_postproc, state)
                 // Swap ASR engine implementation when toggled (only if not running)
                 if (asrEngine?.isRunning != true) {
                     asrEngine = buildEngineForCurrentMode()
