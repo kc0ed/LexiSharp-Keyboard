@@ -299,8 +299,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
 
         asrEngine = buildEngineForCurrentMode()
         Log.d(TAG, "ASR engine created: ${asrEngine?.javaClass?.simpleName}")
-        // 流式预览仅在存在焦点可编辑框时启用；若无焦点则不进行预览（按用户期望）
-        focusContext = if (prefs.volcStreamingEnabled) AsrAccessibilityService.getCurrentFocusContext() else null
+        // 记录开始录音时的焦点上下文（prefix/suffix），用于最终写入时避免覆盖原有内容。
+        // 流式与非流式都需要此上下文；仅预览（onPartial）在流式下才会使用。
+        focusContext = AsrAccessibilityService.getCurrentFocusContext()
         lastPartialForPreview = null
         asrEngine?.start()
     }
@@ -409,9 +410,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             isRecording = false
             updateBallState()
 
-            // 插入文本（若存在焦点快照，则进行“前缀 + 最终结果 + 后缀”的拼接写入）
+            // 插入文本：优先使用开始录音时的焦点快照；若为空，再尝试在提交时获取一次快照，避免覆盖
             if (finalText.isNotEmpty()) {
-                val ctx = focusContext
+                val ctx = focusContext ?: AsrAccessibilityService.getCurrentFocusContext()
                 val toWrite = if (ctx != null) ctx.prefix + finalText + ctx.suffix else finalText
                 Log.d(TAG, "Inserting text: $toWrite (previewCtx=${ctx != null})")
                 AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
