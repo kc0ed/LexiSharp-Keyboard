@@ -756,7 +756,7 @@ class SettingsActivity : AppCompatActivity() {
                     .setMessage(e.message ?: "Unknown error")
                     .setPositiveButton(R.string.btn_manual_check) { _, _ ->
                         try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/BryceWG/asr-keyboard/releases"))
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/BryceWG/LexiSharp-Keyboard/releases"))
                             startActivity(intent)
                         } catch (_: Exception) {
                             Toast.makeText(this@SettingsActivity, "无法打开浏览器", Toast.LENGTH_SHORT).show()
@@ -784,11 +784,11 @@ class SettingsActivity : AppCompatActivity() {
             .build()
 
         // 从 jsDelivr CDN 读取版本文件（无限制，国内快）
-        val jsdelivrUrl = "https://cdn.jsdelivr.net/gh/BryceWG/asr-keyboard@main/version.json"
+        val jsdelivrUrl = "https://github.com/BryceWG/LexiSharp-Keyboard@main/version.json"
 
         val request = Request.Builder()
             .url(jsdelivrUrl)
-            .addHeader("User-Agent", "ASR-Keyboard-Android")
+            .addHeader("User-Agent", "LexiSharp-Android")
             .build()
 
         client.newCall(request).execute().use { response ->
@@ -804,7 +804,7 @@ class SettingsActivity : AppCompatActivity() {
                 throw Exception("Invalid version format")
             }
 
-            val downloadUrl = json.optString("download_url", "https://github.com/BryceWG/asr-keyboard/releases")
+            val downloadUrl = json.optString("download_url", "https://github.com/BryceWG/LexiSharp-Keyboard/releases")
             val updateTime = json.optString("update_time", null)
             val releaseNotes = json.optString("release_notes", null)
 

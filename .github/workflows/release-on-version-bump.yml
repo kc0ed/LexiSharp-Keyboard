@@ -315,7 +315,7 @@ jobs:
           # 更新版本信息
           data['version'] = version
           data['version_code'] = int(version_code) if version_code.isdigit() else 0
-          data['download_url'] = f"https://github.com/BryceWG/asr-keyboard/releases/tag/{tag}"
+          data['download_url'] = f"https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/{tag}"
           data['release_notes'] = f"版本 {version} 已发布"
           data['min_supported_version'] = data.get('min_supported_version', '2.6.5')
           data['update_time'] = current_timestamp
