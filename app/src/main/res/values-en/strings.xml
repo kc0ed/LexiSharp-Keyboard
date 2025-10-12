@@ -146,7 +146,26 @@
     <string name="error_asr_empty_result">Empty ASR result</string>
     <string name="error_recognize_failed_with_reason">Recognition failed: %1$s</string>
 
-    <!-- Quick guide (image + text) -->
+    <!-- Enhanced Quick Guide -->
+    <string name="guide_subtitle">Making voice input simpler and more efficient</string>
+    <string name="guide_keyboard_layout_title">Keyboard Layout Guide</string>
+    <string name="guide_keyboard_image_desc">LexiSharp keyboard layout diagram</string>
+    <string name="guide_keyboard_layout_desc">Functional layout from left to right, top to bottom</string>
+    <string name="guide_core_features_title">Core Features</string>
+    <string name="guide_long_press_title">Press and Hold to Record</string>
+    <string name="guide_long_press_desc">Press and hold the microphone button to start recording, release to transcribe</string>
+    <string name="guide_ai_processing_title">AI Smart Post-processing</string>
+    <string name="guide_ai_processing_desc">Support multiple preset templates to make recognition results more accurate</string>
+    <string name="guide_floating_title">Floating Ball Features</string>
+    <string name="guide_floating_desc">Quick switch input methods or perform floating ball voice recognition</string>
+    <string name="guide_detailed_features_title">Detailed Feature Description</string>
+    <string name="guide_detailed_features_content">1. Post-processing Prompt switch: Select different AI processing templates\n2. Enable post-processing: Turn on/off AI post-processing functionality\n3. Hide keyboard key: Hide the keyboard interface\n4. Backspace key: Slide up or left to delete all content, slide down to undo post-processing results\n5. Settings key: Open application settings interface\n6. Switch input method: Quick switch to other input methods\n7. Edit key: AI editing feature, tap to voice input editing commands, LLM will modify content according to commands\n8. Enter key: Send newline\n9. Custom punctuation keys: Four customizable punctuation keys below</string>
+    <string name="guide_first_time_title">First Time Use</string>
+    <string name="guide_mic_icon_desc">Microphone icon</string>
+    <string name="guide_ai_icon_desc">AI processing icon</string>
+    <string name="guide_floating_icon_desc">Floating ball icon</string>
+
+    <!-- Legacy Quick guide (image + text) -->
     <string name="guide_header">From left to right, top to bottom</string>
     <string name="guide_body">Core usage: Press and hold to record, release to transcribe (centered button)
 \n 1. Post-processing Prompt switch
