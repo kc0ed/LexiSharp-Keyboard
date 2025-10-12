@@ -128,7 +128,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             return
         }
         // Re-apply visibility in case user toggled setting while IME was backgrounded
-        btnImeSwitcher?.visibility = if (prefs.showImeSwitcherButton) View.VISIBLE else View.GONE
+        btnImeSwitcher?.visibility = View.VISIBLE
         // Refresh custom punctuation labels
         applyPunctuationLabels()
         refreshPermissionUi()
@@ -428,7 +428,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         }
 
         // Apply visibility based on settings
-        btnImeSwitcher?.visibility = if (prefs.showImeSwitcherButton) View.VISIBLE else View.GONE
+        btnImeSwitcher?.visibility = View.VISIBLE
 
         updateUiIdle()
         refreshPermissionUi()

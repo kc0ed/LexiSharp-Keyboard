@@ -122,7 +122,6 @@ class SettingsActivity : AppCompatActivity() {
         val spLanguage = findViewById<Spinner>(R.id.spLanguage)
         val tvAsrTotalChars = findViewById<TextView>(R.id.tvAsrTotalChars)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
-        val switchShowImeSwitcher = findViewById<MaterialSwitch>(R.id.switchShowImeSwitcher)
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
 
@@ -164,7 +163,6 @@ class SettingsActivity : AppCompatActivity() {
                 etLlmTemperature?.setText(((activeLlm?.temperature ?: prefs.llmTemperature)).toString())
             }
             switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
-            switchShowImeSwitcher.isChecked = prefs.showImeSwitcherButton
             switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
             switchMicHaptic.isChecked = prefs.micHapticEnabled
             // 标点字段在子页中维护
@@ -394,7 +392,6 @@ class SettingsActivity : AppCompatActivity() {
             }
             // 通用开关设置
             prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
-            prefs.showImeSwitcherButton = switchShowImeSwitcher.isChecked
             prefs.autoSwitchOnPassword = switchAutoSwitchPassword.isChecked
             prefs.micHapticEnabled = switchMicHaptic.isChecked
             // 悬浮球设置在子页中自动保存与执行

@@ -35,9 +35,7 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_TRIM_FINAL_TRAILING_PUNCT, false)
         set(value) = sp.edit { putBoolean(KEY_TRIM_FINAL_TRAILING_PUNCT, value) }
 
-    var showImeSwitcherButton: Boolean
-        get() = sp.getBoolean(KEY_SHOW_IME_SWITCHER_BUTTON, true)
-        set(value) = sp.edit { putBoolean(KEY_SHOW_IME_SWITCHER_BUTTON, value) }
+    // 移除：键盘内“切换输入法”按钮显示开关（按钮始终显示）
 
     // 在密码框中自动切换输入法
     var autoSwitchOnPassword: Boolean
@@ -365,7 +363,7 @@ class Prefs(context: Context) {
         private const val KEY_APP_KEY = "app_key"
         private const val KEY_ACCESS_KEY = "access_key"
         private const val KEY_TRIM_FINAL_TRAILING_PUNCT = "trim_final_trailing_punct"
-        private const val KEY_SHOW_IME_SWITCHER_BUTTON = "show_ime_switcher_button"
+        // 移除：键盘内“切换输入法”按钮显示开关键
         private const val KEY_AUTO_SWITCH_ON_PASSWORD = "auto_switch_on_password"
         private const val KEY_MIC_HAPTIC_ENABLED = "mic_haptic_enabled"
         private const val KEY_FLOATING_SWITCHER_ENABLED = "floating_switcher_enabled"
@@ -475,7 +473,6 @@ class Prefs(context: Context) {
         o.put(KEY_APP_KEY, appKey)
         o.put(KEY_ACCESS_KEY, accessKey)
         o.put(KEY_TRIM_FINAL_TRAILING_PUNCT, trimFinalTrailingPunct)
-        o.put(KEY_SHOW_IME_SWITCHER_BUTTON, showImeSwitcherButton)
         o.put(KEY_AUTO_SWITCH_ON_PASSWORD, autoSwitchOnPassword)
         o.put(KEY_MIC_HAPTIC_ENABLED, micHapticEnabled)
         o.put(KEY_APP_LANGUAGE_TAG, appLanguageTag)
@@ -530,7 +527,6 @@ class Prefs(context: Context) {
             optString(KEY_APP_KEY)?.let { appKey = it }
             optString(KEY_ACCESS_KEY)?.let { accessKey = it }
             optBool(KEY_TRIM_FINAL_TRAILING_PUNCT)?.let { trimFinalTrailingPunct = it }
-            optBool(KEY_SHOW_IME_SWITCHER_BUTTON)?.let { showImeSwitcherButton = it }
             optBool(KEY_AUTO_SWITCH_ON_PASSWORD)?.let { autoSwitchOnPassword = it }
             optBool(KEY_MIC_HAPTIC_ENABLED)?.let { micHapticEnabled = it }
             optString(KEY_APP_LANGUAGE_TAG)?.let { appLanguageTag = it }
