@@ -287,6 +287,79 @@ jobs:
           echo "重命名 APK: $NEW_NAME"
           ls -lh "$NEW_PATH"
 
+      - name: Update version.json
+        id: update_version_json
+        run: |
+          echo "📝 更新 version.json 文件..."
+
+          # 使用 Python 生成 JSON（确保格式正确）
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime
+
+          version = os.environ.get('VERSION', '0.0.0')
+          version_code = os.environ.get('VERSION_CODE', '0')
+          tag = os.environ.get('TAG', 'v0.0.0')
+
+          # 使用 ISO 8601 格式的时间戳（UTC）
+          current_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+          # 读取现有的 version.json（如果存在）
+          try:
+              with open('version.json', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+          except (FileNotFoundError, json.JSONDecodeError):
+              data = {}
+
+          # 更新版本信息
+          data['version'] = version
+          data['version_code'] = int(version_code) if version_code.isdigit() else 0
+          data['download_url'] = f"https://github.com/BryceWG/asr-keyboard/releases/tag/{tag}"
+          data['release_notes'] = f"版本 {version} 已发布"
+          data['min_supported_version'] = data.get('min_supported_version', '2.6.5')
+          data['update_time'] = current_timestamp
+
+          # 写入文件
+          with open('version.json', 'w', encoding='utf-8') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+
+          print(f"✅ version.json 已更新为版本 {version}")
+          PY
+
+          # 显示更新后的内容
+          echo "📄 version.json 内容:"
+          cat version.json
+
+          # 检查文件是否有变化
+          if git diff --quiet version.json; then
+            echo "version_changed=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ version.json 无变化"
+          else
+            echo "version_changed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ version.json 已更新"
+          fi
+        env:
+          VERSION: ${{ steps.version.outputs.version_name }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          TAG: ${{ steps.tag.outputs.tag }}
+
+      - name: Commit and push version.json
+        if: steps.update_version_json.outputs.version_changed == 'true'
+        run: |
+          echo "📤 提交 version.json 更新..."
+
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add version.json
+          git commit -m "chore: auto-update version.json to ${{ steps.version.outputs.version_name }} [skip ci]"
+
+          # 推送到仓库（使用 [skip ci] 避免触发新的 workflow）
+          git push origin HEAD:${{ github.ref_name }}
+
+          echo "✅ version.json 已提交并推送"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

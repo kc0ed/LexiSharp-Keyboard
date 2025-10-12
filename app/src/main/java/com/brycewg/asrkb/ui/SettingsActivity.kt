@@ -27,6 +27,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -58,6 +66,10 @@ class SettingsActivity : AppCompatActivity() {
                 .setView(view)
                 .setPositiveButton(R.string.btn_close, null)
                 .show()
+        }
+
+        findViewById<Button>(R.id.btnCheckUpdate).setOnClickListener {
+            checkForUpdates()
         }
 
         val prefs = Prefs(this)
@@ -708,5 +720,167 @@ class SettingsActivity : AppCompatActivity() {
         val result = enabledServicesSetting?.contains(expectedComponentName) == true
         Log.d("SettingsActivity", "Accessibility service enabled: $result")
         return result
+    }
+
+    private fun checkForUpdates() {
+        // 显示检查中的提示
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setMessage(R.string.update_checking)
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        lifecycleScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    checkGitHubRelease()
+                }
+                progressDialog.dismiss()
+
+                if (result.hasUpdate) {
+                    showUpdateDialog(result.currentVersion, result.latestVersion, result.downloadUrl, result.updateTime, result.releaseNotes)
+                } else {
+                    Toast.makeText(
+                        this@SettingsActivity,
+                        getString(R.string.update_no_update),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                progressDialog.dismiss()
+                Log.e("SettingsActivity", "Update check failed", e)
+
+                // 显示错误对话框，提供手动查看选项
+                MaterialAlertDialogBuilder(this@SettingsActivity)
+                    .setTitle(R.string.update_check_failed)
+                    .setMessage(e.message ?: "Unknown error")
+                    .setPositiveButton(R.string.btn_manual_check) { _, _ ->
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/BryceWG/asr-keyboard/releases"))
+                            startActivity(intent)
+                        } catch (_: Exception) {
+                            Toast.makeText(this@SettingsActivity, "无法打开浏览器", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .setNegativeButton(R.string.btn_cancel, null)
+                    .show()
+            }
+        }
+    }
+
+    private data class UpdateCheckResult(
+        val hasUpdate: Boolean,
+        val currentVersion: String,
+        val latestVersion: String,
+        val downloadUrl: String,
+        val updateTime: String? = null,
+        val releaseNotes: String? = null
+    )
+
+    private fun checkGitHubRelease(): UpdateCheckResult {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .build()
+
+        // 从 jsDelivr CDN 读取版本文件（无限制，国内快）
+        val jsdelivrUrl = "https://cdn.jsdelivr.net/gh/BryceWG/asr-keyboard@main/version.json"
+
+        val request = Request.Builder()
+            .url(jsdelivrUrl)
+            .addHeader("User-Agent", "ASR-Keyboard-Android")
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("HTTP ${response.code}")
+            }
+
+            val body = response.body?.string() ?: throw Exception("Empty response")
+            val json = JSONObject(body)
+
+            val latestVersion = json.optString("version", "").removePrefix("v")
+            if (latestVersion.isEmpty()) {
+                throw Exception("Invalid version format")
+            }
+
+            val downloadUrl = json.optString("download_url", "https://github.com/BryceWG/asr-keyboard/releases")
+            val updateTime = json.optString("update_time", null)
+            val releaseNotes = json.optString("release_notes", null)
+
+            val currentVersion = try {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: "unknown"
+            } catch (e: Exception) {
+                "unknown"
+            }
+
+            val hasUpdate = compareVersions(latestVersion, currentVersion) > 0
+            return UpdateCheckResult(hasUpdate, currentVersion, latestVersion, downloadUrl, updateTime, releaseNotes)
+        }
+    }
+
+    private fun compareVersions(version1: String, version2: String): Int {
+        val v1Parts = version1.split(".").mapNotNull { it.toIntOrNull() }
+        val v2Parts = version2.split(".").mapNotNull { it.toIntOrNull() }
+
+        val maxLength = maxOf(v1Parts.size, v2Parts.size)
+        for (i in 0 until maxLength) {
+            val v1 = v1Parts.getOrNull(i) ?: 0
+            val v2 = v2Parts.getOrNull(i) ?: 0
+            if (v1 != v2) {
+                return v1.compareTo(v2)
+            }
+        }
+        return 0
+    }
+
+    private fun showUpdateDialog(
+        currentVersion: String,
+        latestVersion: String,
+        downloadUrl: String,
+        updateTime: String? = null,
+        releaseNotes: String? = null
+    ) {
+        // 构建消息内容
+        val messageBuilder = StringBuilder()
+        messageBuilder.append(getString(R.string.update_dialog_message, currentVersion, latestVersion))
+
+        // 添加更新时间（如果有）
+        if (!updateTime.isNullOrEmpty()) {
+            messageBuilder.append("\n\n")
+            // 尝试格式化时间戳
+            val formattedTime = try {
+                // 解析 ISO 8601 格式并转换为本地时间
+                val utcFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault())
+                utcFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                val date = utcFormat.parse(updateTime)
+
+                val localFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                localFormat.format(date)
+            } catch (e: Exception) {
+                updateTime // 如果解析失败，直接显示原始时间
+            }
+            messageBuilder.append("更新时间：$formattedTime")
+        }
+
+        // 添加发布说明（如果有）
+        if (!releaseNotes.isNullOrEmpty() && releaseNotes != "版本 $latestVersion 已发布") {
+            messageBuilder.append("\n\n")
+            messageBuilder.append("更新说明：\n$releaseNotes")
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.update_dialog_title)
+            .setMessage(messageBuilder.toString())
+            .setPositiveButton(R.string.btn_download) { _, _ ->
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this, "无法打开浏览器", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
     }
 }

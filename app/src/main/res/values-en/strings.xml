@@ -36,6 +36,7 @@
     <string name="btn_choose">Choose Keyboard</string>
     <string name="btn_grant_mic">Grant Microphone Permission</string>
     <string name="btn_show_guide">View Quick Guide</string>
+    <string name="btn_check_update">Check for Updates</string>
     <!-- Material UI additions -->
     <string name="settings_title">LexiSharp Keyboard Settings</string>
     <string name="volc_section_title">Volcano Engine Credentials</string>
@@ -178,4 +179,18 @@
 \n 8. Enter key
 \n 9. The four areas below are customizable punctuation keys</string>
     <string name="accessibility_service_description">Allow floating ball to insert ASR results into the current input field. No data is collected or uploaded.</string>
+
+    <!-- Update check -->
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_available">New version %1$s available</string>
+    <string name="update_current_version">Current version: %1$s</string>
+    <string name="update_latest_version">Latest version: %1$s</string>
+    <string name="update_no_update">You are using the latest version</string>
+    <string name="update_check_failed">Update check failed: %1$s</string>
+    <string name="update_dialog_title">New Version Available</string>
+    <string name="update_dialog_message">Current version: %1$s\nLatest version: %2$s\n\nWould you like to download?</string>
+    <string name="update_manual_check">You can also manually visit the GitHub Release page to check for updates</string>
+    <string name="btn_download">Download</string>
+    <string name="btn_manual_check">Manual Check</string>
+    <string name="btn_cancel">Cancel</string>
 </resources>
