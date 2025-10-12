@@ -724,8 +724,35 @@ class SettingsActivity : AppCompatActivity() {
             .setTitle(R.string.update_dialog_title)
             .setMessage(messageBuilder.toString())
             .setPositiveButton(R.string.btn_download) { _, _ ->
+                // 显示下载源选择对话框
+                showDownloadSourceDialog(downloadUrl, latestVersion)
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    private fun showDownloadSourceDialog(originalUrl: String, version: String) {
+        // 准备下载源列表
+        val downloadSources = arrayOf(
+            "GitHub 官方",
+            "GitHub 镜像 (ghproxy.com)",
+            "GitHub 镜像 (ghps.cc)",
+            "GitHub 镜像 (gh-proxy.com)"
+        )
+
+        // 生成对应的 URL
+        val downloadUrls = arrayOf(
+            originalUrl,
+            convertToMirrorUrl(originalUrl, "https://ghproxy.com/"),
+            convertToMirrorUrl(originalUrl, "https://ghps.cc/"),
+            convertToMirrorUrl(originalUrl, "https://gh-proxy.com/")
+        )
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.download_source_title)
+            .setItems(downloadSources) { _, which ->
                 try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrls[which]))
                     startActivity(intent)
                 } catch (e: Exception) {
                     Toast.makeText(this, "无法打开浏览器", Toast.LENGTH_SHORT).show()
@@ -733,5 +760,14 @@ class SettingsActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.btn_cancel, null)
             .show()
+    }
+
+    private fun convertToMirrorUrl(originalUrl: String, mirrorPrefix: String): String {
+        // 如果是 GitHub Release 页面，直接添加镜像前缀
+        return if (originalUrl.startsWith("https://github.com/")) {
+            mirrorPrefix + originalUrl
+        } else {
+            originalUrl
+        }
     }
 }
