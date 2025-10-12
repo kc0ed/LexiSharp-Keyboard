@@ -322,40 +322,83 @@ class SettingsActivity : AppCompatActivity() {
             .readTimeout(10, TimeUnit.SECONDS)
             .build()
 
-        // 从 jsDelivr CDN 读取版本文件（无限制，国内快）
-        val jsdelivrUrl = "https://cdn.jsdelivr.net/gh/BryceWG/LexiSharp-Keyboard@main/version.json"
+        // 加入时间戳参数，降低 CDN 旧缓存命中概率（按分钟变动，避免每秒都变）
+        val ts = (System.currentTimeMillis() / 60_000L).toString()
+        val urls = listOf(
+            // jsDelivr 主域 + 备用节点
+            "https://cdn.jsdelivr.net/gh/BryceWG/LexiSharp-Keyboard@main/version.json?t=$ts",
+            "https://fastly.jsdelivr.net/gh/BryceWG/LexiSharp-Keyboard@main/version.json?t=$ts",
+            "https://gcore.jsdelivr.net/gh/BryceWG/LexiSharp-Keyboard@main/version.json?t=$ts",
+            // 直接读取 GitHub 原始内容
+            "https://raw.githubusercontent.com/BryceWG/LexiSharp-Keyboard/main/version.json"
+        )
 
-        val request = Request.Builder()
-            .url(jsdelivrUrl)
-            .addHeader("User-Agent", "LexiSharp-Android")
-            .build()
+        var lastError: Exception? = null
+        var bestVersion: String? = null
+        var bestDownloadUrl: String = "https://github.com/BryceWG/LexiSharp-Keyboard/releases"
+        var bestUpdateTime: String? = null
+        var bestReleaseNotes: String? = null
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw Exception("HTTP ${response.code}")
-            }
+        for (url in urls) {
+            try {
+                val request = Request.Builder()
+                    .url(url)
+                    .addHeader("User-Agent", "LexiSharp-Android")
+                    .build()
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
 
-            val body = response.body?.string() ?: throw Exception("Empty response")
-            val json = JSONObject(body)
+                    val body = response.body?.string() ?: throw Exception("Empty response")
+                    val json = JSONObject(body)
 
-            val latestVersion = json.optString("version", "").removePrefix("v")
-            if (latestVersion.isEmpty()) {
-                throw Exception("Invalid version format")
-            }
+                    val candidate = normalizeVersion(json.optString("version", "").removePrefix("v"))
+                    if (candidate.isEmpty()) throw Exception("Invalid version format")
 
-            val downloadUrl = json.optString("download_url", "https://github.com/BryceWG/LexiSharp-Keyboard/releases")
-            val updateTime = json.optString("update_time", "").ifBlank { null }
-            val releaseNotes = json.optString("release_notes", "").ifBlank { null }
+                    val downloadUrl = json.optString("download_url", bestDownloadUrl)
+                    val updateTime = json.optString("update_time", "").ifBlank { null }
+                    val releaseNotes = json.optString("release_notes", "").ifBlank { null }
 
-            val currentVersion = try {
-                packageManager.getPackageInfo(packageName, 0).versionName ?: "unknown"
+                    bestVersion = when {
+                        bestVersion == null -> {
+                            bestDownloadUrl = downloadUrl
+                            bestUpdateTime = updateTime
+                            bestReleaseNotes = releaseNotes
+                            candidate
+                        }
+                        compareVersions(candidate, bestVersion!!) > 0 -> {
+                            bestDownloadUrl = downloadUrl
+                            bestUpdateTime = updateTime
+                            bestReleaseNotes = releaseNotes
+                            candidate
+                        }
+                        else -> bestVersion
+                    }
+                }
             } catch (e: Exception) {
-                "unknown"
+                lastError = e
             }
-
-            val hasUpdate = compareVersions(latestVersion, currentVersion) > 0
-            return UpdateCheckResult(hasUpdate, currentVersion, latestVersion, downloadUrl, updateTime, releaseNotes)
         }
+
+        val currentRaw = try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "unknown"
+        } catch (_: Exception) { "unknown" }
+        val currentVersion = normalizeVersion(currentRaw)
+
+        if (bestVersion != null) {
+            val hasUpdate = compareVersions(bestVersion!!, currentVersion) > 0
+            return UpdateCheckResult(hasUpdate, currentRaw, bestVersion!!, bestDownloadUrl, bestUpdateTime, bestReleaseNotes)
+        }
+        throw lastError ?: Exception("Unknown error")
+    }
+
+    private fun normalizeVersion(v: String): String {
+        if (v.isBlank()) return ""
+        // 移除前缀 v/V 和非数字点字符，仅保留比较需要的主次修订号
+        return v.trim()
+            .removePrefix("v")
+            .removePrefix("V")
+            .replace(Regex("[^0-9.]"), "")
+            .trim('.')
     }
 
     private fun compareVersions(version1: String, version2: String): Int {
