@@ -129,7 +129,7 @@ class VolcStreamAsrEngine(
                     return
                 }
                 // 启动录音并流式发送
-                startAudioStreaming(webSocket)
+                startAudioStreaming()
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
@@ -155,9 +155,19 @@ class VolcStreamAsrEngine(
         })
     }
 
-    private fun startAudioStreaming(webSocket: WebSocket) {
+    private fun startAudioStreaming() {
         audioJob?.cancel()
         audioJob = scope.launch(Dispatchers.IO) {
+            // 再次校验麦克风权限，避免运行时被撤销导致 SecurityException
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasPermission) {
+                listener.onError(context.getString(R.string.error_record_permission_denied))
+                running.set(false)
+                return@launch
+            }
             val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
             val chunkBytes = ((sampleRate / 5) * 2) // 200ms * 16k * 16bit mono
             val bufferSize = maxOf(minBuffer, chunkBytes)
@@ -169,6 +179,10 @@ class VolcStreamAsrEngine(
                     audioFormat,
                     bufferSize
                 )
+            } catch (t: SecurityException) {
+                listener.onError(context.getString(R.string.error_record_permission_denied))
+                running.set(false)
+                return@launch
             } catch (t: Throwable) {
                 listener.onError(context.getString(R.string.error_audio_init_cannot, t.message ?: ""))
                 running.set(false)
@@ -192,7 +206,13 @@ class VolcStreamAsrEngine(
                     running.set(false)
                     return@launch
                 }
-                recorder.startRecording()
+                try {
+                    recorder.startRecording()
+                } catch (se: SecurityException) {
+                    listener.onError(context.getString(R.string.error_record_permission_denied))
+                    running.set(false)
+                    return@launch
+                }
                 val buf = ByteArray(chunkBytes)
                 while (isActive && running.get()) {
                     val read = recorder.read(buf, 0, buf.size)
@@ -309,6 +329,7 @@ class VolcStreamAsrEngine(
         } catch (_: Throwable) { "" }
     }
 
+    @Suppress("SameParameterValue")
     private fun buildClientFrame(
         messageType: Int,
         flags: Int,
@@ -362,6 +383,7 @@ class VolcStreamAsrEngine(
         private const val SERIALIZE_JSON = 0x1
 
         // Compression
+        @Suppress("unused")
         private const val COMPRESS_NONE = 0x0
         private const val COMPRESS_GZIP = 0x1
 

@@ -8,20 +8,16 @@ import android.provider.Settings
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
-import android.widget.EditText
 import android.widget.Toast
 import android.widget.Spinner
 import android.widget.ArrayAdapter
 import android.widget.TextView
 import com.google.android.material.materialswitch.MaterialSwitch
-import com.google.android.material.slider.Slider
 import androidx.appcompat.app.AppCompatActivity
 import com.brycewg.asrkb.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.view.LayoutInflater
 import com.brycewg.asrkb.store.Prefs
-import com.brycewg.asrkb.store.PromptPreset
-import com.brycewg.asrkb.asr.AsrVendor
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
@@ -87,187 +83,23 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         val prefs = Prefs(this)
-        val etAppKey = findViewById<EditText>(R.id.etAppKey)
-        val etAccessKey = findViewById<EditText>(R.id.etAccessKey)
-        val etSfApiKey = findViewById<EditText>(R.id.etSfApiKey)
-        val etSfModel = findViewById<EditText>(R.id.etSfModel)
-        val etElevenApiKey = findViewById<EditText>(R.id.etElevenApiKey)
-        val etElevenModel = findViewById<EditText>(R.id.etElevenModel)
-        // DashScope
-        val etDashApiKey = findViewById<EditText>(R.id.etDashApiKey)
-        val etDashModel = findViewById<EditText>(R.id.etDashModel)
-        // OpenAI ASR
-        val etOpenAiAsrEndpoint = findViewById<EditText>(R.id.etOpenAiAsrEndpoint)
-        val etOpenAiApiKey = findViewById<EditText>(R.id.etOpenAiApiKey)
-        val etOpenAiModel = findViewById<EditText>(R.id.etOpenAiModel)
-        // Gemini
-        val etGeminiApiKey = findViewById<EditText>(R.id.etGeminiApiKey)
-        val etGeminiModel = findViewById<EditText>(R.id.etGeminiModel)
-        val groupVolc = findViewById<View>(R.id.groupVolc)
-        val switchVolcStreaming = findViewById<MaterialSwitch>(R.id.switchVolcStreaming)
-        val groupSf = findViewById<View>(R.id.groupSf)
-        val groupEleven = findViewById<View>(R.id.groupEleven)
-        val groupDash = findViewById<View>(R.id.groupDashScope)
-        val groupOpenAi = findViewById<View>(R.id.groupOpenAI)
-        val groupGemini = findViewById<View>(R.id.groupGemini)
-        // Titles for vendor sections
-        val titleVolc = findViewById<View>(R.id.titleVolc)
-        val titleSf = findViewById<View>(R.id.titleSf)
-        val titleEleven = findViewById<View>(R.id.titleEleven)
-        val titleOpenAi = findViewById<View>(R.id.titleOpenAI)
-        val titleDash = findViewById<View>(R.id.titleDash)
-        val titleGemini = findViewById<View>(R.id.titleGemini)
-
-        val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
         val spLanguage = findViewById<Spinner>(R.id.spLanguage)
         val tvAsrTotalChars = findViewById<TextView>(R.id.tvAsrTotalChars)
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
 
-        // LLM相关字段（紧凑布局中不存在，运行时可能为 null）
-        val spLlmProfiles = findViewById<Spinner>(R.id.spLlmProfiles)
-        val etLlmProfileName = findViewById<EditText>(R.id.etLlmProfileName)
-        val etLlmEndpoint = findViewById<EditText>(R.id.etLlmEndpoint)
-        val etLlmApiKey = findViewById<EditText>(R.id.etLlmApiKey)
-        val etLlmModel = findViewById<EditText>(R.id.etLlmModel)
-        val etLlmTemperature = findViewById<EditText>(R.id.etLlmTemperature)
-        val etLlmPrompt = findViewById<EditText>(R.id.etLlmPrompt)
-        val etLlmPromptTitle = findViewById<EditText>(R.id.etLlmPromptTitle)
-        val spPromptPresets = findViewById<Spinner>(R.id.spPromptPresets)
-        // 二级页面是否存在于当前布局的探测（紧凑布局返回 false）
-        val advancedPresent = spAsrVendor != null
-        // 自定义标点已迁移到子设置页
 
         fun applyPrefsToUi() {
-            if (advancedPresent) {
-                etAppKey?.setText(prefs.appKey)
-                etAccessKey?.setText(prefs.accessKey)
-                etSfApiKey?.setText(prefs.sfApiKey)
-                etSfModel?.setText(prefs.sfModel)
-                etElevenApiKey?.setText(prefs.elevenApiKey)
-                etElevenModel?.setText(prefs.elevenModelId)
-                etGeminiApiKey?.setText(prefs.gemApiKey)
-                etGeminiModel?.setText(prefs.gemModel)
-                etDashApiKey?.setText(prefs.dashApiKey)
-                etDashModel?.setText(prefs.dashModel)
-                etOpenAiAsrEndpoint?.setText(prefs.oaAsrEndpoint)
-                etOpenAiApiKey?.setText(prefs.oaAsrApiKey)
-                etOpenAiModel?.setText(prefs.oaAsrModel)
-                switchVolcStreaming?.isChecked = prefs.volcStreamingEnabled
-                val activeLlm = prefs.getActiveLlmProvider()
-                etLlmProfileName?.setText(activeLlm?.name ?: "")
-                etLlmEndpoint?.setText(activeLlm?.endpoint ?: prefs.llmEndpoint)
-                etLlmApiKey?.setText(activeLlm?.apiKey ?: prefs.llmApiKey)
-                etLlmModel?.setText(activeLlm?.model ?: prefs.llmModel)
-                etLlmTemperature?.setText(((activeLlm?.temperature ?: prefs.llmTemperature)).toString())
-            }
             switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
             switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
             switchMicHaptic.isChecked = prefs.micHapticEnabled
-            // 标点字段在子页中维护
-            // 统计：显示历史语音识别总字数
             try {
                 tvAsrTotalChars.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
             } catch (_: Throwable) { }
-            // 注意：下拉框（Spinner）需在设置 adapter 后再更新 selection，
-            // 这里仅更新输入框/开关等即时可用的视图。
         }
         applyPrefsToUi()
         // 已在 applyPrefsToUi 中统一设置上述字段
-        // 以下为 LLM/Prompt，仅当高级视图存在时初始化
-        if (advancedPresent) {
-            var presets = prefs.getPromptPresets().toMutableList()
-            var activeId = prefs.activePromptId
-            if (activeId.isBlank()) {
-                activeId = presets.firstOrNull()?.id ?: ""
-                prefs.activePromptId = activeId
-            }
-            fun refreshSpinnerSelection() {
-                presets = prefs.getPromptPresets().toMutableList()
-                val titles = presets.map { it.title }
-                spPromptPresets?.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
-                val idx = presets.indexOfFirst { it.id == prefs.activePromptId }.let { if (it < 0) 0 else it }
-                if (idx in titles.indices) {
-                    spPromptPresets?.setSelection(idx)
-                    etLlmPromptTitle?.setText(presets[idx].title)
-                    etLlmPrompt?.setText(presets[idx].content)
-                }
-            }
-            refreshSpinnerSelection()
-
-            fun refreshLlmProfilesSpinner() {
-                val profiles = prefs.getLlmProviders()
-                val titles = profiles.map { it.name }
-                spLlmProfiles?.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
-                val idx = profiles.indexOfFirst { it.id == prefs.activeLlmId }.let { if (it < 0) 0 else it }
-                if (idx in titles.indices) spLlmProfiles?.setSelection(idx)
-            }
-            refreshLlmProfilesSpinner()
-
-            spLlmProfiles?.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                    val profiles = prefs.getLlmProviders()
-                    val p = profiles.getOrNull(position)
-                    if (p != null) {
-                        prefs.activeLlmId = p.id
-                        etLlmProfileName?.setText(p.name)
-                        etLlmEndpoint?.setText(p.endpoint)
-                        etLlmApiKey?.setText(p.apiKey)
-                        etLlmModel?.setText(p.model)
-                        etLlmTemperature?.setText(p.temperature.toString())
-                    }
-                }
-                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-            }
-        }
-
-        // ASR供应商选择器（紧凑布局中不存在）
-        if (advancedPresent) {
-            // 统一的供应商顺序，便于 index<->vendor 互转与复用
-            val vendorOrder = listOf(
-                AsrVendor.Volc,
-                AsrVendor.SiliconFlow,
-                AsrVendor.ElevenLabs,
-                AsrVendor.OpenAI,
-                AsrVendor.DashScope,
-                AsrVendor.Gemini
-            )
-            val vendorItems = listOf(
-                getString(R.string.vendor_volc),
-                getString(R.string.vendor_sf),
-                getString(R.string.vendor_eleven),
-                getString(R.string.vendor_openai),
-                getString(R.string.vendor_dashscope),
-                getString(R.string.vendor_gemini)
-            )
-            spAsrVendor?.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, vendorItems)
-            spAsrVendor?.setSelection(vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0))
-            fun applyVendorVisibility(v: AsrVendor) {
-                val groups = mapOf(
-                    AsrVendor.Volc to listOf(titleVolc, groupVolc),
-                    AsrVendor.SiliconFlow to listOf(titleSf, groupSf),
-                    AsrVendor.ElevenLabs to listOf(titleEleven, groupEleven),
-                    AsrVendor.OpenAI to listOf(titleOpenAi, groupOpenAi),
-                    AsrVendor.DashScope to listOf(titleDash, groupDash),
-                    AsrVendor.Gemini to listOf(titleGemini, groupGemini)
-                )
-                groups.forEach { (vendor, views) ->
-                    val vis = if (vendor == v) View.VISIBLE else View.GONE
-                    views.forEach { it?.visibility = vis }
-                }
-            }
-            applyVendorVisibility(prefs.asrVendor)
-
-            spAsrVendor?.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                    val vendor = vendorOrder.getOrNull(position) ?: AsrVendor.Volc
-                    prefs.asrVendor = vendor
-                    applyVendorVisibility(vendor)
-                }
-                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-            }
-        }
 
         // 应用语言选择器设置（独立于高级视图）
         val languageItems = listOf(
@@ -305,155 +137,14 @@ class SettingsActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
 
-        if (advancedPresent) {
-            spPromptPresets?.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                    val presets = prefs.getPromptPresets()
-                    val p = presets.getOrNull(position) ?: return
-                    prefs.activePromptId = p.id
-                    etLlmPromptTitle?.setText(p.title)
-                    etLlmPrompt?.setText(p.content)
-                }
-                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) { }
-            }
-
-            findViewById<Button>(R.id.btnLlmAddProfile)?.setOnClickListener {
-                val name = etLlmProfileName?.text?.toString()?.ifBlank { getString(R.string.untitled_profile) } ?: getString(R.string.untitled_profile)
-                val endpoint = etLlmEndpoint?.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT
-                val apiKey = etLlmApiKey?.text?.toString() ?: ""
-                val model = etLlmModel?.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_MODEL } ?: Prefs.DEFAULT_LLM_MODEL
-                val temp = etLlmTemperature?.text?.toString()?.toFloatOrNull()?.coerceIn(0f, 2f) ?: Prefs.DEFAULT_LLM_TEMPERATURE
-                val id = java.util.UUID.randomUUID().toString()
-                val cur = prefs.getLlmProviders().toMutableList()
-                cur.add(Prefs.LlmProvider(id, name, endpoint, apiKey, model, temp))
-                prefs.setLlmProviders(cur)
-                prefs.activeLlmId = id
-                // 刷新
-                try { (spLlmProfiles?.adapter as? ArrayAdapter<*>)?.clear() } catch (_: Throwable) {}
-                // 重新填充
-                run {
-                    val profiles = prefs.getLlmProviders()
-                    val titles = profiles.map { it.name }
-                    spLlmProfiles?.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
-                    val idx = profiles.indexOfFirst { it.id == prefs.activeLlmId }.let { if (it < 0) 0 else it }
-                    if (idx in titles.indices) spLlmProfiles?.setSelection(idx)
-                }
-                Toast.makeText(this, getString(R.string.toast_llm_profile_added), Toast.LENGTH_SHORT).show()
-            }
-
-            findViewById<Button>(R.id.btnLlmDeleteProfile)?.setOnClickListener {
-                val cur = prefs.getLlmProviders().toMutableList()
-                if (cur.isEmpty()) return@setOnClickListener
-                val idx = cur.indexOfFirst { it.id == prefs.activeLlmId }
-                if (idx >= 0) {
-                    cur.removeAt(idx)
-                    prefs.setLlmProviders(cur)
-                    val active = prefs.getActiveLlmProvider()
-                    if (active != null) {
-                        prefs.llmEndpoint = active.endpoint
-                        prefs.llmApiKey = active.apiKey
-                        prefs.llmModel = active.model
-                        prefs.llmTemperature = active.temperature
-                    }
-                    applyPrefsToUi()
-                    try { (spLlmProfiles?.adapter as? ArrayAdapter<*>)?.clear() } catch (_: Throwable) {}
-                    run {
-                        val profiles = prefs.getLlmProviders()
-                        val titles = profiles.map { it.name }
-                        spLlmProfiles?.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
-                        val i2 = profiles.indexOfFirst { it.id == prefs.activeLlmId }.let { if (it < 0) 0 else it }
-                        if (i2 in titles.indices) spLlmProfiles?.setSelection(i2)
-                    }
-                    Toast.makeText(this, getString(R.string.toast_llm_profile_deleted), Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
 
         findViewById<Button>(R.id.btnSaveKeys).setOnClickListener {
-            // 高级设置（如当前布局存在）
-            if (advancedPresent) {
-                // 供应商密钥
-                prefs.appKey = etAppKey?.text?.toString() ?: ""
-                prefs.accessKey = etAccessKey?.text?.toString() ?: ""
-                prefs.sfApiKey = etSfApiKey?.text?.toString() ?: ""
-                prefs.sfModel = etSfModel?.text?.toString()?.ifBlank { Prefs.DEFAULT_SF_MODEL } ?: Prefs.DEFAULT_SF_MODEL
-                prefs.elevenApiKey = etElevenApiKey?.text?.toString() ?: ""
-                prefs.elevenModelId = etElevenModel?.text?.toString() ?: ""
-                // DashScope 设置
-                prefs.dashApiKey = etDashApiKey?.text?.toString() ?: ""
-                prefs.dashModel = etDashModel?.text?.toString()?.ifBlank { Prefs.DEFAULT_DASH_MODEL } ?: Prefs.DEFAULT_DASH_MODEL
-                // OpenAI ASR 设置
-                prefs.oaAsrEndpoint = etOpenAiAsrEndpoint?.text?.toString()?.ifBlank { Prefs.DEFAULT_OA_ASR_ENDPOINT } ?: Prefs.DEFAULT_OA_ASR_ENDPOINT
-                prefs.oaAsrApiKey = etOpenAiApiKey?.text?.toString() ?: ""
-                prefs.oaAsrModel = etOpenAiModel?.text?.toString()?.ifBlank { Prefs.DEFAULT_OA_ASR_MODEL } ?: Prefs.DEFAULT_OA_ASR_MODEL
-                // Gemini 设置
-                prefs.gemApiKey = etGeminiApiKey?.text?.toString() ?: ""
-                prefs.gemModel = etGeminiModel?.text?.toString()?.ifBlank { Prefs.DEFAULT_GEM_MODEL } ?: Prefs.DEFAULT_GEM_MODEL
-            }
-            // 通用开关设置
             prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
             prefs.autoSwitchOnPassword = switchAutoSwitchPassword.isChecked
             prefs.micHapticEnabled = switchMicHaptic.isChecked
-            // 悬浮球设置在子页中自动保存与执行
-            // 大语言模型相关设置（仅在高级布局下处理）
-            if (advancedPresent) {
-                val endpoint = etLlmEndpoint?.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT } ?: Prefs.DEFAULT_LLM_ENDPOINT
-                val apiKey = etLlmApiKey?.text?.toString() ?: ""
-                val model = etLlmModel?.text?.toString()?.ifBlank { Prefs.DEFAULT_LLM_MODEL } ?: Prefs.DEFAULT_LLM_MODEL
-                val tempVal = etLlmTemperature?.text?.toString()?.toFloatOrNull()?.coerceIn(0f, 2f) ?: Prefs.DEFAULT_LLM_TEMPERATURE
-                val name = etLlmProfileName?.text?.toString()?.ifBlank { getString(R.string.untitled_profile) } ?: getString(R.string.untitled_profile)
-                val curProfiles = prefs.getLlmProviders().toMutableList()
-                val idxProfile = curProfiles.indexOfFirst { it.id == prefs.activeLlmId }
-                if (idxProfile >= 0) {
-                    val id = curProfiles[idxProfile].id
-                    curProfiles[idxProfile] = Prefs.LlmProvider(id, name, endpoint, apiKey, model, tempVal)
-                } else {
-                    val id = java.util.UUID.randomUUID().toString()
-                    curProfiles.add(Prefs.LlmProvider(id, name, endpoint, apiKey, model, tempVal))
-                    prefs.activeLlmId = id
-                }
-                prefs.setLlmProviders(curProfiles)
-                // 同步旧字段用于兼容
-                prefs.llmEndpoint = endpoint
-                prefs.llmApiKey = apiKey
-                prefs.llmModel = model
-                prefs.llmTemperature = tempVal
-            }
-            // 自定义标点在子页中自动保存
-            if (advancedPresent) {
-                val newTitle = etLlmPromptTitle?.text?.toString()?.ifBlank { getString(R.string.untitled_preset) } ?: getString(R.string.untitled_preset)
-                val newContent = etLlmPrompt?.text?.toString() ?: Prefs.DEFAULT_LLM_PROMPT
-                val list = prefs.getPromptPresets().toMutableList()
-                val currentIdx = list.indexOfFirst { it.id == prefs.activePromptId }
-                if (currentIdx >= 0) {
-                    list[currentIdx] = list[currentIdx].copy(title = newTitle, content = newContent)
-                    prefs.setPromptPresets(list)
-                    prefs.activePromptId = list[currentIdx].id
-                } else {
-                    val created = PromptPreset(java.util.UUID.randomUUID().toString(), newTitle, newContent)
-                    list.add(created)
-                    prefs.setPromptPresets(list)
-                    prefs.activePromptId = created.id
-                }
-            }
-            // 保存火山引擎流式开关（如存在）
-            if (advancedPresent) {
-                prefs.volcStreamingEnabled = switchVolcStreaming?.isChecked == true
-            }
             Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
         }
 
-        if (advancedPresent) {
-            findViewById<Button>(R.id.btnAddPromptPreset)?.setOnClickListener {
-                val title = etLlmPromptTitle?.text?.toString()?.ifBlank { getString(R.string.untitled_preset) } ?: getString(R.string.untitled_preset)
-                val content = etLlmPrompt?.text?.toString() ?: Prefs.DEFAULT_LLM_PROMPT
-                val created = PromptPreset(java.util.UUID.randomUUID().toString(), title, content)
-                val newList = prefs.getPromptPresets().toMutableList().apply { add(created) }
-                prefs.setPromptPresets(newList)
-                prefs.activePromptId = created.id
-                Toast.makeText(this, getString(R.string.toast_preset_added), Toast.LENGTH_SHORT).show()
-            }
-        }
 
         // 设置导入/导出
         val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->

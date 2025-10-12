@@ -35,13 +35,10 @@
   <string name="settings_instructions">首次使用步骤：\n1. 点击"启用键盘"，在系统设置中启用 言犀键盘\n2. 点击"选择键盘"，切换到 言犀键盘\n3. 授予麦克风权限后，回到任意输入框，长按键盘上的麦克风按钮即可体验</string>
     <string name="btn_enable">启用键盘</string>
     <string name="btn_choose">选择键盘</string>
-    <string name="btn_grant_mic">授予麦克风权限</string>
   <string name="btn_show_guide">查看使用指南</string>
   <string name="btn_check_update">检查更新</string>
-  <string name="btn_advanced_settings">高级设置</string>
-    <!-- Material UI additions -->
+  <!-- Material UI additions -->
   <string name="settings_title">言犀键盘设置</string>
-  <string name="advanced_settings_title">高级设置</string>
   <string name="title_asr_settings">ASR 设置</string>
   <string name="title_ai_settings">AI 后处理设置</string>
   <string name="title_punct_settings">自定义标点设置</string>
@@ -84,12 +81,10 @@
     <string name="floating_asr_error">识别失败: %1$s</string>
     <string name="floating_asr_copied">已复制到剪贴板</string>
     <string name="floating_asr_inserted">已插入文本</string>
-    <string name="floating_asr_no_text_field">未找到文本输入框</string>
   <string name="accessibility_service_description">允许言犀键盘悬浮球将语音识别结果自动插入到当前输入框中。不会收集或上传任何数据。</string>
 
     <!-- LLM settings -->
-    <string name="llm_section_title">AI 后处理配置</string>
-    <string name="label_llm_endpoint">OpenAI Endpoint（例如：https://api.openai.com/v1 或包含 /chat/completions）</string>
+  <string name="label_llm_endpoint">OpenAI Endpoint（例如：https://api.openai.com/v1 或包含 /chat/completions）</string>
     <string name="label_llm_api_key">API Key</string>
     <string name="label_llm_model">Model Name（例如：gpt-4o-mini）</string>
     <string name="label_llm_temperature">Temperature（0.0 – 2.0）</string>
@@ -172,20 +167,14 @@
     <string name="guide_floating_icon_desc">悬浮球图标</string>
 
     <!-- Legacy Quick guide (image + text) -->
-    <string name="guide_header">从左到右，从上到下</string>
-    <string name="guide_body">核心用法：长按录音，松手转录（居中按钮）\n 1.后处理 Prompt 切换\n 2.启用后处理\n 3.收起键盘键\n 4.退格键，上滑或左滑删除所有内容，下滑撤销后处理结果\n 5.设置键\n 6.切换输入法\n 7.编辑键，点击后语音输入指令，说完后再按一次，LLM 根据指令修改上次转录/选中内容\n 8.回车键\n 9.下方四个区域为可自定义标点符号键</string>
 
-    <!-- Update check -->
+  <!-- Update check -->
     <string name="update_checking">正在检查更新…</string>
-    <string name="update_available">发现新版本 %1$s</string>
-    <string name="update_current_version">当前版本：%1$s</string>
-    <string name="update_latest_version">最新版本：%1$s</string>
-    <string name="update_no_update">已是最新版本</string>
+  <string name="update_no_update">已是最新版本</string>
     <string name="update_check_failed">检查更新失败：%1$s</string>
     <string name="update_dialog_title">发现新版本</string>
     <string name="update_dialog_message">当前版本：%1$s\n最新版本：%2$s\n\n是否前往下载？</string>
-    <string name="update_manual_check">也可以手动访问 GitHub Release 页面查看最新版本</string>
-    <string name="btn_download">前往下载</string>
+  <string name="btn_download">前往下载</string>
     <string name="btn_manual_check">手动查看</string>
     <string name="btn_cancel">取消</string>
     <string name="download_source_title">选择下载源</string>

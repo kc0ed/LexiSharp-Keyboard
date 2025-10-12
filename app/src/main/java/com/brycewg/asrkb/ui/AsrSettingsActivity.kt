@@ -91,14 +91,15 @@ class AsrSettingsActivity : AppCompatActivity() {
     spAsrVendor.setSelection(vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0))
     applyVendorVisibility(prefs.asrVendor)
 
-    spAsrVendor.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
-      override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-        val vendor = vendorOrder.getOrNull(position) ?: AsrVendor.Volc
-        prefs.asrVendor = vendor
-        applyVendorVisibility(vendor)
+      spAsrVendor.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+          override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+              val vendor = vendorOrder.getOrNull(position) ?: AsrVendor.Volc
+              prefs.asrVendor = vendor
+              applyVendorVisibility(vendor)
+          }
+
+          override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
       }
-      override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-    })
 
     fun EditText.bindString(onChange: (String) -> Unit) {
       setText(this.text) // keep as is

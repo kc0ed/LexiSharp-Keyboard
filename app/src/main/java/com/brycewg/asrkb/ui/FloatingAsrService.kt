@@ -7,7 +7,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.IBinder
@@ -20,7 +19,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
-import android.view.animation.LinearInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -351,22 +349,6 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 ballIcon?.clearColorFilter()
             }
         }
-    }
-
-    private fun startProgressAnimation(reverse: Boolean) {
-        stopProgressAnimation()
-
-        val progress = ballProgress ?: return
-        progress.visibility = View.VISIBLE
-
-        // 使用旋转动画
-        progressAnimator = ObjectAnimator.ofFloat(progress, "rotation", 0f, if (reverse) -360f else 360f).apply {
-            duration = 2000
-            repeatCount = ValueAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            start()
-        }
-        Log.d(TAG, "Progress animation started, reverse=$reverse")
     }
 
     private fun stopProgressAnimation() {

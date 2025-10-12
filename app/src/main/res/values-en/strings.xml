@@ -34,13 +34,10 @@
     <string name="settings_instructions">First-time setup:\n1. Tap "Enable Keyboard" and enable LexiSharp Keyboard in system settings\n2. Tap "Choose Keyboard" to switch to LexiSharp Keyboard\n3. Grant microphone permission, then long‑press the mic button on the keyboard to try</string>
     <string name="btn_enable">Enable Keyboard</string>
     <string name="btn_choose">Choose Keyboard</string>
-    <string name="btn_grant_mic">Grant Microphone Permission</string>
     <string name="btn_show_guide">View Quick Guide</string>
     <string name="btn_check_update">Check for Updates</string>
-    <string name="btn_advanced_settings">Advanced Settings</string>
     <!-- Material UI additions -->
     <string name="settings_title">LexiSharp Keyboard Settings</string>
-    <string name="advanced_settings_title">Advanced Settings</string>
     <string name="title_asr_settings">ASR Settings</string>
     <string name="title_ai_settings">AI Post-processing Settings</string>
     <string name="title_punct_settings">Custom Punctuation Settings</string>
@@ -84,10 +81,8 @@
     <string name="floating_asr_error">Recognition failed: %1$s</string>
     <string name="floating_asr_copied">Copied to clipboard</string>
     <string name="floating_asr_inserted">Text inserted</string>
-    <string name="floating_asr_no_text_field">No text field found</string>
 
     <!-- LLM settings -->
-    <string name="llm_section_title">AI Post-processing</string>
     <string name="label_llm_endpoint">OpenAI Endpoint (e.g., https://api.openai.com/v1 or includes /chat/completions)</string>
     <string name="label_llm_api_key">API Key</string>
     <string name="label_llm_model">Model Name (e.g., gpt-4o-mini)</string>
@@ -172,29 +167,14 @@
     <string name="guide_floating_icon_desc">Floating ball icon</string>
 
     <!-- Legacy Quick guide (image + text) -->
-    <string name="guide_header">From left to right, top to bottom</string>
-    <string name="guide_body">Core usage: Press and hold to record, release to transcribe (centered button)
-\n 1. Post-processing Prompt switch
-\n 2. Enable post-processing
-\n 3. Hide keyboard key
-\n 4. Backspace key: slide up or left to delete all content, slide down to undo post-processing results
-\n 5. Settings key
-\n 6. Switch input method
-\n 7. Edit key: tap to speak a command, then tap again when done; the LLM will modify the last transcribed/selected content according to the command
-\n 8. Enter key
-\n 9. The four areas below are customizable punctuation keys</string>
     <string name="accessibility_service_description">Allow floating ball to insert ASR results into the current input field. No data is collected or uploaded.</string>
 
     <!-- Update check -->
     <string name="update_checking">Checking for updates…</string>
-    <string name="update_available">New version %1$s available</string>
-    <string name="update_current_version">Current version: %1$s</string>
-    <string name="update_latest_version">Latest version: %1$s</string>
     <string name="update_no_update">You are using the latest version</string>
     <string name="update_check_failed">Update check failed: %1$s</string>
     <string name="update_dialog_title">New Version Available</string>
     <string name="update_dialog_message">Current version: %1$s\nLatest version: %2$s\n\nWould you like to download?</string>
-    <string name="update_manual_check">You can also manually visit the GitHub Release page to check for updates</string>
     <string name="btn_download">Download</string>
     <string name="btn_manual_check">Manual Check</string>
     <string name="btn_cancel">Cancel</string>
