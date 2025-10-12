@@ -285,13 +285,16 @@ class VolcStreamAsrEngine(
                 }
             }
         } else if (msgType == MSG_TYPE_ERROR_SERVER) {
-            // 错误消息：code(4) + size(4) + msg
             if (arr.size < offset + 8) return
             val code = readUInt32BE(arr, offset)
             val size = readUInt32BE(arr, offset + 4)
             val start = offset + 8
             val end = (start + size).coerceAtMost(arr.size)
             val msg = try { String(arr.copyOfRange(start, end), Charsets.UTF_8) } catch (_: Throwable) { "" }
+            val lowerMsg = msg.lowercase()
+            if (code == 45000000 && ("decode ws request failed" in lowerMsg || "unable to decode" in lowerMsg)) {
+                return
+            }
             listener.onError("ASR Error $code: $msg")
         }
     }
