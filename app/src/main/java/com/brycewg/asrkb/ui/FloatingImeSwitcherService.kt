@@ -10,9 +10,12 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
+import android.animation.ValueAnimator
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
@@ -199,42 +202,81 @@ class FloatingImeSwitcherService : Service() {
         }
     }
 
+    private var edgeAnimator: ValueAnimator? = null
+
     private fun attachDrag(target: View) {
         var downX = 0f
         var downY = 0f
         var startX = 0
         var startY = 0
         var moved = false
+        var isDragging = false
         val touchSlop = dp(4)
+        val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+        var longPressPosted = false
+        val longPressRunnable = Runnable {
+            isDragging = true
+            longPressPosted = false
+        }
 
         target.setOnTouchListener { v, e ->
             val p = lp ?: return@setOnTouchListener false
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    // 停止吸附动画，准备新的拖动
+                    edgeAnimator?.cancel()
                     moved = false
+                    isDragging = false
                     downX = e.rawX
                     downY = e.rawY
                     startX = p.x
                     startY = p.y
+                    if (!longPressPosted) {
+                        handler.postDelayed(longPressRunnable, longPressTimeout)
+                        longPressPosted = true
+                    }
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (e.rawX - downX).toInt()
                     val dy = (e.rawY - downY).toInt()
                     if (!moved && (kotlin.math.abs(dx) > touchSlop || kotlin.math.abs(dy) > touchSlop)) moved = true
-                    p.x = startX + dx
-                    p.y = startY + dy
+
+                    if (!isDragging) {
+                        // 若在长按触发前移动过远，则取消长按判定
+                        if (moved && longPressPosted) {
+                            handler.removeCallbacks(longPressRunnable)
+                            longPressPosted = false
+                        }
+                        return@setOnTouchListener true
+                    }
+
+                    // 拖动中：更新位置并限制在屏幕范围内
+                    val dm = resources.displayMetrics
+                    val screenW = dm.widthPixels
+                    val screenH = dm.heightPixels
+                    val vw = if (v.width > 0) v.width else p.width
+                    val vh = if (v.height > 0) v.height else p.height
+                    val nx = (startX + dx).coerceIn(0, screenW - vw)
+                    val ny = (startY + dy).coerceIn(0, screenH - vh)
+                    p.x = nx
+                    p.y = ny
                     try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (!moved) {
+                    if (longPressPosted) {
+                        handler.removeCallbacks(longPressRunnable)
+                        longPressPosted = false
+                    }
+                    if (!isDragging && !moved) {
                         v.performClick()
-                    } else {
-                        // 拖动结束后自动吸附到最近的屏幕左右边缘，并限制在屏幕可视范围内
-                        try { snapToEdge(v) } catch (_: Throwable) { }
+                    } else if (isDragging) {
+                        // 拖动结束后自动吸附到最近的屏幕左右边缘，并限制在屏幕可视范围内（带动画）
+                        try { animateSnapToEdge(v) } catch (_: Throwable) { snapToEdge(v) }
                     }
                     moved = false
+                    isDragging = false
                     true
                 }
                 else -> false
@@ -263,6 +305,41 @@ class FloatingImeSwitcherService : Service() {
         p.x = targetX
         p.y = targetY
         try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
+    }
+
+    private fun animateSnapToEdge(v: View) {
+        val p = lp ?: return
+        val dm = resources.displayMetrics
+        val screenW = dm.widthPixels
+        val screenH = dm.heightPixels
+        val def = try { Prefs(this).floatingBallSizeDp } catch (_: Throwable) { 28 }
+        val vw = if (v.width > 0) v.width else dp(def)
+        val vh = if (v.height > 0) v.height else dp(def)
+        val margin = dp(0)
+
+        val centerX = p.x + vw / 2
+        val targetX = if (centerX < screenW / 2) margin else (screenW - vw - margin)
+        val minY = margin
+        val maxY = (screenH - vh - margin).coerceAtLeast(minY)
+        val targetY = p.y.coerceIn(minY, maxY)
+
+        val startX = p.x
+        val startY = p.y
+        val dx = targetX - startX
+        val dy = targetY - startY
+
+        edgeAnimator?.cancel()
+        edgeAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 250
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val f = anim.animatedValue as Float
+                p.x = (startX + dx * f).toInt()
+                p.y = (startY + dy * f).toInt()
+                try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
+            }
+            start()
+        }
     }
 
     private fun dp(v: Int): Int {

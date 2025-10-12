@@ -11,9 +11,8 @@
                 android:shape="ring"
                 android:thicknessRatio="16"
                 android:useLevel="true">
-                <solid android:color="?attr/colorPrimary" />
+                <solid android:color="@color/floating_asr_progress" />
             </shape>
         </rotate>
     </item>
 </layer-list>
-

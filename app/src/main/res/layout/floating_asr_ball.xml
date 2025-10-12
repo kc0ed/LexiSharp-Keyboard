@@ -15,7 +15,7 @@
             android:layout_gravity="center"
             android:src="@drawable/ic_mic"
             android:scaleType="fitCenter"
-            android:tint="#757575"
+            android:tint="@color/floating_asr_icon_tint"
             android:contentDescription="@string/cd_floating_asr" />
     </FrameLayout>
 

@@ -18,8 +18,10 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
@@ -117,7 +119,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         ballProgress = view.findViewById(R.id.ballProgress)
         
         ballIcon?.setOnClickListener { onBallClick() }
+        // 在根视图与图标上都绑定拖动监听；内部统一更新根视图位置，避免对子视图误设 WindowManager.LayoutParams
         attachDrag(view)
+        ballIcon?.let { attachDrag(it) }
         
         val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         val size = try { prefs.floatingBallSizeDp } catch (_: Throwable) { 56 }
@@ -380,41 +384,79 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    private var edgeAnimator: ValueAnimator? = null
+
     private fun attachDrag(target: View) {
         var downX = 0f
         var downY = 0f
         var startX = 0
         var startY = 0
         var moved = false
+        var isDragging = false
         val touchSlop = dp(4)
+        val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+        var longPressPosted = false
+        val longPressRunnable = Runnable {
+            isDragging = true
+            longPressPosted = false
+        }
 
         target.setOnTouchListener { v, e ->
             val p = lp ?: return@setOnTouchListener false
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    edgeAnimator?.cancel()
                     moved = false
+                    isDragging = false
                     downX = e.rawX
                     downY = e.rawY
                     startX = p.x
                     startY = p.y
+                    if (!longPressPosted) {
+                        handler.postDelayed(longPressRunnable, longPressTimeout)
+                        longPressPosted = true
+                    }
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (e.rawX - downX).toInt()
                     val dy = (e.rawY - downY).toInt()
                     if (!moved && (kotlin.math.abs(dx) > touchSlop || kotlin.math.abs(dy) > touchSlop)) moved = true
-                    p.x = startX + dx
-                    p.y = startY + dy
-                    try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
+
+                    if (!isDragging) {
+                        if (moved && longPressPosted) {
+                            handler.removeCallbacks(longPressRunnable)
+                            longPressPosted = false
+                        }
+                        return@setOnTouchListener true
+                    }
+
+                    val dm = resources.displayMetrics
+                    val screenW = dm.widthPixels
+                    val screenH = dm.heightPixels
+                    val root = ballView ?: v
+                    val vw = if (root.width > 0) root.width else p.width
+                    val vh = if (root.height > 0) root.height else p.height
+                    val nx = (startX + dx).coerceIn(0, screenW - vw)
+                    val ny = (startY + dy).coerceIn(0, screenH - vh)
+                    p.x = nx
+                    p.y = ny
+                    try { windowManager.updateViewLayout(ballView ?: v, p) } catch (_: Throwable) { }
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (!moved) {
-                        v.performClick()
-                    } else {
-                        try { snapToEdge(v) } catch (_: Throwable) { }
+                    if (longPressPosted) {
+                        handler.removeCallbacks(longPressRunnable)
+                        longPressPosted = false
+                    }
+                    if (!isDragging && !moved) {
+                        // 由根视图处理点击，避免子视图消费导致拖动无法触发
+                        onBallClick()
+                    } else if (isDragging) {
+                        try { animateSnapToEdge(v) } catch (_: Throwable) { snapToEdge(v) }
                     }
                     moved = false
+                    isDragging = false
                     true
                 }
                 else -> false
@@ -428,8 +470,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         val screenW = dm.widthPixels
         val screenH = dm.heightPixels
         val def = try { prefs.floatingBallSizeDp } catch (_: Throwable) { 56 }
-        val vw = if (v.width > 0) v.width else dp(def)
-        val vh = if (v.height > 0) v.height else dp(def)
+        val root = ballView ?: v
+        val vw = if (root.width > 0) root.width else dp(def)
+        val vh = if (root.height > 0) root.height else dp(def)
         val margin = dp(0)
 
         val centerX = p.x + vw / 2
@@ -440,7 +483,43 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
 
         p.x = targetX
         p.y = targetY
-        try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
+        try { windowManager.updateViewLayout(ballView ?: v, p) } catch (_: Throwable) { }
+    }
+
+    private fun animateSnapToEdge(v: View) {
+        val p = lp ?: return
+        val dm = resources.displayMetrics
+        val screenW = dm.widthPixels
+        val screenH = dm.heightPixels
+        val def = try { prefs.floatingBallSizeDp } catch (_: Throwable) { 56 }
+        val root = ballView ?: v
+        val vw = if (root.width > 0) root.width else dp(def)
+        val vh = if (root.height > 0) root.height else dp(def)
+        val margin = dp(0)
+
+        val centerX = p.x + vw / 2
+        val targetX = if (centerX < screenW / 2) margin else (screenW - vw - margin)
+        val minY = margin
+        val maxY = (screenH - vh - margin).coerceAtLeast(minY)
+        val targetY = p.y.coerceIn(minY, maxY)
+
+        val startX = p.x
+        val startY = p.y
+        val dx = targetX - startX
+        val dy = targetY - startY
+
+        edgeAnimator?.cancel()
+        edgeAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 250
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val f = anim.animatedValue as Float
+                p.x = (startX + dx * f).toInt()
+                p.y = (startY + dy * f).toInt()
+                try { windowManager.updateViewLayout(ballView ?: v, p) } catch (_: Throwable) { }
+            }
+            start()
+        }
     }
 
     private fun dp(v: Int): Int {
