@@ -14,6 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "asr-keyboard"
+rootProject.name = "LexiSharp-Keyboard"
 include(":app")
 
