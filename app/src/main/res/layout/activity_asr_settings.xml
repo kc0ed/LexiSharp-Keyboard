@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical">
+
+  <com.google.android.material.appbar.MaterialToolbar
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:titleCentered="true"
+    app:title="@string/title_asr_settings" />
+
+  <ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      android:padding="16dp">
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/label_asr_vendor"
+        android:textStyle="bold"
+        android:textColor="?attr/colorOnSurface" />
+
+      <Spinner
+        android:id="@+id/spAsrVendor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+      <!-- Volcano Engine -->
+      <TextView
+        android:id="@+id/titleVolc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/volc_section_title"
+        android:textStyle="bold" />
+
+      <LinearLayout
+        android:id="@+id/groupVolc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_app_key">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etAppKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_access_key">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etAccessKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPassword"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchVolcStreaming"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_volc_streaming" />
+      </LinearLayout>
+
+      <!-- SiliconFlow -->
+      <TextView
+        android:id="@+id/titleSf"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/sf_section_title"
+        android:textStyle="bold" />
+
+      <LinearLayout
+        android:id="@+id/groupSf"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_sf_api_key">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etSfApiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPassword"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_sf_model">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etSfModel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+      </LinearLayout>
+
+      <!-- ElevenLabs -->
+      <TextView
+        android:id="@+id/titleEleven"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/eleven_section_title"
+        android:textStyle="bold" />
+
+      <LinearLayout
+        android:id="@+id/groupEleven"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_eleven_api_key">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etElevenApiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPassword"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_eleven_model">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etElevenModel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+      </LinearLayout>
+
+      <!-- OpenAI ASR -->
+      <TextView
+        android:id="@+id/titleOpenAI"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/openai_section_title"
+        android:textStyle="bold" />
+
+      <LinearLayout
+        android:id="@+id/groupOpenAI"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_openai_asr_endpoint">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etOpenAiAsrEndpoint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textUri"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_openai_api_key">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etOpenAiApiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPassword"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_openai_model">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etOpenAiModel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+      </LinearLayout>
+
+      <!-- DashScope -->
+      <TextView
+        android:id="@+id/titleDash"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/dash_section_title"
+        android:textStyle="bold" />
+
+      <LinearLayout
+        android:id="@+id/groupDashScope"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_dash_api_key">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDashApiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPassword"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_dash_model">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDashModel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+      </LinearLayout>
+
+      <!-- Gemini -->
+      <TextView
+        android:id="@+id/titleGemini"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/gemini_section_title"
+        android:textStyle="bold" />
+
+      <LinearLayout
+        android:id="@+id/groupGemini"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_gemini_api_key">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etGeminiApiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPassword"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_gemini_model">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etGeminiModel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+      </LinearLayout>
+    </LinearLayout>
+  </ScrollView>
+
+</LinearLayout>
+

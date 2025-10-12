@@ -35,7 +35,14 @@
     <string name="btn_choose">选择键盘</string>
     <string name="btn_grant_mic">授予麦克风权限</string>
     <string name="btn_show_guide">查看使用指南</string>
+    <string name="btn_check_update">检查更新</string>
+    <string name="btn_advanced_settings">高级设置</string>
     <string name="settings_title">言犀键盘设置</string>
+    <string name="advanced_settings_title">高级设置</string>
+    <string name="title_asr_settings">ASR 设置</string>
+    <string name="title_ai_settings">AI 后处理设置</string>
+    <string name="title_punct_settings">自定义标点设置</string>
+    <string name="title_floating_settings">悬浮球设置</string>
     <string name="volc_section_title">Volcano Engine 鉴权参数</string>
     <string name="sf_section_title">SiliconFlow 鉴权参数</string>
     <string name="label_app_key">X-Api-App-Key</string>

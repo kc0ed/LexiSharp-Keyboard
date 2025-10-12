@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical">
+
+  <com.google.android.material.appbar.MaterialToolbar
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:titleCentered="true"
+    app:title="@string/title_floating_settings" />
+
+  <ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      android:padding="16dp">
+
+      <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchFloatingSwitcher"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/label_floating_switcher" />
+
+      <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchFloatingOnlyWhenImeVisible"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/label_floating_only_when_ime_visible" />
+
+      <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchFloatingAsr"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/label_floating_asr" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/label_floating_alpha" />
+
+      <com.google.android.material.slider.Slider
+        android:id="@+id/sliderFloatingAlpha"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:valueFrom="30"
+        android:valueTo="100"
+        android:stepSize="5" />
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/label_floating_size" />
+
+      <com.google.android.material.slider.Slider
+        android:id="@+id/sliderFloatingSize"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:valueFrom="28"
+        android:valueTo="96"
+        android:stepSize="4" />
+    </LinearLayout>
+  </ScrollView>
+
+</LinearLayout>
