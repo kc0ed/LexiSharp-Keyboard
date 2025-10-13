@@ -633,8 +633,29 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private fun sendBackspace() {
         val ic = currentInputConnection ?: return
-        // Delete one character before cursor
-        ic.deleteSurroundingText(1, 0)
+        try {
+            // 先结束任何悬浮的 composing，避免目标应用将退格当作“撤销整段组合文本”而把光标重置到开头
+            ic.finishComposingText()
+        } catch (_: Throwable) { }
+
+        // 若有选区，按退格语义应删除选区内容
+        val selected = try { ic.getSelectedText(0) } catch (_: Throwable) { null }
+        if (!selected.isNullOrEmpty()) {
+            try {
+                ic.commitText("", 1)
+                return
+            } catch (_: Throwable) { /* fall through */ }
+        }
+
+        // 对部分应用，使用硬件 DEL 事件能更稳定地保持光标位置
+        try {
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+            return
+        } catch (_: Throwable) { }
+
+        // 兜底：删除光标前一个字符
+        try { ic.deleteSurroundingText(1, 0) } catch (_: Throwable) { }
     }
 
     private fun clearAllTextWithSnapshot(ic: android.view.inputmethod.InputConnection) {
