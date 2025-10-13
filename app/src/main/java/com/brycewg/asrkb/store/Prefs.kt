@@ -57,14 +57,14 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_APP_LANGUAGE_TAG, "") ?: ""
         set(value) = sp.edit { putString(KEY_APP_LANGUAGE_TAG, value) }
 
-    // 悬浮球开关
+    // 输入法切换悬浮球开关
     var floatingSwitcherEnabled: Boolean
         get() = sp.getBoolean(KEY_FLOATING_SWITCHER_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_SWITCHER_ENABLED, value) }
 
     // 仅在输入法面板显示时显示悬浮球
     var floatingSwitcherOnlyWhenImeVisible: Boolean
-        get() = sp.getBoolean(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE, false)
+        get() = sp.getBoolean(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE, true)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE, value) }
 
     // 悬浮球透明度（0.2f - 1.0f）
@@ -72,7 +72,7 @@ class Prefs(context: Context) {
         get() = sp.getFloat(KEY_FLOATING_SWITCHER_ALPHA, 1.0f).coerceIn(0.2f, 1.0f)
         set(value) = sp.edit { putFloat(KEY_FLOATING_SWITCHER_ALPHA, value.coerceIn(0.2f, 1.0f)) }
 
-    // 悬浮球大小（单位 dp，范围 28 - 96，默认 56）
+    // 悬浮球大小（单位 dp，范围 28 - 96，默认 44）
     var floatingBallSizeDp: Int
         get() = sp.getInt(KEY_FLOATING_BALL_SIZE_DP, DEFAULT_FLOATING_BALL_SIZE_DP).coerceIn(28, 96)
         set(value) = sp.edit { putInt(KEY_FLOATING_BALL_SIZE_DP, value.coerceIn(28, 96)) }
@@ -88,7 +88,7 @@ class Prefs(context: Context) {
 
     // 悬浮球语音识别模式开关
     var floatingAsrEnabled: Boolean
-        get() = sp.getBoolean(KEY_FLOATING_ASR_ENABLED, false)
+        get() = sp.getBoolean(KEY_FLOATING_ASR_ENABLED, true)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_ASR_ENABLED, value) }
 
     // LLM后处理设置（旧版单一字段；当存在多配置且已选择活动项时仅作回退）
@@ -490,7 +490,7 @@ class Prefs(context: Context) {
         const val DEFAULT_PUNCT_4 = "？"
 
         // 悬浮球默认大小（dp）
-        const val DEFAULT_FLOATING_BALL_SIZE_DP = 56
+        const val DEFAULT_FLOATING_BALL_SIZE_DP = 44
 
         // Soniox 默认端点
         const val SONIOX_API_BASE_URL = "https://api.soniox.com"
