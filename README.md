@@ -393,7 +393,7 @@
 - 转写接口: `https://api.soniox.com/v1/transcriptions`
 - WebSocket: `wss://stt-rt.soniox.com/transcribe-websocket`
 
-**特点**: 支持端点检测和语言识别
+> 📝 非流式识别采用官方中转，延迟稍高
 
 </td>
 <td width="50%">

@@ -394,7 +394,7 @@ The settings page supports configuration switching by vendor, showing only corre
 - Transcription: `https://api.soniox.com/v1/transcriptions`
 - WebSocket: `wss://stt-rt.soniox.com/transcribe-websocket`
 
-**Features**: Supports endpoint detection and language identification
+> 📝 Non-streaming mode Uses OSS relay, slightly higher latency
 
 </td>
 <td width="50%">
