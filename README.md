@@ -56,11 +56,50 @@
 
 ### 🎨 用户体验
 
-- **Material3 设计** - 现代化界面风格
+- **Material3 设计** - 现代化界面风格，Monet 色彩适配
 - **多语言支持** - 中英文快速切换
 - **统计功能** - 识别字数统计
 - **振动反馈** - 可自定义反馈强度
 
+</td>
+</tr>
+</table>
+
+---
+
+## 📱 UI 展示
+
+<table>
+<tr>
+<td width="50%" align="center">
+<img src="images/keyboard_view.jpg" alt="键盘视图" style="max-height: 500px; width: auto;"/>
+<br/>
+<b>🎹 键盘视图</b>
+<br/>
+<sub>简洁的键盘界面，支持语音输入、键盘切换和自定义按键</sub>
+</td>
+<td width="50%" align="center">
+<img src="images/settings.jpg" alt="设置界面" style="max-height: 500px; width: auto;"/>
+<br/>
+<b>⚙️ 设置界面</b>
+<br/>
+<sub>丰富的配置选项，支持多种 ASR 引擎和 LLM 后处理</sub>
+</td>
+</tr>
+<tr>
+<td width="50%" align="center">
+<img src="images/floating_ball.jpg" alt="悬浮球功能" style="max-height: 500px; width: auto;"/>
+<br/>
+<b>🟣 悬浮球功能</b>
+<br/>
+<sub>跨输入法语音识别，随时随地语音输入</sub>
+</td>
+<td width="50%" align="center">
+<img src="images/post_processing.jpg" alt="AI 后处理" style="max-height: 500px; width: auto;"/>
+<br/>
+<b>🤖 AI 后处理</b>
+<br/>
+<sub>LLM 智能优化识别结果，提升文本质量</sub>
 </td>
 </tr>
 </table>
@@ -226,7 +265,7 @@
 
 ```
 ✅ 将常用的第三方输入法设为默认输入法（如搜狗、百度等）
-✅ 开启言犀键盘的悬浮球语音识别功能
+✅ 开启言犀键盘的悬浮球语音识别功能，使用非流式识别，流式识别仅火山引擎支持，并且处于早期阶段
 ✅ 日常使用第三方输入法打字，需要语音输入时点击悬浮球
 ✅ 享受两全其美的输入体验：熟悉的打字手感 + 高质量的语音识别
 ✅ 需要时切换到言犀键盘，享受更多智能 ASR 功能

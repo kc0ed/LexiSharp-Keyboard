@@ -56,7 +56,7 @@ English | [简体中文](README.md)
 
 ### 🎨 User Experience
 
-- **Material3 Design** - Modern interface style
+- **Material3 Design** - Modern interface style with Monet color adaptation
 - **Multi-language Support** - Quick switching between Chinese and English
 - **Statistics** - Recognition character count
 - **Vibration Feedback** - Customizable feedback intensity
@@ -67,7 +67,46 @@ English | [简体中文](README.md)
 
 ---
 
-## 🚀 Quick Start
+## � UI Showcase
+
+<table>
+<tr>
+<td width="50%" align="center">
+<img src="images/keyboard_view_en.jpg" alt="Keyboard View" style="max-height: 500px; width: auto;"/>
+<br/>
+<b>🎹 Keyboard View</b>
+<br/>
+<sub>Clean keyboard interface with voice input, IME switching, and custom keys</sub>
+</td>
+<td width="50%" align="center">
+<img src="images/settings_en.jpg" alt="Settings Interface" style="max-height: 500px; width: auto;"/>
+<br/>
+<b>⚙️ Settings Interface</b>
+<br/>
+<sub>Rich configuration options with multiple ASR engines and LLM post-processing</sub>
+</td>
+</tr>
+<tr>
+<td width="50%" align="center">
+<img src="images/floating_ball_en.jpg" alt="Floating Ball Feature" style="max-height: 500px; width: auto;"/>
+<br/>
+<b>🟣 Floating Ball Feature</b>
+<br/>
+<sub>Cross-IME voice recognition, voice input anytime, anywhere</sub>
+</td>
+<td width="50%" align="center">
+<img src="images/post_processing_en.jpg" alt="AI Post-Processing" style="max-height: 500px; width: auto;"/>
+<br/>
+<b>🤖 AI Post-Processing</b>
+<br/>
+<sub>LLM intelligently optimizes recognition results to improve text quality</sub>
+</td>
+</tr>
+</table>
+
+---
+
+## �🚀 Quick Start
 
 ### 📋 System Requirements
 
@@ -227,7 +266,7 @@ English | [简体中文](README.md)
 
 ```
 ✅ Set your frequently used third-party IME as default (Sogou, Baidu, etc.)
-✅ Enable LexiSharp Keyboard's floating ball voice recognition
+✅ Enable LexiSharp Keyboard's floating ball voice recognition, use non-streaming recognition. Streaming recognition is only supported by Volcengine and is in early stages
 ✅ Use third-party IME for daily typing, click floating ball when voice input is needed
 ✅ Enjoy the best of both worlds: familiar typing experience + high-quality voice recognition
 ✅ Switch to LexiSharp Keyboard when needed for more smart ASR features
