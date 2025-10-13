@@ -23,6 +23,7 @@
     <string name="status_ai_editing">AI编辑中…</string>
     <string name="status_last_request_ms">上次识别耗时：%1$d ms</string>
     <string name="status_reverted_to_raw">已切换为原始识别结果</string>
+    <string name="status_undone">已撤回最近改动</string>
     <string name="status_llm_empty_result">AI编辑失败：未返回结果</string>
     <string name="status_last_asr_not_found">未找到上一次识别文本，已取消替换</string>
     <string name="hint_need_llm_keys">需要配置 AI 后处理参数</string>
@@ -184,7 +185,7 @@
     <string name="guide_floating_title">悬浮球功能</string>
     <string name="guide_floating_desc">快速切换输入法或进行悬浮球语音识别</string>
     <string name="guide_detailed_features_title">详细功能说明</string>
-    <string name="guide_detailed_features_content">1. 后处理 Prompt 切换：选择不同的 AI 处理模板\n2. 启用后处理：开启/关闭 AI 后处理功能\n3. 收起键盘键：隐藏键盘界面\n4. 退格键：上滑或左滑删除所有内容，下滑撤销后处理结果\n5. 设置键：打开应用设置界面\n6. 切换输入法：快速切换到其他输入法\n7. 编辑键：AI 编辑功能，点击后语音输入编辑指令，LLM 会根据指令修改内容\n8. 回车键：发送换行\n9. 自定义标点键：下方四个可自定义的标点符号按键</string>
+    <string name="guide_detailed_features_content">1. 后处理 Prompt 切换：选择不同的 AI 处理模板\n2. 启用后处理：开启/关闭 AI 后处理功能\n3. 收起键盘键：隐藏键盘界面\n4. 退格键：上滑或左滑删除所有内容，下滑撤回最近改动（若刚进行了 AI 后处理，则撤销后处理）\n5. 设置键：打开应用设置界面\n6. 切换输入法：快速切换到其他输入法\n7. 编辑键：AI 编辑功能，点击后语音输入编辑指令，LLM 会根据指令修改内容\n8. 回车键：发送换行\n9. 自定义标点键：下方四个可自定义的标点符号按键</string>
     <string name="guide_first_time_title">首次使用</string>
     <string name="guide_mic_icon_desc">麦克风图标</string>
     <string name="guide_ai_icon_desc">AI处理图标</string>

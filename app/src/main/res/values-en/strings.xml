@@ -22,6 +22,7 @@
     <string name="status_ai_edit_listening">Speak your edit instruction…</string>
     <string name="status_ai_editing">AI editing…</string>
     <string name="status_reverted_to_raw">Reverted to raw transcript</string>
+    <string name="status_undone">Undone last change</string>
     <string name="status_llm_empty_result">AI edit failed: no result</string>
     <string name="status_last_asr_not_found">Last ASR result not found; canceled</string>
     <string name="hint_need_llm_keys">Configure AI post-processing first</string>
@@ -184,7 +185,7 @@
     <string name="guide_floating_title">Floating Ball Features</string>
     <string name="guide_floating_desc">Quick switch input methods or perform floating ball voice recognition</string>
     <string name="guide_detailed_features_title">Detailed Feature Description</string>
-    <string name="guide_detailed_features_content">1. Post-processing Prompt switch: Select different AI processing templates\n2. Enable post-processing: Turn on/off AI post-processing functionality\n3. Hide keyboard key: Hide the keyboard interface\n4. Backspace key: Slide up or left to delete all content, slide down to undo post-processing results\n5. Settings key: Open application settings interface\n6. Switch input method: Quick switch to other input methods\n7. Edit key: AI editing feature, tap to voice input editing commands, LLM will modify content according to commands\n8. Enter key: Send newline\n9. Custom punctuation keys: Four customizable punctuation keys below</string>
+    <string name="guide_detailed_features_content">1. Post-processing Prompt switch: Select different AI processing templates\n2. Enable post-processing: Turn on/off AI post-processing functionality\n3. Hide keyboard key: Hide the keyboard interface\n4. Backspace key: Slide up or left to delete all content; slide down to undo the last change (or revert AI post-processing when applicable)\n5. Settings key: Open application settings interface\n6. Switch input method: Quick switch to other input methods\n7. Edit key: AI editing feature, tap to voice input editing commands, LLM will modify content according to commands\n8. Enter key: Send newline\n9. Custom punctuation keys: Four customizable punctuation keys below</string>
     <string name="guide_first_time_title">First Time Use</string>
     <string name="guide_mic_icon_desc">Microphone icon</string>
     <string name="guide_ai_icon_desc">AI processing icon</string>

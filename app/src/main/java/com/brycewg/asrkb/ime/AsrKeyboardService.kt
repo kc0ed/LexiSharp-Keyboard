@@ -93,6 +93,11 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private data class PostprocCommit(val processed: String, val raw: String)
     private var lastPostprocCommit: PostprocCommit? = null
 
+    // Global undo snapshot: capture before/after text prior to a mutating action
+    private var undoSnapshotBefore: CharSequence? = null
+    private var undoSnapshotAfter: CharSequence? = null
+    private var undoSnapshotValid: Boolean = false
+
     // Track last committed ASR result so AI Edit (no selection) can modify it
     private var lastAsrCommitText: String? = null
     // 记录最近一次流式中间结果，用于合并最终结果
@@ -384,11 +389,11 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         vibrateTick()
                         return@setOnTouchListener true
                     }
-                    // Swipe down: revert last AI post-processing result to raw transcription
+                    // Swipe down: perform undo. If there is a recent AI post-process, revert it; otherwise general undo.
                     if (!backspaceClearedInGesture && dy >= slop) {
                         backspaceLongPressStarter?.let { v.removeCallbacks(it) }
                         backspaceRepeatRunnable?.let { v.removeCallbacks(it) }
-                        if (revertLastPostprocToRaw(ic)) {
+                        if (performUndo(ic)) {
                             vibrateTick()
                             return@setOnTouchListener true
                         }
@@ -638,6 +643,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             ic.finishComposingText()
         } catch (_: Throwable) { }
 
+        // 在执行变更前记录撤回快照（若尚未存在）
+        saveUndoSnapshot(ic)
+
         // 若有选区，按退格语义应删除选区内容
         val selected = try { ic.getSelectedText(0) } catch (_: Throwable) { null }
         if (!selected.isNullOrEmpty()) {
@@ -667,6 +675,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             return
         }
         try {
+            // 使用本次手势按下时的快照作为全局撤回点
+            setUndoFromBackspaceSnapshot()
             val beforeLen = backspaceSnapshotBefore?.length ?: 0
             val afterLen = backspaceSnapshotAfter?.length ?: 0
             ic.beginBatchEdit()
@@ -725,6 +735,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
 
     private fun commitText(s: String) {
         try {
+            // 记录撤回快照（若尚未存在）
+            currentInputConnection?.let { saveUndoSnapshot(it) }
             currentInputConnection?.commitText(s, 1)
             vibrateTick()
         } catch (_: Throwable) { }
@@ -960,6 +972,60 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         // Remove trailing ASCII and common CJK punctuation marks at end of utterance
         val regex = Regex("[\\p{Punct}，。！？；、：]+$")
         return s.replace(regex, "")
+    }
+
+    // Global undo: prefer reverting AI post-processing when available; otherwise restore last mutation snapshot.
+    private fun performUndo(ic: android.view.inputmethod.InputConnection): Boolean {
+        // 1) 若可撤销最近一次 AI 后处理，优先执行
+        if (revertLastPostprocToRaw(ic)) {
+            return true
+        }
+        // 2) 否则尝试通用撤回快照
+        if (!undoSnapshotValid) return false
+        val before = undoSnapshotBefore?.toString() ?: return false
+        val after = undoSnapshotAfter?.toString() ?: ""
+        return try {
+            ic.beginBatchEdit()
+            // 清空当前上下文
+            val currBeforeLen = try { ic.getTextBeforeCursor(10000, 0)?.length ?: 0 } catch (_: Throwable) { 0 }
+            val currAfterLen = try { ic.getTextAfterCursor(10000, 0)?.length ?: 0 } catch (_: Throwable) { 0 }
+            ic.deleteSurroundingText(currBeforeLen, currAfterLen)
+            // 还原为撤回点
+            ic.commitText(before + after, 1)
+            val sel = before.length
+            try { ic.setSelection(sel, sel) } catch (_: Throwable) { }
+            ic.finishComposingText()
+            ic.endBatchEdit()
+            // 清除已使用的撤回快照
+            undoSnapshotBefore = null
+            undoSnapshotAfter = null
+            undoSnapshotValid = false
+            txtStatus?.text = getString(R.string.status_undone)
+            true
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    private fun saveUndoSnapshot(ic: android.view.inputmethod.InputConnection) {
+        if (undoSnapshotValid) return
+        try {
+            val before = ic.getTextBeforeCursor(10000, 0)
+            val after = ic.getTextAfterCursor(10000, 0)
+            undoSnapshotBefore = before
+            undoSnapshotAfter = after
+            undoSnapshotValid = before != null && after != null
+        } catch (_: Throwable) {
+            undoSnapshotBefore = null
+            undoSnapshotAfter = null
+            undoSnapshotValid = false
+        }
+    }
+
+    private fun setUndoFromBackspaceSnapshot() {
+        undoSnapshotBefore = backspaceSnapshotBefore
+        undoSnapshotAfter = backspaceSnapshotAfter
+        undoSnapshotValid = backspaceSnapshotValid
     }
 
     // Attempt to revert last AI post-processed output to raw transcript.
