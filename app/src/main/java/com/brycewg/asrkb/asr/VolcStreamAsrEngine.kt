@@ -169,7 +169,8 @@ class VolcStreamAsrEngine(
                 return@launch
             }
             val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-            val chunkBytes = ((sampleRate / 5) * 2) // 200ms * 16k * 16bit mono
+            val chunkMillis = if (prefs.volcFirstCharAccelEnabled) 100 else 200
+            val chunkBytes = ((sampleRate * chunkMillis / 1000) * 2) // chunkMillis * 16k * 16bit mono
             val bufferSize = maxOf(minBuffer, chunkBytes)
             val recorder = try {
                 AudioRecord(
@@ -255,13 +256,29 @@ class VolcStreamAsrEngine(
             put("rate", sampleRate)
             put("bits", 16)
             put("channel", 1)
-            put("language", "zh-CN")
+            val lang = prefs.volcLanguage
+            if (lang.isNotBlank()) put("language", lang)
         }
         val request = JSONObject().apply {
             put("model_name", "bigmodel")
             put("enable_itn", true)
             put("enable_punc", true)
-            put("enable_ddc", false)
+            // 语义顺滑（去口头禅/重复等），由设置控制
+            put("enable_ddc", prefs.volcDdcEnabled)
+            // 二遍识别（nostream 重识别提升最终准确）
+            if (prefs.volcNonstreamEnabled) {
+                put("enable_nonstream", true)
+            }
+            // VAD 判停与分句（按需启用）
+            if (prefs.volcVadEnabled) {
+                // 输出分句/词级时间（服务端才会返回 utterances/words）
+                put("show_utterances", true)
+                // 强制静音判停窗口：800ms（官方推荐实时性较好数值，最小200）
+                put("end_window_size", 800)
+                // 强制语音时间：1000ms（短音频也能尽快产生 definite）
+                put("force_to_speech_time", 1000)
+                // 说明：配置 end_window_size 后 vad_segment_duration 不生效，这里不再冗余设置
+            }
         }
         return JSONObject().apply {
             put("user", user)

@@ -57,6 +57,12 @@ class AsrSettingsActivity : AppCompatActivity() {
     val etGeminiApiKey = findViewById<EditText>(R.id.etGeminiApiKey)
     val etGeminiModel = findViewById<EditText>(R.id.etGeminiModel)
     val switchVolcStreaming = findViewById<MaterialSwitch>(R.id.switchVolcStreaming)
+    val switchVolcDdc = findViewById<MaterialSwitch>(R.id.switchVolcDdc)
+    val switchVolcVad = findViewById<MaterialSwitch>(R.id.switchVolcVad)
+    val switchVolcNonstream = findViewById<MaterialSwitch>(R.id.switchVolcNonstream)
+    val switchVolcFirstCharAccel = findViewById<MaterialSwitch>(R.id.switchVolcFirstCharAccel)
+    val spVolcLanguage = findViewById<Spinner>(R.id.spVolcLanguage)
+    val tvVolcLanguageLabel = findViewById<View>(R.id.tvVolcLanguageLabel)
     val etSonioxApiKey = findViewById<EditText>(R.id.etSonioxApiKey)
     val switchSonioxStreaming = findViewById<MaterialSwitch>(R.id.switchSonioxStreaming)
 
@@ -132,6 +138,10 @@ class AsrSettingsActivity : AppCompatActivity() {
     etGeminiApiKey.setText(prefs.gemApiKey)
     etGeminiModel.setText(prefs.gemModel)
     switchVolcStreaming.isChecked = prefs.volcStreamingEnabled
+    switchVolcDdc.isChecked = prefs.volcDdcEnabled
+    switchVolcVad.isChecked = prefs.volcVadEnabled
+    switchVolcNonstream.isChecked = prefs.volcNonstreamEnabled
+    switchVolcFirstCharAccel.isChecked = prefs.volcFirstCharAccelEnabled
     etSonioxApiKey.setText(prefs.sonioxApiKey)
     switchSonioxStreaming.isChecked = prefs.sonioxStreamingEnabled
 
@@ -151,6 +161,79 @@ class AsrSettingsActivity : AppCompatActivity() {
 
     switchVolcStreaming.setOnCheckedChangeListener { _, isChecked ->
       prefs.volcStreamingEnabled = isChecked
+    }
+    switchVolcDdc.setOnCheckedChangeListener { _, isChecked ->
+      prefs.volcDdcEnabled = isChecked
+    }
+    switchVolcVad.setOnCheckedChangeListener { _, isChecked ->
+      prefs.volcVadEnabled = isChecked
+    }
+    switchVolcNonstream.setOnCheckedChangeListener { _, isChecked ->
+      prefs.volcNonstreamEnabled = isChecked
+    }
+    switchVolcFirstCharAccel.setOnCheckedChangeListener { _, isChecked ->
+      prefs.volcFirstCharAccelEnabled = isChecked
+    }
+
+    // 识别语言（nostream/二遍识别用）。空字符串表示“自动（中英/方言）”。
+    val langLabels = listOf(
+      getString(R.string.volc_lang_auto),
+      getString(R.string.volc_lang_en_us),
+      getString(R.string.volc_lang_ja_jp),
+      getString(R.string.volc_lang_id_id),
+      getString(R.string.volc_lang_es_mx),
+      getString(R.string.volc_lang_pt_br),
+      getString(R.string.volc_lang_de_de),
+      getString(R.string.volc_lang_fr_fr),
+      getString(R.string.volc_lang_ko_kr),
+      getString(R.string.volc_lang_fil_ph),
+      getString(R.string.volc_lang_ms_my),
+      getString(R.string.volc_lang_th_th),
+      getString(R.string.volc_lang_ar_sa)
+    )
+    val langCodes = listOf(
+      "",
+      "en-US",
+      "ja-JP",
+      "id-ID",
+      "es-MX",
+      "pt-BR",
+      "de-DE",
+      "fr-FR",
+      "ko-KR",
+      "fil-PH",
+      "ms-MY",
+      "th-TH",
+      "ar-SA"
+    )
+    spVolcLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, langLabels)
+    // 根据已保存的代码选择
+    val savedLang = prefs.volcLanguage
+    spVolcLanguage.setSelection(langCodes.indexOf(savedLang).coerceAtLeast(0))
+    spVolcLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+      override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+        val code = langCodes.getOrNull(position) ?: ""
+        if (code != prefs.volcLanguage) prefs.volcLanguage = code
+      }
+      override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+    }
+
+    fun updateVolcStreamOptionsVisibility(enabled: Boolean) {
+      val vis = if (enabled) View.VISIBLE else View.GONE
+      switchVolcDdc.visibility = vis
+      switchVolcVad.visibility = vis
+      switchVolcNonstream.visibility = vis
+      switchVolcFirstCharAccel.visibility = vis
+      spVolcLanguage.visibility = vis
+      tvVolcLanguageLabel.visibility = vis
+    }
+
+    // 初次进入根据当前值处理可见性
+    updateVolcStreamOptionsVisibility(prefs.volcStreamingEnabled)
+    // 切换时动态展示/隐藏实验性选项
+    switchVolcStreaming.setOnCheckedChangeListener { _, isChecked ->
+      prefs.volcStreamingEnabled = isChecked
+      updateVolcStreamOptionsVisibility(isChecked)
     }
     etSonioxApiKey.bindString { prefs.sonioxApiKey = it }
     switchSonioxStreaming.setOnCheckedChangeListener { _, isChecked ->

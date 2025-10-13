@@ -87,6 +87,47 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           android:text="@string/label_volc_streaming" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchVolcDdc"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_volc_ddc" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchVolcVad"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_volc_vad" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchVolcNonstream"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_volc_nonstream" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchVolcFirstCharAccel"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_volc_first_char_accel" />
+
+        <TextView
+          android:id="@+id/tvVolcLanguageLabel"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:textColor="?attr/colorOnSurface"
+          android:text="@string/label_volc_language" />
+
+        <Spinner
+          android:id="@+id/spVolcLanguage"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content" />
       </LinearLayout>
 
       <!-- SiliconFlow -->

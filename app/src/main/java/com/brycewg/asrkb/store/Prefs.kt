@@ -278,6 +278,31 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_VOLC_STREAMING_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_VOLC_STREAMING_ENABLED, value) }
 
+    // 火山引擎：语义顺滑开关（enable_ddc）
+    var volcDdcEnabled: Boolean
+        get() = sp.getBoolean(KEY_VOLC_DDC_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_VOLC_DDC_ENABLED, value) }
+
+    // 火山引擎：VAD 分句开关（控制判停参数）
+    var volcVadEnabled: Boolean
+        get() = sp.getBoolean(KEY_VOLC_VAD_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_VOLC_VAD_ENABLED, value) }
+
+    // 火山引擎：二遍识别开关（enable_nonstream）
+    var volcNonstreamEnabled: Boolean
+        get() = sp.getBoolean(KEY_VOLC_NONSTREAM_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_VOLC_NONSTREAM_ENABLED, value) }
+
+    // 火山引擎：识别语言（nostream 支持；空=自动中英/方言）
+    var volcLanguage: String
+        get() = sp.getString(KEY_VOLC_LANGUAGE, "") ?: ""
+        set(value) = sp.edit { putString(KEY_VOLC_LANGUAGE, value.trim()) }
+
+    // 火山引擎：首字加速（客户端减小分包时长）
+    var volcFirstCharAccelEnabled: Boolean
+        get() = sp.getBoolean(KEY_VOLC_FIRST_CHAR_ACCEL_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_VOLC_FIRST_CHAR_ACCEL_ENABLED, value) }
+
     // 选中的ASR供应商
     var asrVendor: AsrVendor
         get() = AsrVendor.fromId(sp.getString(KEY_ASR_VENDOR, AsrVendor.Volc.id))
@@ -406,6 +431,11 @@ class Prefs(context: Context) {
         private const val KEY_GEM_MODEL = "gem_model"
         private const val KEY_GEM_PROMPT = "gem_prompt"
         private const val KEY_VOLC_STREAMING_ENABLED = "volc_streaming_enabled"
+        private const val KEY_VOLC_DDC_ENABLED = "volc_ddc_enabled"
+        private const val KEY_VOLC_VAD_ENABLED = "volc_vad_enabled"
+        private const val KEY_VOLC_NONSTREAM_ENABLED = "volc_nonstream_enabled"
+        private const val KEY_VOLC_LANGUAGE = "volc_language"
+        private const val KEY_VOLC_FIRST_CHAR_ACCEL_ENABLED = "volc_first_char_accel_enabled"
         private const val KEY_DASH_API_KEY = "dash_api_key"
         private const val KEY_DASH_MODEL = "dash_model"
         private const val KEY_SONIOX_API_KEY = "soniox_api_key"
@@ -508,6 +538,12 @@ class Prefs(context: Context) {
         o.put(KEY_LLM_TEMPERATURE, llmTemperature.toDouble())
         // Volcano streaming toggle
         o.put(KEY_VOLC_STREAMING_ENABLED, volcStreamingEnabled)
+        // Volcano extras
+        o.put(KEY_VOLC_DDC_ENABLED, volcDdcEnabled)
+        o.put(KEY_VOLC_VAD_ENABLED, volcVadEnabled)
+        o.put(KEY_VOLC_NONSTREAM_ENABLED, volcNonstreamEnabled)
+        o.put(KEY_VOLC_LANGUAGE, volcLanguage)
+        o.put(KEY_VOLC_FIRST_CHAR_ACCEL_ENABLED, volcFirstCharAccelEnabled)
         // 多 LLM 配置
         o.put(KEY_LLM_PROVIDERS, llmProvidersJson)
         o.put(KEY_LLM_ACTIVE_ID, activeLlmId)
@@ -562,6 +598,11 @@ class Prefs(context: Context) {
             optString(KEY_LLM_MODEL)?.let { llmModel = it.ifBlank { DEFAULT_LLM_MODEL } }
             optFloat(KEY_LLM_TEMPERATURE)?.let { llmTemperature = it.coerceIn(0f, 2f) }
             optBool(KEY_VOLC_STREAMING_ENABLED)?.let { volcStreamingEnabled = it }
+            optBool(KEY_VOLC_DDC_ENABLED)?.let { volcDdcEnabled = it }
+            optBool(KEY_VOLC_VAD_ENABLED)?.let { volcVadEnabled = it }
+            optBool(KEY_VOLC_NONSTREAM_ENABLED)?.let { volcNonstreamEnabled = it }
+            optString(KEY_VOLC_LANGUAGE)?.let { volcLanguage = it }
+            optBool(KEY_VOLC_FIRST_CHAR_ACCEL_ENABLED)?.let { volcFirstCharAccelEnabled = it }
             // 多 LLM 配置（优先于旧字段，仅当存在时覆盖）
             optString(KEY_LLM_PROVIDERS)?.let { llmProvidersJson = it }
             optString(KEY_LLM_ACTIVE_ID)?.let { activeLlmId = it }
