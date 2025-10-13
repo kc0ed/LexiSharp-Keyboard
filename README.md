@@ -447,7 +447,8 @@
 
 ---
 
-## 🔧 技术架构
+<details>
+<summary><h2>🔧 技术架构</h2></summary>
 
 ### 📦 核心组件
 
@@ -515,6 +516,8 @@ SharedPreferences (数据存储)
 压缩: 支持 GZIP
 ```
 
+</details>
+
 ---
 
 ## 📄 许可证
@@ -527,7 +530,8 @@ MIT License - 自由使用、修改、分发
 
 ---
 
-## 🤝 贡献指南
+<details>
+<summary><h2>🤝 贡献指南</h2></summary>
 
 欢迎提交 Issue 和 Pull Request 来改进项目！
 
@@ -539,11 +543,25 @@ MIT License - 自由使用、修改、分发
 - ✅ 更新相关的 README 文档
 - ✅ 使用 Conventional Commits 格式
 
+</details>
+
 ---
 
 ## 🌟 Star History
 
 如果这个项目对你有帮助，请给个 Star ⭐️
+
+---
+
+## ☕ 赞赏支持
+
+如果这个项目对你有帮助，欢迎请我喝杯咖啡 ☕️
+
+<div align="center">
+<img src="images/wechat.jpg" alt="微信赞赏码" width="300"/>
+<br/>
+<sub>微信扫码赞赏</sub>
+</div>
 
 ---
 

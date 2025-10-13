@@ -448,7 +448,8 @@ The settings page supports configuration switching by vendor, showing only corre
 
 ---
 
-## 🔧 Technical Architecture
+<details>
+<summary><h2>🔧 Technical Architecture</h2></summary>
 
 ### 📦 Core Components
 
@@ -516,6 +517,8 @@ Transmission: HTTP/HTTPS
 Compression: GZIP support
 ```
 
+</details>
+
 ---
 
 ## 📄 License
@@ -528,7 +531,8 @@ MIT License - Free to use, modify, distribute
 
 ---
 
-## 🤝 Contributing
+<details>
+<summary><h2>🤝 Contributing</h2></summary>
 
 Welcome to submit Issues and Pull Requests to improve the project!
 
@@ -540,11 +544,25 @@ Welcome to submit Issues and Pull Requests to improve the project!
 - ✅ Update relevant README documentation
 - ✅ Use Conventional Commits format
 
+</details>
+
 ---
 
 ## 🌟 Star History
 
 If this project helps you, please give it a Star ⭐️
+
+---
+
+## ☕ Support & Appreciation
+
+If this project helps you, feel free to buy me a coffee ☕️
+
+<div align="center">
+<img src="images/wechat.jpg" alt="WeChat Appreciation Code" width="300"/>
+<br/>
+<sub>Scan with WeChat to appreciate</sub>
+</div>
 
 ---
 
