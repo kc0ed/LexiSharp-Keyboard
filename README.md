@@ -26,7 +26,7 @@
 
 - **长按录音** - 简单直观的录音操作
 - **极速识别** - 松开即上传，快速返回结果
-- **多引擎支持** - 6+ 主流 ASR 服务
+- **多引擎支持** - 7+ 主流 ASR 服务
 - **AI 文本优化** - LLM 智能修正识别结果
 
 </td>
@@ -373,6 +373,33 @@
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+#### 🎯 Soniox
+
+**支持模式**:
+
+- 文件识别: `stt-async-preview`
+- 流式识别: `stt-rt-preview`
+
+**配置参数**:
+
+- `API Key`: API 密钥
+
+**端点**:
+
+- 文件上传: `https://api.soniox.com/v1/files`
+- 转写接口: `https://api.soniox.com/v1/transcriptions`
+- WebSocket: `wss://stt-rt.soniox.com/transcribe-websocket`
+
+**特点**: 支持端点检测和语言识别
+
+</td>
+<td width="50%">
+
+</td>
+</tr>
 </table>
 
 ### 🧠 LLM 后处理配置
@@ -435,6 +462,8 @@
 - `ElevenLabsFileAsrEngine.kt` - ElevenLabs 实现
 - `DashscopeFileAsrEngine.kt` - 阿里云百炼实现
 - `GeminiFileAsrEngine.kt` - Google Gemini 实现
+- `SonioxFileAsrEngine.kt` - Soniox 文件识别实现
+- `SonioxStreamAsrEngine.kt` - Soniox 流式识别实现
 - `LlmPostProcessor.kt` - LLM 后处理器
 
 </details>

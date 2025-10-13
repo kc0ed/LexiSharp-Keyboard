@@ -26,7 +26,7 @@ English | [简体中文](README.md)
 
 - **Press & Hold Recording** - Simple and intuitive recording
 - **Fast Recognition** - Release to upload, quick results
-- **Multi-Engine Support** - 6+ mainstream ASR services
+- **Multi-Engine Support** - 7+ mainstream ASR services
 - **AI Text Optimization** - LLM smart correction of recognition results
 
 </td>
@@ -374,6 +374,33 @@ The settings page supports configuration switching by vendor, showing only corre
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+#### 🎯 Soniox
+
+**Supported Modes**:
+
+- File Recognition: `stt-async-preview`
+- Streaming Recognition: `stt-rt-preview`
+
+**Configuration Parameters**:
+
+- `API Key`: API key
+
+**Endpoints**:
+
+- File Upload: `https://api.soniox.com/v1/files`
+- Transcription: `https://api.soniox.com/v1/transcriptions`
+- WebSocket: `wss://stt-rt.soniox.com/transcribe-websocket`
+
+**Features**: Supports endpoint detection and language identification
+
+</td>
+<td width="50%">
+
+</td>
+</tr>
 </table>
 
 ### 🧠 LLM Post-Processing Configuration
@@ -436,6 +463,8 @@ The settings page supports configuration switching by vendor, showing only corre
 - `ElevenLabsFileAsrEngine.kt` - ElevenLabs implementation
 - `DashscopeFileAsrEngine.kt` - Alibaba Cloud Bailian implementation
 - `GeminiFileAsrEngine.kt` - Google Gemini implementation
+- `SonioxFileAsrEngine.kt` - Soniox file recognition implementation
+- `SonioxStreamAsrEngine.kt` - Soniox streaming recognition implementation
 - `LlmPostProcessor.kt` - LLM post-processor
 
 </details>

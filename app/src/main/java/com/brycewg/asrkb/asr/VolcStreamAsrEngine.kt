@@ -298,7 +298,9 @@ class VolcStreamAsrEngine(
                 val text = parseTextFromJson(String(payload, Charsets.UTF_8))
                 if (text.isNotBlank()) {
                     val isFinal = (flags and FLAG_SERVER_FINAL_MASK) == FLAG_SERVER_FINAL_MASK
-                    if (isFinal || !running.get()) listener.onFinal(text) else listener.onPartial(text)
+                    // 当已调用 stop() 且收到的并非最终结果时，忽略该条以避免重复提交
+                    if (!running.get() && !isFinal) return
+                    if (isFinal) listener.onFinal(text) else listener.onPartial(text)
                     if (isFinal) {
                         running.set(false)
                     }

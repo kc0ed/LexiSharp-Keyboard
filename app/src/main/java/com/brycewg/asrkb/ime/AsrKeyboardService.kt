@@ -886,6 +886,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     }
 
     override fun onPartial(text: String) {
+        // 若引擎已停止（用户已松手），忽略后续中间结果，避免重复追加
+        val running = asrEngine?.isRunning == true
+        if (!running) return
         // 主线程更新 composing（实时预览）
         serviceScope.launch {
             val ic = currentInputConnection

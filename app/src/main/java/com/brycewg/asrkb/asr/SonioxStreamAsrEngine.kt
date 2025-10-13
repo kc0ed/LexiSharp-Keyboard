@@ -192,26 +192,46 @@ class SonioxStreamAsrEngine(
 
             val tokens = o.optJSONArray("tokens")
             val nonFinal = StringBuilder()
+            val msgFinal = StringBuilder()
             if (tokens != null) {
                 for (i in 0 until tokens.length()) {
                     val t = tokens.optJSONObject(i) ?: continue
-                    val text = t.optString("text")
+                    val raw = t.optString("text")
+                    // 过滤 Soniox 示例/调试中可能出现的结束标记 "<end>"
+                    if (raw.trim() == "<end>") continue
+                    val text = raw
                     if (text.isEmpty()) continue
                     val isFinal = t.optBoolean("is_final", false)
                     if (isFinal) {
-                        finalTextBuffer.append(text)
+                        // 收集本条消息中的稳定 tokens，稍后整体与历史做去重合并
+                        msgFinal.append(text)
                     } else {
                         nonFinal.append(text)
                     }
                 }
             }
+            // 将本条消息中的稳定片段按边界去重后合入历史稳定缓冲区
+            if (msgFinal.isNotEmpty()) {
+                val merged = mergeWithOverlapDedup(finalTextBuffer.toString(), msgFinal.toString())
+                // 仅追加新增的部分，避免重复
+                if (merged.length > finalTextBuffer.length) {
+                    finalTextBuffer.setLength(0)
+                    finalTextBuffer.append(merged)
+                }
+            }
 
-            val preview = finalTextBuffer.toString() + nonFinal.toString()
-            if (preview.isNotEmpty()) listener.onPartial(preview)
+            // 预览字符串 = 稳定文本 + 非稳定文本；为防止服务端的非稳定片段以稳定片段的尾部作为上下文前缀而导致的重复，
+            // 在边界处做一次前后缀重叠去重：去掉 nonFinal 与 final 尾部的最长公共前后缀重叠。
+            val stable = stripEndMarker(finalTextBuffer.toString())
+            val preview = if (nonFinal.isNotEmpty()) {
+                stripEndMarker(mergeWithOverlapDedup(stable, nonFinal.toString()))
+            } else stable
+            // 仅在会话运行中才发出中间预览；用户 stop() 后可能仍有零星 non-final 到达，需忽略以避免重复追加
+            if (preview.isNotEmpty() && running.get()) listener.onPartial(preview)
 
             val finished = o.optBoolean("finished", false)
             if (finished) {
-                val finalText = finalTextBuffer.toString().ifBlank { preview }
+                val finalText = stripEndMarker(finalTextBuffer.toString().ifBlank { preview })
                 if (finalText.isNotBlank()) listener.onFinal(finalText)
                 running.set(false)
             }
@@ -219,5 +239,30 @@ class SonioxStreamAsrEngine(
             // ignore malformed
         }
     }
-}
 
+    /**
+     * 将稳定文本 stable 与非稳定文本 tail 合并，移除二者边界处的重复前后缀重叠。
+     * 例如：stable = "你好世界。", tail = "世界。我们来了" => "你好世界。我们来了"。
+     */
+    private fun mergeWithOverlapDedup(stable: String, tail: String): String {
+        if (stable.isEmpty()) return tail
+        if (tail.isEmpty()) return stable
+        val max = minOf(stable.length, tail.length)
+        var k = max
+        while (k > 0) {
+            if (stable.regionMatches(stable.length - k, tail, 0, k)) {
+                return stable + tail.substring(k)
+            }
+            k--
+        }
+        return stable + tail
+    }
+
+    /**
+     * 去除文本中的 "<end>" 标记（若存在），并裁剪结尾空白。
+     */
+    private fun stripEndMarker(s: String): String {
+        if (s.isEmpty()) return s
+        return s.replace("<end>", "").trimEnd()
+    }
+}
