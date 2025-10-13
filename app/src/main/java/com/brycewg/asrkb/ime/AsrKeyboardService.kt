@@ -180,10 +180,44 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnPunct4 = view.findViewById(R.id.btnPunct4)
         txtStatus = view.findViewById(R.id.txtStatus)
 
+        // 统一绑定：根据偏好在事件时分支，免去重开键盘
+        btnMic?.setOnClickListener { v ->
+            if (!prefs.micTapToggleEnabled) return@setOnClickListener
+            if (prefs.micHapticEnabled) {
+                try { v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) } catch (_: Throwable) { }
+            }
+            if (!hasRecordAudioPermission()) {
+                refreshPermissionUi()
+                return@setOnClickListener
+            }
+            if (!prefs.hasAsrKeys()) {
+                refreshPermissionUi()
+                return@setOnClickListener
+            }
+            asrEngine = ensureEngineMatchesMode(asrEngine) ?: buildEngineForCurrentMode()
+            val running = asrEngine?.isRunning == true
+            if (running) {
+                asrEngine?.stop()
+                if (!prefs.postProcessEnabled) {
+                    updateUiIdle()
+                } else {
+                    txtStatus?.text = getString(R.string.status_recognizing)
+                }
+            } else {
+                currentSessionKind = null
+                aiEditState = null
+                lastPartialText = null
+                committedStableLen = 0
+                updateUiListening()
+                asrEngine?.start()
+            }
+        }
+
         btnMic?.setOnTouchListener { v, event ->
+            // 长按模式：处理；点按模式：放行让 onClick 处理
+            if (prefs.micTapToggleEnabled) return@setOnTouchListener false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    // Crisp haptic on press (respects system settings)
                     if (prefs.micHapticEnabled) {
                         try { v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) } catch (_: Throwable) { }
                     }
@@ -192,13 +226,11 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         v.performClick()
                         return@setOnTouchListener true
                     }
-                    // Require configured keys before starting ASR
                     if (!prefs.hasAsrKeys()) {
                         refreshPermissionUi()
                         v.performClick()
                         return@setOnTouchListener true
                     }
-                    // Ensure engine type matches current post-processing mode
                     asrEngine = ensureEngineMatchesMode(asrEngine)
                     micLongPressStarted = false
                     micLongPressPending = true
@@ -221,12 +253,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     micLongPressRunnable = null
                     if (micLongPressStarted && asrEngine?.isRunning == true) {
                         asrEngine?.stop()
-                        // When post-processing is enabled, keep composing text visible
-                        // and let onFinal() transition UI state after processing.
                         if (!prefs.postProcessEnabled) {
                             updateUiIdle()
                         } else {
-                            // File-based recognition happens now
                             txtStatus?.text = getString(R.string.status_recognizing)
                         }
                     }

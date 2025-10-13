@@ -110,6 +110,13 @@
           android:layout_marginTop="8dp"
           android:text="@string/label_mic_haptic" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchMicTapToggle"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_mic_tap_toggle" />
+
         <!-- 悬浮球设置迁移到单独的子设置页 -->
 
         <com.google.android.material.divider.MaterialDivider

@@ -47,6 +47,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_MIC_HAPTIC_ENABLED, true)
         set(value) = sp.edit { putBoolean(KEY_MIC_HAPTIC_ENABLED, value) }
 
+    // 麦克风点按控制（点按开始/停止），默认关闭：使用长按说话
+    var micTapToggleEnabled: Boolean
+        get() = sp.getBoolean(KEY_MIC_TAP_TOGGLE_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_MIC_TAP_TOGGLE_ENABLED, value) }
+
     // 应用内语言（空字符串表示跟随系统；如："zh-Hans"、"en"）
     var appLanguageTag: String
         get() = sp.getString(KEY_APP_LANGUAGE_TAG, "") ?: ""
@@ -403,6 +408,7 @@ class Prefs(context: Context) {
         // 移除：键盘内“切换输入法”按钮显示开关键
         private const val KEY_AUTO_SWITCH_ON_PASSWORD = "auto_switch_on_password"
         private const val KEY_MIC_HAPTIC_ENABLED = "mic_haptic_enabled"
+        private const val KEY_MIC_TAP_TOGGLE_ENABLED = "mic_tap_toggle_enabled"
         private const val KEY_FLOATING_SWITCHER_ENABLED = "floating_switcher_enabled"
         private const val KEY_FLOATING_SWITCHER_ALPHA = "floating_switcher_alpha"
         private const val KEY_FLOATING_BALL_SIZE_DP = "floating_ball_size_dp"
@@ -525,6 +531,7 @@ class Prefs(context: Context) {
         o.put(KEY_TRIM_FINAL_TRAILING_PUNCT, trimFinalTrailingPunct)
         o.put(KEY_AUTO_SWITCH_ON_PASSWORD, autoSwitchOnPassword)
         o.put(KEY_MIC_HAPTIC_ENABLED, micHapticEnabled)
+        o.put(KEY_MIC_TAP_TOGGLE_ENABLED, micTapToggleEnabled)
         o.put(KEY_APP_LANGUAGE_TAG, appLanguageTag)
         o.put(KEY_FLOATING_SWITCHER_ENABLED, floatingSwitcherEnabled)
         o.put(KEY_FLOATING_SWITCHER_ALPHA, floatingSwitcherAlpha)
@@ -585,6 +592,7 @@ class Prefs(context: Context) {
             optBool(KEY_TRIM_FINAL_TRAILING_PUNCT)?.let { trimFinalTrailingPunct = it }
             optBool(KEY_AUTO_SWITCH_ON_PASSWORD)?.let { autoSwitchOnPassword = it }
             optBool(KEY_MIC_HAPTIC_ENABLED)?.let { micHapticEnabled = it }
+            optBool(KEY_MIC_TAP_TOGGLE_ENABLED)?.let { micTapToggleEnabled = it }
             optString(KEY_APP_LANGUAGE_TAG)?.let { appLanguageTag = it }
             optBool(KEY_POSTPROC_ENABLED)?.let { postProcessEnabled = it }
             optBool(KEY_FLOATING_SWITCHER_ENABLED)?.let { floatingSwitcherEnabled = it }

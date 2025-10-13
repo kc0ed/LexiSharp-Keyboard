@@ -100,12 +100,14 @@ class SettingsActivity : AppCompatActivity() {
         val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
+        val switchMicTapToggle = findViewById<MaterialSwitch>(R.id.switchMicTapToggle)
 
 
         fun applyPrefsToUi() {
             switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
             switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
             switchMicHaptic.isChecked = prefs.micHapticEnabled
+            switchMicTapToggle.isChecked = prefs.micTapToggleEnabled
             try {
                 tvAsrTotalChars.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
             } catch (_: Throwable) { }
@@ -154,6 +156,7 @@ class SettingsActivity : AppCompatActivity() {
             prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
             prefs.autoSwitchOnPassword = switchAutoSwitchPassword.isChecked
             prefs.micHapticEnabled = switchMicHaptic.isChecked
+            prefs.micTapToggleEnabled = switchMicTapToggle.isChecked
             Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
         }
 
