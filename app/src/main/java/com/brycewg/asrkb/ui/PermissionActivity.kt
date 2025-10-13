@@ -4,10 +4,15 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.core.app.ActivityCompat
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 
 class PermissionActivity : ComponentActivity() {
+    private val requestMicPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            // 无论结果如何，返回即可；权限不足时上层流程会再次提示
+            finish()
+        }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         maybeRequest()
@@ -21,20 +26,7 @@ class PermissionActivity : ComponentActivity() {
         if (granted) {
             finish()
         } else {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                100
-            )
+            requestMicPermission.launch(Manifest.permission.RECORD_AUDIO)
         }
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        finish()
     }
 }
