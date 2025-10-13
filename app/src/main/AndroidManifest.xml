@@ -9,6 +9,10 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- 通知权限,用于显示悬浮球语音识别状态 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 开机自启 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- 若通过 ADB 授权可写入 Secure 设置，用于尝试自动开启无障碍（普通应用默认不会授予） -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
 
     <application
         android:name=".App"
@@ -103,6 +107,17 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
+
+        <!-- 开机启动接收器：根据偏好启动悬浮服务，并在具备权限时尝试开启无障碍 -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
     </application>
 
