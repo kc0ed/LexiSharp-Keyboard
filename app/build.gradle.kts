@@ -11,8 +11,8 @@ android {
         applicationId = "com.brycewg.asrkb"
         minSdk =31
         targetSdk = 34
-        versionCode = 50
-        versionName = "2.8.4"
+        versionCode = 51
+        versionName = "2.8.5"
     }
 
     signingConfigs {
