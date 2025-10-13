@@ -1,8 +1,8 @@
 {
-  "version": "2.8.3",
-  "version_code": 49,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.8.3",
-  "release_notes": "版本 2.8.3 已发布",
+  "version": "2.8.4",
+  "version_code": 50,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.8.4",
+  "release_notes": "版本 2.8.4 已发布",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-13T06:57:40Z"
+  "update_time": "2025-10-13T09:44:58Z"
 }
