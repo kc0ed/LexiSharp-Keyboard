@@ -17,6 +17,9 @@ import com.google.android.material.appbar.MaterialToolbar
 
 class AiPostSettingsActivity : AppCompatActivity() {
   private var updating = false
+  // 避免因刷新 Spinner 导致的重复绑定
+  private var suppressRebind = false
+  private var suppressPromptRebind = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -42,19 +45,31 @@ class AiPostSettingsActivity : AppCompatActivity() {
     fun refreshLlmProfilesSpinner() {
       val profiles = prefs.getLlmProviders()
       val titles = profiles.map { it.name }
+      // 刷新下拉框时会触发 onItemSelected，这里抑制一次重绑，避免光标抖动
+      suppressRebind = true
       spLlmProfiles.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
       val idx = profiles.indexOfFirst { it.id == prefs.activeLlmId }.let { if (it < 0) 0 else it }
       if (idx in titles.indices) spLlmProfiles.setSelection(idx)
+      suppressRebind = false
     }
 
     fun bindLlmEditorsFromActive() {
       val active = prefs.getActiveLlmProvider()
       updating = true
-      etLlmProfileName.setText(active?.name ?: "")
-      etLlmEndpoint.setText(active?.endpoint ?: prefs.llmEndpoint)
-      etLlmApiKey.setText(active?.apiKey ?: prefs.llmApiKey)
-      etLlmModel.setText(active?.model ?: prefs.llmModel)
-      etLlmTemperature.setText((active?.temperature ?: prefs.llmTemperature).toString())
+      val vName = active?.name ?: ""
+      if (etLlmProfileName.text?.toString() != vName) etLlmProfileName.setText(vName)
+
+      val vEndpoint = active?.endpoint ?: prefs.llmEndpoint
+      if (etLlmEndpoint.text?.toString() != vEndpoint) etLlmEndpoint.setText(vEndpoint)
+
+      val vApiKey = active?.apiKey ?: prefs.llmApiKey
+      if (etLlmApiKey.text?.toString() != vApiKey) etLlmApiKey.setText(vApiKey)
+
+      val vModel = active?.model ?: prefs.llmModel
+      if (etLlmModel.text?.toString() != vModel) etLlmModel.setText(vModel)
+
+      val vTemp = (active?.temperature ?: prefs.llmTemperature).toString()
+      if (etLlmTemperature.text?.toString() != vTemp) etLlmTemperature.setText(vTemp)
       updating = false
     }
 
@@ -63,6 +78,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
 
     spLlmProfiles.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
       override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+        if (suppressRebind) return
         val profiles = prefs.getLlmProviders()
         val p = profiles.getOrNull(position)
         if (p != null) {
@@ -84,7 +100,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
       })
     }
 
-    fun updateActiveProfile(mutator: (Prefs.LlmProvider) -> Prefs.LlmProvider) {
+    fun updateActiveProfile(mutator: (Prefs.LlmProvider) -> Prefs.LlmProvider, refreshSpinner: Boolean = false) {
       val list = prefs.getLlmProviders().toMutableList()
       val idx = list.indexOfFirst { it.id == prefs.activeLlmId }
       if (idx >= 0) {
@@ -105,57 +121,62 @@ class AiPostSettingsActivity : AppCompatActivity() {
         prefs.activeLlmId = created.id
       }
       prefs.setLlmProviders(list)
-      refreshLlmProfilesSpinner()
+      if (refreshSpinner) refreshLlmProfilesSpinner()
     }
 
-    etLlmProfileName.bind { v -> updateActiveProfile { it.copy(name = v.ifBlank { getString(R.string.untitled_profile) }) } }
-    etLlmEndpoint.bind { v -> updateActiveProfile { it.copy(endpoint = v.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT }) } }
-    etLlmApiKey.bind { v -> updateActiveProfile { it.copy(apiKey = v) } }
-    etLlmModel.bind { v -> updateActiveProfile { it.copy(model = v.ifBlank { Prefs.DEFAULT_LLM_MODEL }) } }
-    etLlmTemperature.bind { v -> updateActiveProfile { it.copy(temperature = (v.toFloatOrNull() ?: Prefs.DEFAULT_LLM_TEMPERATURE).coerceIn(0f, 2f)) } }
+    etLlmProfileName.bind { v -> updateActiveProfile({ it.copy(name = v.ifBlank { getString(R.string.untitled_profile) }) }, refreshSpinner = true) }
+    etLlmEndpoint.bind { v -> updateActiveProfile({ it.copy(endpoint = v.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT }) }, refreshSpinner = false) }
+    etLlmApiKey.bind { v -> updateActiveProfile({ it.copy(apiKey = v) }, refreshSpinner = false) }
+    etLlmModel.bind { v -> updateActiveProfile({ it.copy(model = v.ifBlank { Prefs.DEFAULT_LLM_MODEL }) }, refreshSpinner = false) }
+    etLlmTemperature.bind { v -> updateActiveProfile({ it.copy(temperature = (v.toFloatOrNull() ?: Prefs.DEFAULT_LLM_TEMPERATURE).coerceIn(0f, 2f)) }, refreshSpinner = false) }
 
     // Prompt presets
     fun refreshPromptPresets() {
       val presets = prefs.getPromptPresets()
       val titles = presets.map { it.title }
+      suppressPromptRebind = true
       spPromptPresets.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
       val idx = presets.indexOfFirst { it.id == prefs.activePromptId }.let { if (it < 0) 0 else it }
       if (idx in titles.indices) spPromptPresets.setSelection(idx)
+      suppressPromptRebind = false
       val cur = presets.getOrNull(idx)
       updating = true
-      etLlmPromptTitle.setText(cur?.title ?: "")
-      etLlmPrompt.setText(cur?.content ?: Prefs.DEFAULT_LLM_PROMPT)
+      val t = cur?.title ?: ""
+      if (etLlmPromptTitle.text?.toString() != t) etLlmPromptTitle.setText(t)
+      val c = cur?.content ?: Prefs.DEFAULT_LLM_PROMPT
+      if (etLlmPrompt.text?.toString() != c) etLlmPrompt.setText(c)
       updating = false
     }
 
     spPromptPresets.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
       override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+        if (suppressPromptRebind) return
         val presets = prefs.getPromptPresets()
         val p = presets.getOrNull(position) ?: return
         prefs.activePromptId = p.id
         updating = true
-        etLlmPromptTitle.setText(p.title)
-        etLlmPrompt.setText(p.content)
+        if (etLlmPromptTitle.text?.toString() != p.title) etLlmPromptTitle.setText(p.title)
+        if (etLlmPrompt.text?.toString() != p.content) etLlmPrompt.setText(p.content)
         updating = false
       }
       override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
     }
 
-    fun updateActivePrompt(mutator: (PromptPreset) -> PromptPreset) {
+    fun updateActivePrompt(mutator: (PromptPreset) -> PromptPreset, refreshSpinner: Boolean = false) {
       val list = prefs.getPromptPresets().toMutableList()
       val idx = list.indexOfFirst { it.id == prefs.activePromptId }
       if (idx >= 0) list[idx] = mutator(list[idx])
       prefs.setPromptPresets(list)
-      refreshPromptPresets()
+      if (refreshSpinner) refreshPromptPresets()
     }
 
     etLlmPromptTitle.bind { v ->
       if (updating) return@bind
-      updateActivePrompt { it.copy(title = v.ifBlank { getString(R.string.untitled_preset) }) }
+      updateActivePrompt({ it.copy(title = v.ifBlank { getString(R.string.untitled_preset) }) }, refreshSpinner = true)
     }
     etLlmPrompt.bind { v ->
       if (updating) return@bind
-      updateActivePrompt { it.copy(content = v) }
+      updateActivePrompt({ it.copy(content = v) }, refreshSpinner = false)
     }
 
     findViewById<Button>(R.id.btnLlmAddProfile).setOnClickListener {
@@ -205,4 +226,3 @@ class AiPostSettingsActivity : AppCompatActivity() {
     refreshPromptPresets()
   }
 }
-
