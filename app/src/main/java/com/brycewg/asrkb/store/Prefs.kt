@@ -77,6 +77,15 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_FLOATING_BALL_SIZE_DP, DEFAULT_FLOATING_BALL_SIZE_DP).coerceIn(28, 96)
         set(value) = sp.edit { putInt(KEY_FLOATING_BALL_SIZE_DP, value.coerceIn(28, 96)) }
 
+    // 悬浮球位置（px，屏幕坐标，-1 表示未设置）
+    var floatingBallPosX: Int
+        get() = sp.getInt(KEY_FLOATING_POS_X, -1)
+        set(value) = sp.edit { putInt(KEY_FLOATING_POS_X, value) }
+
+    var floatingBallPosY: Int
+        get() = sp.getInt(KEY_FLOATING_POS_Y, -1)
+        set(value) = sp.edit { putInt(KEY_FLOATING_POS_Y, value) }
+
     // 悬浮球语音识别模式开关
     var floatingAsrEnabled: Boolean
         get() = sp.getBoolean(KEY_FLOATING_ASR_ENABLED, false)
@@ -412,6 +421,8 @@ class Prefs(context: Context) {
         private const val KEY_FLOATING_SWITCHER_ENABLED = "floating_switcher_enabled"
         private const val KEY_FLOATING_SWITCHER_ALPHA = "floating_switcher_alpha"
         private const val KEY_FLOATING_BALL_SIZE_DP = "floating_ball_size_dp"
+        private const val KEY_FLOATING_POS_X = "floating_ball_pos_x"
+        private const val KEY_FLOATING_POS_Y = "floating_ball_pos_y"
         private const val KEY_FLOATING_ASR_ENABLED = "floating_asr_enabled"
         private const val KEY_FLOATING_ONLY_WHEN_IME_VISIBLE = "floating_only_when_ime_visible"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
@@ -536,6 +547,8 @@ class Prefs(context: Context) {
         o.put(KEY_FLOATING_SWITCHER_ENABLED, floatingSwitcherEnabled)
         o.put(KEY_FLOATING_SWITCHER_ALPHA, floatingSwitcherAlpha)
         o.put(KEY_FLOATING_BALL_SIZE_DP, floatingBallSizeDp)
+        o.put(KEY_FLOATING_POS_X, floatingBallPosX)
+        o.put(KEY_FLOATING_POS_Y, floatingBallPosY)
         o.put(KEY_FLOATING_ASR_ENABLED, floatingAsrEnabled)
         o.put(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE, floatingSwitcherOnlyWhenImeVisible)
         o.put(KEY_POSTPROC_ENABLED, postProcessEnabled)
@@ -598,6 +611,8 @@ class Prefs(context: Context) {
             optBool(KEY_FLOATING_SWITCHER_ENABLED)?.let { floatingSwitcherEnabled = it }
             optFloat(KEY_FLOATING_SWITCHER_ALPHA)?.let { floatingSwitcherAlpha = it.coerceIn(0.2f, 1.0f) }
             optInt(KEY_FLOATING_BALL_SIZE_DP)?.let { floatingBallSizeDp = it.coerceIn(28, 96) }
+            optInt(KEY_FLOATING_POS_X)?.let { floatingBallPosX = it }
+            optInt(KEY_FLOATING_POS_Y)?.let { floatingBallPosY = it }
             optBool(KEY_FLOATING_ASR_ENABLED)?.let { floatingAsrEnabled = it }
             optBool(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE)?.let { floatingSwitcherOnlyWhenImeVisible = it }
 

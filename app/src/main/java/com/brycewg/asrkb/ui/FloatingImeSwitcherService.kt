@@ -16,6 +16,8 @@ import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.animation.ValueAnimator
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
@@ -165,8 +167,27 @@ class FloatingImeSwitcherService : Service() {
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = dp(12)
-        params.y = dp(180)
+        // 恢复上次位置（若存在），否则使用默认值
+        try {
+            val prefs = Prefs(this)
+            val sx = prefs.floatingBallPosX
+            val sy = prefs.floatingBallPosY
+            val dm = resources.displayMetrics
+            val screenW = dm.widthPixels
+            val screenH = dm.heightPixels
+            val vw = params.width
+            val vh = params.height
+            if (sx >= 0 && sy >= 0) {
+                params.x = sx.coerceIn(0, (screenW - vw).coerceAtLeast(0))
+                params.y = sy.coerceIn(0, (screenH - vh).coerceAtLeast(0))
+            } else {
+                params.x = dp(12)
+                params.y = dp(180)
+            }
+        } catch (_: Throwable) {
+            params.x = dp(12)
+            params.y = dp(180)
+        }
 
         try {
             windowManager.addView(iv, params)
@@ -346,6 +367,7 @@ class FloatingImeSwitcherService : Service() {
         p.x = targetX
         p.y = targetY
         try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
+        persistBallPosition()
     }
 
     private fun animateSnapToEdge(v: View) {
@@ -379,8 +401,22 @@ class FloatingImeSwitcherService : Service() {
                 p.y = (startY + dy * f).toInt()
                 try { windowManager.updateViewLayout(v, p) } catch (_: Throwable) { }
             }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    persistBallPosition()
+                }
+            })
             start()
         }
+    }
+
+    private fun persistBallPosition() {
+        val p = lp ?: return
+        try {
+            val prefs = Prefs(this)
+            prefs.floatingBallPosX = p.x
+            prefs.floatingBallPosY = p.y
+        } catch (_: Throwable) { }
     }
 
     private fun dp(v: Int): Int {

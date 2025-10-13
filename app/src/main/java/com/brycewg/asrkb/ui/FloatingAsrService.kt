@@ -3,6 +3,8 @@ package com.brycewg.asrkb.ui
 import android.Manifest
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -178,8 +180,26 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = dp(12)
-        params.y = dp(180)
+        // 恢复上次位置（若存在），否则使用默认值
+        try {
+            val sx = prefs.floatingBallPosX
+            val sy = prefs.floatingBallPosY
+            val dm = resources.displayMetrics
+            val screenW = dm.widthPixels
+            val screenH = dm.heightPixels
+            val vw = params.width
+            val vh = params.height
+            if (sx >= 0 && sy >= 0) {
+                params.x = sx.coerceIn(0, (screenW - vw).coerceAtLeast(0))
+                params.y = sy.coerceIn(0, (screenH - vh).coerceAtLeast(0))
+            } else {
+                params.x = dp(12)
+                params.y = dp(180)
+            }
+        } catch (_: Throwable) {
+            params.x = dp(12)
+            params.y = dp(180)
+        }
         
         try {
             windowManager.addView(view, params)
@@ -618,6 +638,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         p.x = targetX
         p.y = targetY
         try { windowManager.updateViewLayout(ballView ?: v, p) } catch (_: Throwable) { }
+        persistBallPosition()
     }
 
     private fun animateSnapToEdge(v: View) {
@@ -652,8 +673,21 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 p.y = (startY + dy * f).toInt()
                 try { windowManager.updateViewLayout(ballView ?: v, p) } catch (_: Throwable) { }
             }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    persistBallPosition()
+                }
+            })
             start()
         }
+    }
+
+    private fun persistBallPosition() {
+        val p = lp ?: return
+        try {
+            prefs.floatingBallPosX = p.x
+            prefs.floatingBallPosY = p.y
+        } catch (_: Throwable) { }
     }
 
     private fun dp(v: Int): Int {
