@@ -25,6 +25,8 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -66,6 +68,11 @@ class SettingsActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnCheckUpdate).setOnClickListener {
             checkForUpdates()
+        }
+
+        // 关于
+        findViewById<Button>(R.id.btnAbout)?.setOnClickListener {
+            startActivity(Intent(this, AboutActivity::class.java))
         }
 
         // 直达子设置页
@@ -316,7 +323,7 @@ class SettingsActivity : AppCompatActivity() {
         val releaseNotes: String? = null
     )
 
-    private fun checkGitHubRelease(): UpdateCheckResult {
+    private suspend fun checkGitHubRelease(): UpdateCheckResult {
         val client = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
@@ -325,70 +332,69 @@ class SettingsActivity : AppCompatActivity() {
         // 加入时间戳参数，降低 CDN 旧缓存命中概率（按分钟变动，避免每秒都变）
         val ts = (System.currentTimeMillis() / 60_000L).toString()
         val urls = listOf(
-            // jsDelivr 主域 + 备用节点
-            "https://cdn.jsdelivr.net/gh/BryceWG/LexiSharp-Keyboard@main/version.json?t=$ts",
-            "https://fastly.jsdelivr.net/gh/BryceWG/LexiSharp-Keyboard@main/version.json?t=$ts",
-            "https://gcore.jsdelivr.net/gh/BryceWG/LexiSharp-Keyboard@main/version.json?t=$ts",
+            // 优先使用可用镜像代理 raw 内容（更新更及时）
+            "https://hub.gitmirror.com/https://raw.githubusercontent.com/BryceWG/LexiSharp-Keyboard/main/version.json?t=$ts",
+            "https://ghproxy.net/https://raw.githubusercontent.com/BryceWG/LexiSharp-Keyboard/main/version.json?t=$ts",
             // 直接读取 GitHub 原始内容
-            "https://raw.githubusercontent.com/BryceWG/LexiSharp-Keyboard/main/version.json"
+            "https://raw.githubusercontent.com/BryceWG/LexiSharp-Keyboard/main/version.json?t=$ts",
+            // jsDelivr 主域 (作为兜底）
+            "https://cdn.jsdelivr.net/gh/BryceWG/LexiSharp-Keyboard@main/version.json?t=$ts"
         )
-
-        var lastError: Exception? = null
-        var bestVersion: String? = null
-        var bestDownloadUrl: String = "https://github.com/BryceWG/LexiSharp-Keyboard/releases"
-        var bestUpdateTime: String? = null
-        var bestReleaseNotes: String? = null
-
-        for (url in urls) {
-            try {
-                val request = Request.Builder()
-                    .url(url)
-                    .addHeader("User-Agent", "LexiSharp-Android")
-                    .build()
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
-
-                    val body = response.body?.string() ?: throw Exception("Empty response")
-                    val json = JSONObject(body)
-
-                    val candidate = normalizeVersion(json.optString("version", "").removePrefix("v"))
-                    if (candidate.isEmpty()) throw Exception("Invalid version format")
-
-                    val downloadUrl = json.optString("download_url", bestDownloadUrl)
-                    val updateTime = json.optString("update_time", "").ifBlank { null }
-                    val releaseNotes = json.optString("release_notes", "").ifBlank { null }
-
-                    bestVersion = when {
-                        bestVersion == null -> {
-                            bestDownloadUrl = downloadUrl
-                            bestUpdateTime = updateTime
-                            bestReleaseNotes = releaseNotes
-                            candidate
-                        }
-                        compareVersions(candidate, bestVersion!!) > 0 -> {
-                            bestDownloadUrl = downloadUrl
-                            bestUpdateTime = updateTime
-                            bestReleaseNotes = releaseNotes
-                            candidate
-                        }
-                        else -> bestVersion
-                    }
-                }
-            } catch (e: Exception) {
-                lastError = e
-            }
-        }
 
         val currentRaw = try {
             packageManager.getPackageInfo(packageName, 0).versionName ?: "unknown"
         } catch (_: Exception) { "unknown" }
         val currentVersion = normalizeVersion(currentRaw)
 
-        if (bestVersion != null) {
-            val hasUpdate = compareVersions(bestVersion!!, currentVersion) > 0
-            return UpdateCheckResult(hasUpdate, currentRaw, bestVersion!!, bestDownloadUrl, bestUpdateTime, bestReleaseNotes)
+        return coroutineScope {
+            data class Remote(val version: String, val downloadUrl: String, val updateTime: String?, val releaseNotes: String?)
+
+            val jobs = urls.map { url ->
+                async(Dispatchers.IO) {
+                    val request = Request.Builder()
+                        .url(url)
+                        .addHeader("User-Agent", "LexiSharp-Android")
+                        .build()
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
+                        val body = response.body?.string() ?: throw Exception("Empty response")
+                        val json = JSONObject(body)
+
+                        val candidate = normalizeVersion(json.optString("version", "").removePrefix("v"))
+                        if (candidate.isEmpty()) throw Exception("Invalid version format")
+
+                        val downloadUrl = json.optString("download_url", "https://github.com/BryceWG/LexiSharp-Keyboard/releases")
+                        val updateTime = json.optString("update_time", "").ifBlank { null }
+                        val releaseNotes = json.optString("release_notes", "").ifBlank { null }
+                        Remote(candidate, downloadUrl, updateTime, releaseNotes)
+                    }
+                }
+            }
+
+            val remotes = mutableListOf<Remote>()
+            var lastError: Exception? = null
+            for (j in jobs) {
+                try {
+                    remotes += j.await()
+                } catch (e: Exception) {
+                    lastError = e
+                }
+            }
+
+            if (remotes.isEmpty()) throw lastError ?: Exception("All sources failed")
+
+            var best: Remote? = null
+            for (r in remotes) {
+                best = when {
+                    best == null -> r
+                    compareVersions(r.version, best!!.version) > 0 -> r
+                    else -> best
+                }
+            }
+
+            val hasUpdate = compareVersions(best!!.version, currentVersion) > 0
+            UpdateCheckResult(hasUpdate, currentRaw, best!!.version, best!!.downloadUrl, best!!.updateTime, best!!.releaseNotes)
         }
-        throw lastError ?: Exception("Unknown error")
     }
 
     private fun normalizeVersion(v: String): String {
@@ -466,17 +472,22 @@ class SettingsActivity : AppCompatActivity() {
         // 准备下载源列表
         val downloadSources = arrayOf(
             "GitHub 官方",
-            "GitHub 镜像 (ghproxy.com)",
-            "GitHub 镜像 (ghps.cc)",
-            "GitHub 镜像 (gh-proxy.com)"
+            "GitHub 镜像 (ghproxy.net)",
+            "GitHub 镜像 (hub.gitmirror.com)",
+            "GitHub 镜像 (gh-proxy.net)"
         )
 
-        // 生成对应的 URL
+        // 根据 release 页面构造官方直链（仅用于镜像站）；官方仍跳转 release 页面
+        val directApkUrl = buildDirectApkUrl(originalUrl, version)
+
+        // 生成对应的 URL：
+        // - 官方：release 页面（originalUrl）
+        // - 镜像：若能构造直链则加速直链，否则退回镜像的 release 页面
         val downloadUrls = arrayOf(
             originalUrl,
-            convertToMirrorUrl(originalUrl, "https://ghproxy.com/"),
-            convertToMirrorUrl(originalUrl, "https://ghps.cc/"),
-            convertToMirrorUrl(originalUrl, "https://gh-proxy.com/")
+            convertToMirrorUrl(originalUrl, "https://ghproxy.net/"),
+            convertToMirrorUrl(originalUrl, "https://hub.gitmirror.com/"),
+            convertToMirrorUrl(originalUrl, "https://gh-proxy.net/")
         )
 
         MaterialAlertDialogBuilder(this)
@@ -485,12 +496,33 @@ class SettingsActivity : AppCompatActivity() {
                 try {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrls[which]))
                     startActivity(intent)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     Toast.makeText(this, "无法打开浏览器", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
             .show()
+    }
+
+    private fun buildDirectApkUrl(originalUrl: String, version: String): String? {
+        // 期望 originalUrl 形如: https://github.com/{owner}/{repo}/releases/tag/{tag}
+        // 生成: https://github.com/{owner}/{repo}/releases/download/{tag}/lexisharp-keyboard-{version}-release.apk
+        return try {
+            val uri = Uri.parse(originalUrl)
+            val path = uri.path ?: return null
+            val idx = path.indexOf("/releases/tag/")
+            if (idx <= 0) return null
+
+            val base = originalUrl.substring(0, originalUrl.indexOf("/releases/tag/"))
+            val tag = path.substring(path.indexOf("/releases/tag/") + "/releases/tag/".length)
+                .trim('/')
+                .ifBlank { "v$version" }
+
+            val apkName = "lexisharp-keyboard-$version-release.apk"
+            "$base/releases/download/$tag/$apkName"
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun convertToMirrorUrl(originalUrl: String, mirrorPrefix: String): String {
