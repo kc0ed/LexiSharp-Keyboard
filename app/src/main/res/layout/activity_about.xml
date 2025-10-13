@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical">
+
+  <com.google.android.material.appbar.MaterialToolbar
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:navigationIcon="?attr/homeAsUpIndicator"
+    app:titleCentered="true"
+    app:title="@string/about_title" />
+
+  <ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      android:padding="16dp">
+
+      <TextView
+        android:id="@+id/tvAppName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:text="@string/about_app_name" />
+
+      <TextView
+        android:id="@+id/tvVersion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp"
+        android:text="@string/about_version" />
+
+      <TextView
+        android:id="@+id/tvPackage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp"
+        android:text="@string/about_package" />
+
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnOpenGithub"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:text="@string/about_open_github" />
+
+      <TextView
+        android:id="@+id/tvDesc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp"
+        android:text="@string/about_desc" />
+
+    </LinearLayout>
+  </ScrollView>
+
+</LinearLayout>
+

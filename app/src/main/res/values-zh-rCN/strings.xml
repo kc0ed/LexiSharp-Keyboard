@@ -173,4 +173,14 @@
     <string name="btn_cancel">取消</string>
     <string name="download_source_title">选择下载源</string>
 
+    <!-- About -->
+    <string name="btn_about">关于</string>
+    <string name="about_title">关于</string>
+    <string name="about_app_name">应用名称：%1$s</string>
+    <string name="about_version">版本：%1$s</string>
+    <string name="about_package">包名：%1$s</string>
+    <string name="about_open_github">查看项目主页</string>
+    <string name="about_project_url">https://github.com/BryceWG/LexiSharp-Keyboard</string>
+    <string name="about_desc">简洁高效的语音输入法，支持多家 ASR 与 LLM 后处理</string>
+
 </resources>
