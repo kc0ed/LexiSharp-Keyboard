@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
@@ -35,6 +37,9 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 class SettingsActivity : AppCompatActivity() {
+    companion object {
+        const val EXTRA_AUTO_SHOW_IME_PICKER = "extra_auto_show_ime_picker"
+    }
 
     private var wasAccessibilityEnabled = false
 
@@ -205,6 +210,9 @@ class SettingsActivity : AppCompatActivity() {
     }
 
 
+    private var autoShownImePicker = false
+    private val handler = Handler(Looper.getMainLooper())
+
     override fun onResume() {
         super.onResume()
 
@@ -219,6 +227,24 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         wasAccessibilityEnabled = isNowEnabled
+
+        // 提前标记即可，实际弹出放到 onWindowFocusChanged，避免过早调用被系统忽略
+        // 如果没有该标记，不做任何处理
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) return
+        if (autoShownImePicker) return
+        if (intent?.getBooleanExtra(EXTRA_AUTO_SHOW_IME_PICKER, false) != true) return
+        autoShownImePicker = true
+        // 延迟到窗口获得焦点后调用，稳定性更好
+        handler.post {
+            try {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showInputMethodPicker()
+            } catch (_: Throwable) { }
+        }
     }
 
     private fun requestAllPermissions() {

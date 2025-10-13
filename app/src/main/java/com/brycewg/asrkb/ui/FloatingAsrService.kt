@@ -257,8 +257,11 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 startActivity(intent)
                 return
             }
-            val intent = Intent(this, ImePickerActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+            // 为避免某些系统上透明 Activity 过早 finish 导致选择器被收起，
+            // 这里统一跳转到设置页并自动拉起系统输入法选择器，保持在本应用前台。
+            val intent = Intent(this, SettingsActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra(SettingsActivity.EXTRA_AUTO_SHOW_IME_PICKER, true)
             }
             startActivity(intent)
         } catch (_: Throwable) {
