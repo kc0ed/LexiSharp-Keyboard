@@ -49,6 +49,8 @@ class AsrAccessibilityService : AccessibilityService() {
                 val root = svc.rootInActiveWindow ?: return null
                 val focused = svc.findFocusedEditableNode(root)
                 if (focused != null) {
+                    // 抓取当前输入框完整文本作为“全量文本”，用于基于选区切分前后缀
+                    val full = focused.text?.toString() ?: ""
                     val selStart = focused.textSelectionStart.takeIf { it >= 0 } ?: full.length
                     val selEnd = focused.textSelectionEnd.takeIf { it >= 0 } ?: full.length
                     val start = selStart.coerceIn(0, full.length)

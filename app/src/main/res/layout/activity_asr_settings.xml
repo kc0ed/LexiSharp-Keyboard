@@ -338,8 +338,46 @@
             android:textColorHint="?attr/colorOnSurfaceVariant" />
         </com.google.android.material.textfield.TextInputLayout>
       </LinearLayout>
+
+      <!-- Soniox -->
+      <TextView
+        android:id="@+id/titleSoniox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/soniox_section_title"
+        android:textStyle="bold" />
+
+      <LinearLayout
+        android:id="@+id/groupSoniox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_soniox_api_key">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etSonioxApiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPassword"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchSonioxStreaming"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_soniox_streaming" />
+      </LinearLayout>
     </LinearLayout>
   </ScrollView>
 
 </LinearLayout>
-

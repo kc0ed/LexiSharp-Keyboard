@@ -33,6 +33,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val groupOpenAi = findViewById<View>(R.id.groupOpenAI)
     val groupDash = findViewById<View>(R.id.groupDashScope)
     val groupGemini = findViewById<View>(R.id.groupGemini)
+    val groupSoniox = findViewById<View>(R.id.groupSoniox)
 
     val titleVolc = findViewById<View>(R.id.titleVolc)
     val titleSf = findViewById<View>(R.id.titleSf)
@@ -40,6 +41,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val titleOpenAi = findViewById<View>(R.id.titleOpenAI)
     val titleDash = findViewById<View>(R.id.titleDash)
     val titleGemini = findViewById<View>(R.id.titleGemini)
+    val titleSoniox = findViewById<View>(R.id.titleSoniox)
 
     val etAppKey = findViewById<EditText>(R.id.etAppKey)
     val etAccessKey = findViewById<EditText>(R.id.etAccessKey)
@@ -55,6 +57,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     val etGeminiApiKey = findViewById<EditText>(R.id.etGeminiApiKey)
     val etGeminiModel = findViewById<EditText>(R.id.etGeminiModel)
     val switchVolcStreaming = findViewById<MaterialSwitch>(R.id.switchVolcStreaming)
+    val etSonioxApiKey = findViewById<EditText>(R.id.etSonioxApiKey)
+    val switchSonioxStreaming = findViewById<MaterialSwitch>(R.id.switchSonioxStreaming)
 
     fun applyVendorVisibility(v: AsrVendor) {
       val visMap = mapOf(
@@ -63,7 +67,8 @@ class AsrSettingsActivity : AppCompatActivity() {
         AsrVendor.ElevenLabs to listOf(titleEleven, groupEleven),
         AsrVendor.OpenAI to listOf(titleOpenAi, groupOpenAi),
         AsrVendor.DashScope to listOf(titleDash, groupDash),
-        AsrVendor.Gemini to listOf(titleGemini, groupGemini)
+        AsrVendor.Gemini to listOf(titleGemini, groupGemini),
+        AsrVendor.Soniox to listOf(titleSoniox, groupSoniox)
       )
       visMap.forEach { (vendor, views) ->
         val vis = if (vendor == v) View.VISIBLE else View.GONE
@@ -77,7 +82,8 @@ class AsrSettingsActivity : AppCompatActivity() {
       AsrVendor.ElevenLabs,
       AsrVendor.OpenAI,
       AsrVendor.DashScope,
-      AsrVendor.Gemini
+      AsrVendor.Gemini,
+      AsrVendor.Soniox
     )
     val vendorItems = listOf(
       getString(R.string.vendor_volc),
@@ -85,7 +91,8 @@ class AsrSettingsActivity : AppCompatActivity() {
       getString(R.string.vendor_eleven),
       getString(R.string.vendor_openai),
       getString(R.string.vendor_dashscope),
-      getString(R.string.vendor_gemini)
+      getString(R.string.vendor_gemini),
+      getString(R.string.vendor_soniox)
     )
     spAsrVendor.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, vendorItems)
     spAsrVendor.setSelection(vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0))
@@ -125,6 +132,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     etGeminiApiKey.setText(prefs.gemApiKey)
     etGeminiModel.setText(prefs.gemModel)
     switchVolcStreaming.isChecked = prefs.volcStreamingEnabled
+    etSonioxApiKey.setText(prefs.sonioxApiKey)
+    switchSonioxStreaming.isChecked = prefs.sonioxStreamingEnabled
 
     etAppKey.bindString { prefs.appKey = it }
     etAccessKey.bindString { prefs.accessKey = it }
@@ -143,6 +152,9 @@ class AsrSettingsActivity : AppCompatActivity() {
     switchVolcStreaming.setOnCheckedChangeListener { _, isChecked ->
       prefs.volcStreamingEnabled = isChecked
     }
+    etSonioxApiKey.bindString { prefs.sonioxApiKey = it }
+    switchSonioxStreaming.setOnCheckedChangeListener { _, isChecked ->
+      prefs.sonioxStreamingEnabled = isChecked
+    }
   }
 }
-

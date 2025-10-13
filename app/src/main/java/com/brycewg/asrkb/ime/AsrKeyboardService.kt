@@ -34,6 +34,8 @@ import com.brycewg.asrkb.asr.GeminiFileAsrEngine
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.asr.VolcStreamAsrEngine
+import com.brycewg.asrkb.asr.SonioxFileAsrEngine
+import com.brycewg.asrkb.asr.SonioxStreamAsrEngine
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.SettingsActivity
 import kotlinx.coroutines.CoroutineScope
@@ -517,6 +519,13 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             AsrVendor.Gemini -> if (prefs.hasGeminiKeys()) {
                 GeminiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             } else null
+            AsrVendor.Soniox -> if (prefs.hasSonioxKeys()) {
+                if (prefs.sonioxStreamingEnabled) {
+                    SonioxStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                } else {
+                    SonioxFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+                }
+            } else null
         }
     }
 
@@ -548,6 +557,12 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             AsrVendor.Gemini -> when (current) {
                 is GeminiFileAsrEngine -> current
                 else -> GeminiFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+            }
+            AsrVendor.Soniox -> when (current) {
+                is SonioxFileAsrEngine -> if (!prefs.sonioxStreamingEnabled) current else SonioxStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                is SonioxStreamAsrEngine -> if (prefs.sonioxStreamingEnabled) current else SonioxFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+                else -> if (prefs.sonioxStreamingEnabled) SonioxStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                        else SonioxFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
         }
     }

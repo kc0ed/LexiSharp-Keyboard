@@ -48,12 +48,15 @@
     <string name="vendor_volc">Volcano Engine</string>
     <string name="vendor_sf">SiliconFlow</string>
     <string name="vendor_dashscope">阿里云百炼（DashScope）</string>
+    <string name="vendor_soniox">Soniox</string>
     <string name="label_sf_api_key">API Key（Bearer）</string>
     <string name="label_sf_model">模型名称（如：FunAudioLLM/SenseVoiceSmall）</string>
     <string name="dash_section_title">阿里云百炼 ASR 参数</string>
+    <string name="soniox_section_title">Soniox 鉴权参数</string>
     <string name="label_dash_api_key">DashScope API Key（Bearer）</string>
     <string name="label_dash_model">模型（如：qwen3-asr-flash）</string>
     <string name="label_volc_streaming">使用流式识别（WebSocket）</string>
+    <string name="label_soniox_streaming">使用 Soniox 流式识别（WebSocket）</string>
     <string name="status_last_request_ms">上次识别耗时：%1$d ms</string>
     <string name="btn_save">保存</string>
     <string name="btn_close">关闭</string>
@@ -133,6 +136,7 @@
     <string name="error_missing_siliconflow_key">未配置 SiliconFlow API Key</string>
     <string name="error_missing_openai_key">未配置 OpenAI API Key</string>
     <string name="error_missing_eleven_key">未配置 ElevenLabs API Key</string>
+    <string name="error_missing_soniox_key">未配置 Soniox API Key</string>
     <string name="error_missing_eleven_model_id">未配置 ElevenLabs Model ID（服务端要求必填）</string>
     <string name="error_request_failed_http">识别请求失败: HTTP %1$d%2$s</string>
     <string name="error_asr_request_failed_http">ASR 请求失败: HTTP %1$d%2$s</string>
@@ -142,6 +146,7 @@
     <string name="error_oss_upload_failed_http">OSS 上传失败: %1$d%2$s</string>
     <string name="error_asr_empty_result">识别返回为空</string>
     <string name="error_recognize_failed_with_reason">识别失败: %1$s</string>
+    <string name="label_soniox_api_key">API Key（Bearer）</string>
 
     <!-- Enhanced Quick Guide -->
     <string name="guide_subtitle">让语音输入更简单高效</string>

@@ -50,12 +50,15 @@
     <string name="vendor_volc">Volcano Engine</string>
     <string name="vendor_sf">SiliconFlow</string>
     <string name="vendor_dashscope">Alibaba Cloud DashScope</string>
+    <string name="vendor_soniox">Soniox</string>
     <string name="label_sf_api_key">API Key (Bearer)</string>
     <string name="label_sf_model">Model Name (e.g., FunAudioLLM/SenseVoiceSmall)</string>
     <string name="dash_section_title">Alibaba Cloud DashScope ASR Parameters</string>
+    <string name="soniox_section_title">Soniox Credentials</string>
     <string name="label_dash_api_key">DashScope API Key (Bearer)</string>
     <string name="label_dash_model">Model (e.g., qwen3-asr-flash)</string>
     <string name="label_volc_streaming">Use streaming recognition (WebSocket)</string>
+    <string name="label_soniox_streaming">Use Soniox streaming (WebSocket)</string>
     <string name="status_last_request_ms">Last request time: %1$d ms</string>
     <string name="btn_save">Save</string>
     <string name="btn_close">Close</string>
@@ -137,6 +140,7 @@
     <string name="error_missing_siliconflow_key">SiliconFlow API Key not set</string>
     <string name="error_missing_openai_key">OpenAI API Key not set</string>
     <string name="error_missing_eleven_key">ElevenLabs API Key not set</string>
+    <string name="error_missing_soniox_key">Soniox API Key not set</string>
     <string name="error_missing_eleven_model_id">ElevenLabs Model ID not set (required)</string>
     <string name="error_request_failed_http">Recognition request failed: HTTP %1$d%2$s</string>
     <string name="error_asr_request_failed_http">ASR request failed: HTTP %1$d%2$s</string>
@@ -146,6 +150,7 @@
     <string name="error_oss_upload_failed_http">OSS upload failed: %1$d%2$s</string>
     <string name="error_asr_empty_result">Empty ASR result</string>
     <string name="error_recognize_failed_with_reason">Recognition failed: %1$s</string>
+    <string name="label_soniox_api_key">API Key (Bearer)</string>
 
     <!-- Enhanced Quick Guide -->
     <string name="guide_subtitle">Making voice input simpler and more efficient</string>

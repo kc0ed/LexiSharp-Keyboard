@@ -265,6 +265,14 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_GEM_PROMPT, DEFAULT_GEM_PROMPT) ?: DEFAULT_GEM_PROMPT
         set(value) = sp.edit { putString(KEY_GEM_PROMPT, value) }
 
+    // Soniox 语音识别
+    var sonioxApiKey: String by stringPref(KEY_SONIOX_API_KEY, "")
+
+    // Soniox：流式识别开关（默认关闭）
+    var sonioxStreamingEnabled: Boolean
+        get() = sp.getBoolean(KEY_SONIOX_STREAMING_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_SONIOX_STREAMING_ENABLED, value) }
+
     // 火山引擎：流式识别开关（与文件模式共享凭证）
     var volcStreamingEnabled: Boolean
         get() = sp.getBoolean(KEY_VOLC_STREAMING_ENABLED, false)
@@ -304,6 +312,9 @@ class Prefs(context: Context) {
             VendorField(KEY_GEM_API_KEY, required = true),
             VendorField(KEY_GEM_MODEL, required = true, default = DEFAULT_GEM_MODEL),
             VendorField(KEY_GEM_PROMPT, default = DEFAULT_GEM_PROMPT)
+        ),
+        AsrVendor.Soniox to listOf(
+            VendorField(KEY_SONIOX_API_KEY, required = true)
         )
     )
 
@@ -320,6 +331,7 @@ class Prefs(context: Context) {
     fun hasElevenKeys(): Boolean = hasVendorKeys(AsrVendor.ElevenLabs)
     fun hasOpenAiKeys(): Boolean = hasVendorKeys(AsrVendor.OpenAI)
     fun hasGeminiKeys(): Boolean = hasVendorKeys(AsrVendor.Gemini)
+    fun hasSonioxKeys(): Boolean = hasVendorKeys(AsrVendor.Soniox)
     fun hasAsrKeys(): Boolean = hasVendorKeys(asrVendor)
     fun hasLlmKeys(): Boolean {
         val p = getActiveLlmProvider()
@@ -396,6 +408,8 @@ class Prefs(context: Context) {
         private const val KEY_VOLC_STREAMING_ENABLED = "volc_streaming_enabled"
         private const val KEY_DASH_API_KEY = "dash_api_key"
         private const val KEY_DASH_MODEL = "dash_model"
+        private const val KEY_SONIOX_API_KEY = "soniox_api_key"
+        private const val KEY_SONIOX_STREAMING_ENABLED = "soniox_streaming_enabled"
         private const val KEY_PUNCT_1 = "punct_1"
         private const val KEY_PUNCT_2 = "punct_2"
         private const val KEY_PUNCT_3 = "punct_3"
@@ -430,6 +444,12 @@ class Prefs(context: Context) {
 
         // 悬浮球默认大小（dp）
         const val DEFAULT_FLOATING_BALL_SIZE_DP = 56
+
+        // Soniox 默认端点
+        const val SONIOX_API_BASE_URL = "https://api.soniox.com"
+        const val SONIOX_FILES_ENDPOINT = "$SONIOX_API_BASE_URL/v1/files"
+        const val SONIOX_TRANSCRIPTIONS_ENDPOINT = "$SONIOX_API_BASE_URL/v1/transcriptions"
+        const val SONIOX_WS_URL = "wss://stt-rt.soniox.com/transcribe-websocket"
 
         private fun buildDefaultPromptPresets(): List<PromptPreset> {
             val p1 = PromptPreset(

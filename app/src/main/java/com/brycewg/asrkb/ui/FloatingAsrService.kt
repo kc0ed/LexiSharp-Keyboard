@@ -38,6 +38,8 @@ import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.AsrAccessibilityService.FocusContext
 import com.brycewg.asrkb.asr.VolcStreamAsrEngine
+import com.brycewg.asrkb.asr.SonioxFileAsrEngine
+import com.brycewg.asrkb.asr.SonioxStreamAsrEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -463,6 +465,13 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             } else null
             AsrVendor.Gemini -> if (prefs.hasGeminiKeys()) {
                 GeminiFileAsrEngine(this, serviceScope, prefs, this) { }
+            } else null
+            AsrVendor.Soniox -> if (prefs.hasSonioxKeys()) {
+                if (prefs.sonioxStreamingEnabled) {
+                    SonioxStreamAsrEngine(this, serviceScope, prefs, this)
+                } else {
+                    SonioxFileAsrEngine(this, serviceScope, prefs, this) { }
+                }
             } else null
         }
     }
