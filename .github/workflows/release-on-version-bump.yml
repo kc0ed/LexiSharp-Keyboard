@@ -352,13 +352,76 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          git add version.json
-          git commit -m "chore: auto-update version.json to ${{ steps.version.outputs.version_name }} [skip ci]"
+          # 最多重试 3 次
+          MAX_RETRIES=3
+          RETRY_COUNT=0
 
-          # 推送到仓库（使用 [skip ci] 避免触发新的 workflow）
-          git push origin HEAD:${{ github.ref_name }}
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "🔄 尝试推送 (第 $((RETRY_COUNT + 1)) 次)..."
 
-          echo "✅ version.json 已提交并推送"
+            # 拉取最新的远程更改
+            git fetch origin ${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
+
+            # 重新应用 version.json 更改
+            python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime
+
+          version = os.environ.get('VERSION', '0.0.0')
+          version_code = os.environ.get('VERSION_CODE', '0')
+          tag = os.environ.get('TAG', 'v0.0.0')
+
+          current_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+          try:
+              with open('version.json', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+          except (FileNotFoundError, json.JSONDecodeError):
+              data = {}
+
+          data['version'] = version
+          data['version_code'] = int(version_code) if version_code.isdigit() else 0
+          data['download_url'] = f"https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/{tag}"
+          data['release_notes'] = f"版本 {version} 已发布"
+          data['min_supported_version'] = data.get('min_supported_version', '2.6.5')
+          data['update_time'] = current_timestamp
+
+          with open('version.json', 'w', encoding='utf-8') as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          PY
+
+            # 检查是否有变化
+            if git diff --quiet version.json; then
+              echo "ℹ️ version.json 无变化，无需推送"
+              break
+            fi
+
+            # 提交更改
+            git add version.json
+            git commit -m "chore: auto-update version.json to ${{ steps.version.outputs.version_name }} [skip ci]"
+
+            # 尝试推送
+            if git push origin HEAD:${{ github.ref_name }}; then
+              echo "✅ version.json 已成功推送"
+              break
+            else
+              echo "⚠️ 推送失败，可能存在冲突"
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⏳ 等待 5 秒后重试..."
+                sleep 5
+              else
+                echo "❌ 达到最大重试次数，推送失败"
+                exit 1
+              fi
+            fi
+          done
+        env:
+          VERSION: ${{ steps.version.outputs.version_name }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          TAG: ${{ steps.tag.outputs.tag }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
