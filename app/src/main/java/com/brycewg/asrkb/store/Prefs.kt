@@ -271,6 +271,14 @@ class Prefs(context: Context) {
 
     var dashModel: String by stringPref(KEY_DASH_MODEL, DEFAULT_DASH_MODEL)
 
+    // DashScope：自定义识别上下文（提示词）
+    var dashPrompt: String by stringPref(KEY_DASH_PROMPT, "")
+
+    // DashScope：识别语言（空字符串表示自动/未指定）
+    var dashLanguage: String
+        get() = sp.getString(KEY_DASH_LANGUAGE, "") ?: ""
+        set(value) = sp.edit { putString(KEY_DASH_LANGUAGE, value.trim()) }
+
     // ElevenLabs凭证
     var elevenApiKey: String by stringPref(KEY_ELEVEN_API_KEY, "")
 
@@ -392,7 +400,9 @@ class Prefs(context: Context) {
         ),
         AsrVendor.DashScope to listOf(
             VendorField(KEY_DASH_API_KEY, required = true),
-            VendorField(KEY_DASH_MODEL, default = DEFAULT_DASH_MODEL)
+            VendorField(KEY_DASH_MODEL, default = DEFAULT_DASH_MODEL),
+            VendorField(KEY_DASH_PROMPT, default = ""),
+            VendorField(KEY_DASH_LANGUAGE, default = "")
         ),
         AsrVendor.Gemini to listOf(
             VendorField(KEY_GEM_API_KEY, required = true),
@@ -505,6 +515,8 @@ class Prefs(context: Context) {
         private const val KEY_VOLC_FIRST_CHAR_ACCEL_ENABLED = "volc_first_char_accel_enabled"
         private const val KEY_DASH_API_KEY = "dash_api_key"
         private const val KEY_DASH_MODEL = "dash_model"
+        private const val KEY_DASH_PROMPT = "dash_prompt"
+        private const val KEY_DASH_LANGUAGE = "dash_language"
         private const val KEY_SONIOX_API_KEY = "soniox_api_key"
         private const val KEY_SONIOX_STREAMING_ENABLED = "soniox_streaming_enabled"
         private const val KEY_SONIOX_LANGUAGE = "soniox_language"

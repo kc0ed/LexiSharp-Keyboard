@@ -51,6 +51,9 @@ class AsrSettingsActivity : AppCompatActivity() {
     val etElevenModel = findViewById<EditText>(R.id.etElevenModel)
     val etDashApiKey = findViewById<EditText>(R.id.etDashApiKey)
     val etDashModel = findViewById<EditText>(R.id.etDashModel)
+    val etDashPrompt = findViewById<EditText>(R.id.etDashPrompt)
+    val spDashLanguage = findViewById<Spinner>(R.id.spDashLanguage)
+    val tvDashLanguageLabel = findViewById<View>(R.id.tvDashLanguageLabel)
     val etOpenAiAsrEndpoint = findViewById<EditText>(R.id.etOpenAiAsrEndpoint)
     val etOpenAiApiKey = findViewById<EditText>(R.id.etOpenAiApiKey)
     val etOpenAiModel = findViewById<EditText>(R.id.etOpenAiModel)
@@ -135,6 +138,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     etElevenModel.setText(prefs.elevenModelId)
     etDashApiKey.setText(prefs.dashApiKey)
     etDashModel.setText(prefs.dashModel)
+    etDashPrompt.setText(prefs.dashPrompt)
     etOpenAiAsrEndpoint.setText(prefs.oaAsrEndpoint)
     etOpenAiApiKey.setText(prefs.oaAsrApiKey)
     etOpenAiModel.setText(prefs.oaAsrModel)
@@ -210,6 +214,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     etElevenModel.bindString { prefs.elevenModelId = it }
     etDashApiKey.bindString { prefs.dashApiKey = it }
     etDashModel.bindString { prefs.dashModel = it }
+    etDashPrompt.bindString { prefs.dashPrompt = it }
     etOpenAiAsrEndpoint.bindString { prefs.oaAsrEndpoint = it }
     etOpenAiApiKey.bindString { prefs.oaAsrApiKey = it }
     etOpenAiModel.bindString { prefs.oaAsrModel = it }
@@ -330,6 +335,46 @@ class AsrSettingsActivity : AppCompatActivity() {
         }
         .setNegativeButton(R.string.btn_cancel, null)
       builder.show()
+    }
+
+    // DashScope 语言：单选（language），空值为自动
+    val dashLangLabels = listOf(
+      getString(R.string.dash_lang_auto),
+      getString(R.string.dash_lang_zh),
+      getString(R.string.dash_lang_en),
+      getString(R.string.dash_lang_ja),
+      getString(R.string.dash_lang_de),
+      getString(R.string.dash_lang_ko),
+      getString(R.string.dash_lang_ru),
+      getString(R.string.dash_lang_fr),
+      getString(R.string.dash_lang_pt),
+      getString(R.string.dash_lang_ar),
+      getString(R.string.dash_lang_it),
+      getString(R.string.dash_lang_es)
+    )
+    val dashLangCodes = listOf(
+      "",
+      "zh",
+      "en",
+      "ja",
+      "de",
+      "ko",
+      "ru",
+      "fr",
+      "pt",
+      "ar",
+      "it",
+      "es"
+    )
+    spDashLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, dashLangLabels)
+    val savedDashLang = prefs.dashLanguage
+    spDashLanguage.setSelection(dashLangCodes.indexOf(savedDashLang).coerceAtLeast(0))
+    spDashLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+      override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+        val code = dashLangCodes.getOrNull(position) ?: ""
+        if (code != prefs.dashLanguage) prefs.dashLanguage = code
+      }
+      override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
     }
   }
 }

@@ -217,9 +217,13 @@ class DashscopeFileAsrEngine(
           put("enable_lid", true)
           // ITN 默认关闭；如需启用可在后续扩展设置
           put("enable_itn", false)
+          val lang = prefs.dashLanguage.trim()
+          if (lang.isNotEmpty()) put("language", lang)
         }
         val systemMsg = JSONObject().apply {
-          put("text", "")
+          // 识别上下文（提示词），可为空
+          val ctx = prefs.dashPrompt.trim()
+          put("text", ctx)
         }
         val userMsg = JSONObject().apply {
           put("audio", ossUrl)
