@@ -11,6 +11,9 @@ import com.brycewg.asrkb.store.Prefs
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
+import com.google.android.material.textfield.TextInputEditText
+import android.text.Editable
+import android.text.TextWatcher
 
 class FloatingSettingsActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,8 +31,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     val sliderFloatingAlpha = findViewById<Slider>(R.id.sliderFloatingAlpha)
     val sliderFloatingSize = findViewById<Slider>(R.id.sliderFloatingSize)
     val switchFloatingAsr = findViewById<MaterialSwitch>(R.id.switchFloatingAsr)
-    val switchTelegramCompat = findViewById<MaterialSwitch>(R.id.switchTelegramCompat)
-    val switchDouyinCompat = findViewById<MaterialSwitch>(R.id.switchDouyinCompat)
+    val switchFloatingWriteCompat = findViewById<MaterialSwitch>(R.id.switchFloatingWriteCompat)
+    val etFloatingWriteCompatPkgs = findViewById<TextInputEditText>(R.id.etFloatingWriteCompatPkgs)
 
     // 初始状态
     switchFloating.isChecked = prefs.floatingSwitcherEnabled
@@ -37,8 +40,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     sliderFloatingAlpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
     sliderFloatingSize.value = prefs.floatingBallSizeDp.toFloat()
     switchFloatingAsr.isChecked = prefs.floatingAsrEnabled
-    switchTelegramCompat.isChecked = prefs.telegramCompatEnabled
-    switchDouyinCompat.isChecked = prefs.douyinCompatEnabled
+    switchFloatingWriteCompat.isChecked = prefs.floatingWriteTextCompatEnabled
+    etFloatingWriteCompatPkgs.setText(prefs.floatingWriteCompatPackages)
 
     // 若两者同开，兜底优先语音识别
     if (switchFloating.isChecked && switchFloatingAsr.isChecked) {
@@ -156,15 +159,19 @@ class FloatingSettingsActivity : AppCompatActivity() {
       }
     }
 
-    // Telegram 兼容性模式（默认开）
-    switchTelegramCompat.setOnCheckedChangeListener { _, isChecked ->
-      prefs.telegramCompatEnabled = isChecked
+    // 悬浮球写入文字兼容性模式（默认开）
+    switchFloatingWriteCompat.setOnCheckedChangeListener { _, isChecked ->
+      prefs.floatingWriteTextCompatEnabled = isChecked
     }
 
-    // 抖音兼容性模式（默认开）
-    switchDouyinCompat.setOnCheckedChangeListener { _, isChecked ->
-      prefs.douyinCompatEnabled = isChecked
-    }
+    // 兼容目标包名（每行一个）
+    etFloatingWriteCompatPkgs.addTextChangedListener(object : TextWatcher {
+      override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+      override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+      override fun afterTextChanged(s: Editable?) {
+        prefs.floatingWriteCompatPackages = s?.toString() ?: ""
+      }
+    })
   }
 
   private fun isAccessibilityServiceEnabled(): Boolean {

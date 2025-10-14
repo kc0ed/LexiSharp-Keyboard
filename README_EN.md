@@ -264,15 +264,13 @@ English | [简体中文](README.md)
 <details>
 <summary><b>Compatibility Mode</b></summary>
 
-Some apps have poor support for accessibility service text insertion. You can enable compatibility mode in floating ball settings:
+In some apps, input fields expose background placeholder text to Accessibility, which contaminates the inserted content. Enable “Floating write-text compatibility mode” in Floating Ball settings:
 
-| App Type      | Compatibility Issue                      | Solution                                      |
-| ------------- | ---------------------------------------- | --------------------------------------------- |
-| 📱 Telegram   | Placeholder display abnormality          | Use zero-width character + select all & paste |
-| 🎵 TikTok     | Text insertion failure                   | Use select all & paste strategy               |
-| 📝 Other Apps | Some input fields don't support SET_TEXT | Auto fallback to clipboard paste              |
+- When enabled: For apps listed under “Target package names”, the floating ball will attempt Select-All + Paste with an invisible character to mask the background placeholder.
+- Target packages: One full package name per line, exact match (e.g., org.telegram.messenger, nu.gpu.nagram, com.ss.android.ugc.aweme).
+- Built-in examples: org.telegram.messenger, nu.gpu.nagram, com.ss.android.ugc.aweme.
 
-> 💡 **Tip**: If you encounter text insertion issues, try enabling compatibility mode for the corresponding app
+> 💡 Tip: If you encounter text insertion issues, enable compatibility mode and add the app's package here
 
 </details>
 

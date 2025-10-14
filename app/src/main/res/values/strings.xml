@@ -126,8 +126,10 @@
     <string name="toast_need_overlay_perm">请在系统设置中授予“在其他应用上层显示”权限以启用悬浮球</string>
     <string name="cd_floating_switcher">快速切换到 言犀键盘</string>
     <string name="label_floating_asr">使用悬浮球进行语音识别</string>
-    <string name="label_tg_compat">Telegram 兼容性模式（空文本会污染一次粘贴板）</string>
-    <string name="label_douyin_compat">抖音兼容性模式（空文本会污染一次粘贴板）</string>
+    <string name="label_floating_write_compat">悬浮球写入文字兼容性模式</string>
+    <string name="desc_floating_write_compat">在部分应用中文本框会出现背景文字被误识别，导致通过无障碍服务插入文字时会附带背景文字的情况。开启此模式后，在目标软件中使用悬浮球时会尝试“全选+粘贴”写入一个不可见字符，以屏蔽背景文字。</string>
+    <string name="label_floating_write_compat_pkgs">兼容目标包名（每行一个）</string>
+    <string name="hint_floating_write_compat_pkgs">请填写完整包名，采用精准匹配（例如 org.telegram.messenger 或 com.ss.android.ugc.aweme）。</string>
     <string name="toast_need_accessibility_perm">请在系统设置中授予“无障碍服务”权限以支持此功能</string>
     <string name="cd_floating_asr">悬浮球语音识别</string>
     <string name="btn_grant_all_permissions">授予所有需要的权限</string>

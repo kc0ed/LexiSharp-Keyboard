@@ -385,15 +385,14 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                         toWrite = stripMarkersIfAny(toWrite)
                         val pkg = AsrAccessibilityService.getActiveWindowPackage()
                         val isTg = pkg != null && isTelegramLikePackage(pkg)
-                        val isDy = pkg != null && isDouyinLikePackage(pkg)
-                        val tgCompat = try { prefs.telegramCompatEnabled } catch (_: Throwable) { true }
-                        val dyCompat = try { prefs.douyinCompatEnabled } catch (_: Throwable) { true }
+                        val writeCompat = try { prefs.floatingWriteTextCompatEnabled } catch (_: Throwable) { true }
+                        val compatTarget = pkg != null && isPackageInCompatTargets(pkg)
                         if (isTg && markerInserted) {
                             // 初始为空场景（通过注入标记确认），忽略任何“已有文本”前后缀
                             toWrite = textOut
                         }
                         var wrote = false
-                        if ((isTg && tgCompat) || (isDy && dyCompat)) {
+                        if (writeCompat && compatTarget) {
                             wrote = AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
                             if (!wrote) {
                                 wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
@@ -507,15 +506,14 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 Log.d(TAG, "Inserting text: $toWrite (previewCtx=${ctx != null})")
                 val pkg = AsrAccessibilityService.getActiveWindowPackage()
                 val isTg = pkg != null && isTelegramLikePackage(pkg)
-                val isDy = pkg != null && isDouyinLikePackage(pkg)
-                val tgCompat = try { prefs.telegramCompatEnabled } catch (_: Throwable) { true }
-                val dyCompat = try { prefs.douyinCompatEnabled } catch (_: Throwable) { true }
+                val writeCompat = try { prefs.floatingWriteTextCompatEnabled } catch (_: Throwable) { true }
+                val compatTarget = pkg != null && isPackageInCompatTargets(pkg)
                 if (isTg && markerInserted) {
                     // 初始为空场景（通过注入标记确认），忽略任何“已有文本”前后缀，直接使用最终识别结果
                     toWrite = finalText
                 }
                 var wrote = false
-                if ((isTg && tgCompat) || (isDy && dyCompat)) {
+                if (writeCompat && compatTarget) {
                     // 兼容性模式：直接使用“全选+粘贴”，不再先尝试 ACTION_SET_TEXT
                     wrote = AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
                     if (!wrote) {
@@ -574,9 +572,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         markerInserted = false
         markerChar = null
         val pkg = AsrAccessibilityService.getActiveWindowPackage() ?: return
-        val tgCompat = try { prefs.telegramCompatEnabled } catch (_: Throwable) { true }
+        val compat = try { prefs.floatingWriteTextCompatEnabled } catch (_: Throwable) { true }
         // Telegram 家族/分支：官方包前缀 + 常见分支（Nagram）
-        if (!tgCompat || !isTelegramLikePackage(pkg)) return
+        if (!compat || !isTelegramLikePackage(pkg) || !isPackageInCompatTargets(pkg)) return
         // 候选零宽标记：优先 U+2060（WORD JOINER），若失败回退 U+200B（ZWSP）
         val candidates = listOf("\u2060", "\u200B")
         for (m in candidates) {
@@ -607,8 +605,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         return false
     }
 
-    private fun isDouyinLikePackage(pkg: String): Boolean {
-        return pkg == "com.ss.android.ugc.aweme"
+    private fun isPackageInCompatTargets(pkg: String): Boolean {
+        val raw = try { prefs.floatingWriteCompatPackages } catch (_: Throwable) { "" }
+        val rules = raw.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+        return rules.any { it == pkg }
     }
 
     override fun onError(message: String) {

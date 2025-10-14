@@ -30,13 +30,6 @@
         android:text="@string/label_floating_switcher" />
 
       <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switchFloatingOnlyWhenImeVisible"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/label_floating_only_when_ime_visible" />
-
-      <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchFloatingAsr"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -44,18 +37,11 @@
         android:text="@string/label_floating_asr" />
 
       <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switchTelegramCompat"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/label_tg_compat" />
-
-      <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switchDouyinCompat"
+        android:id="@+id/switchFloatingOnlyWhenImeVisible"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="@string/label_douyin_compat" />
+        android:text="@string/label_floating_only_when_ime_visible" />
 
       <TextView
         android:layout_width="match_parent"
@@ -86,6 +72,46 @@
         android:valueFrom="28"
         android:valueTo="96"
         android:stepSize="4" />
+
+      <com.google.android.material.divider.MaterialDivider
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp" />
+
+      <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchFloatingWriteCompat"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/label_floating_write_compat" />
+
+      <TextView
+        android:id="@+id/tvFloatingWriteCompatDesc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@android:color/darker_gray"
+        android:text="@string/desc_floating_write_compat" />
+
+      <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilFloatingWriteCompatPkgs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:helperText="@string/hint_floating_write_compat_pkgs">
+
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/etFloatingWriteCompatPkgs"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:hint="@string/label_floating_write_compat_pkgs"
+          android:inputType="textNoSuggestions|textMultiLine"
+          android:minLines="3"
+          android:gravity="top|start"
+          android:overScrollMode="always"
+          android:scrollbars="vertical" />
+      </com.google.android.material.textfield.TextInputLayout>
+
     </LinearLayout>
   </ScrollView>
 

@@ -114,15 +114,18 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_FLOATING_ASR_ENABLED, true)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_ASR_ENABLED, value) }
 
-    // 悬浮球：Telegram 兼容性模式（使用“全选+粘贴”等策略），默认开启
-    var telegramCompatEnabled: Boolean
-        get() = sp.getBoolean(KEY_FLOATING_TG_COMPAT_ENABLED, true)
-        set(value) = sp.edit { putBoolean(KEY_FLOATING_TG_COMPAT_ENABLED, value) }
+    // 悬浮球：写入文字兼容性模式（统一控制使用“全选+粘贴”等策略），默认开启
+    var floatingWriteTextCompatEnabled: Boolean
+        get() = sp.getBoolean(KEY_FLOATING_WRITE_COMPAT_ENABLED, true)
+        set(value) = sp.edit { putBoolean(KEY_FLOATING_WRITE_COMPAT_ENABLED, value) }
 
-    // 悬浮球：抖音（com.ss.android.ugc.aweme）兼容性模式，默认开启
-    var douyinCompatEnabled: Boolean
-        get() = sp.getBoolean(KEY_FLOATING_DOUYIN_COMPAT_ENABLED, true)
-        set(value) = sp.edit { putBoolean(KEY_FLOATING_DOUYIN_COMPAT_ENABLED, value) }
+    // 兼容目标包名（每行一个；支持前缀匹配，例如 org.telegram）
+    var floatingWriteCompatPackages: String
+        get() = sp.getString(KEY_FLOATING_WRITE_COMPAT_PACKAGES, DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES) ?: DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES
+        set(value) = sp.edit { putString(KEY_FLOATING_WRITE_COMPAT_PACKAGES, value) }
+
+    fun getFloatingWriteCompatPackageRules(): List<String> =
+        floatingWriteCompatPackages.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
 
     // LLM后处理设置（旧版单一字段；当存在多配置且已选择活动项时仅作回退）
     var postProcessEnabled: Boolean
@@ -520,10 +523,10 @@ class Prefs(context: Context) {
         private const val KEY_FLOATING_BALL_SIZE_DP = "floating_ball_size_dp"
         private const val KEY_FLOATING_POS_X = "floating_ball_pos_x"
         private const val KEY_FLOATING_POS_Y = "floating_ball_pos_y"
+        private const val KEY_FLOATING_WRITE_COMPAT_ENABLED = "floating_write_compat_enabled"
         private const val KEY_FLOATING_ASR_ENABLED = "floating_asr_enabled"
         private const val KEY_FLOATING_ONLY_WHEN_IME_VISIBLE = "floating_only_when_ime_visible"
-        private const val KEY_FLOATING_TG_COMPAT_ENABLED = "floating_tg_compat_enabled"
-        private const val KEY_FLOATING_DOUYIN_COMPAT_ENABLED = "floating_douyin_compat_enabled"
+        private const val KEY_FLOATING_WRITE_COMPAT_PACKAGES = "floating_write_compat_packages"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_APP_LANGUAGE_TAG = "app_language_tag"
         private const val KEY_LAST_UPDATE_CHECK_DATE = "last_update_check_date"
@@ -605,6 +608,8 @@ class Prefs(context: Context) {
 
         // 悬浮球默认大小（dp）
         const val DEFAULT_FLOATING_BALL_SIZE_DP = 44
+        // 悬浮写入兼容：默认目标包名（精准匹配，每行一个）
+        const val DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES = "org.telegram.messenger\nnu.gpu.nagram\ncom.ss.android.ugc.aweme"
 
         // Soniox 默认端点
         const val SONIOX_API_BASE_URL = "https://api.soniox.com"
@@ -706,8 +711,8 @@ class Prefs(context: Context) {
         // 统计信息
         o.put(KEY_TOTAL_ASR_CHARS, totalAsrChars)
         // 兼容性模式
-        o.put(KEY_FLOATING_TG_COMPAT_ENABLED, telegramCompatEnabled)
-        o.put(KEY_FLOATING_DOUYIN_COMPAT_ENABLED, douyinCompatEnabled)
+        o.put(KEY_FLOATING_WRITE_COMPAT_ENABLED, floatingWriteTextCompatEnabled)
+        o.put(KEY_FLOATING_WRITE_COMPAT_PACKAGES, floatingWriteCompatPackages)
         return o.toString()
     }
 
@@ -743,8 +748,8 @@ class Prefs(context: Context) {
             optInt(KEY_FLOATING_POS_Y)?.let { floatingBallPosY = it }
             optBool(KEY_FLOATING_ASR_ENABLED)?.let { floatingAsrEnabled = it }
             optBool(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE)?.let { floatingSwitcherOnlyWhenImeVisible = it }
-            optBool(KEY_FLOATING_TG_COMPAT_ENABLED)?.let { telegramCompatEnabled = it }
-            optBool(KEY_FLOATING_DOUYIN_COMPAT_ENABLED)?.let { douyinCompatEnabled = it }
+            optBool(KEY_FLOATING_WRITE_COMPAT_ENABLED)?.let { floatingWriteTextCompatEnabled = it }
+            optString(KEY_FLOATING_WRITE_COMPAT_PACKAGES)?.let { floatingWriteCompatPackages = it }
 
             optString(KEY_LLM_ENDPOINT)?.let { llmEndpoint = it.ifBlank { DEFAULT_LLM_ENDPOINT } }
             optString(KEY_LLM_API_KEY)?.let { llmApiKey = it }

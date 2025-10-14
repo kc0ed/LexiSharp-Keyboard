@@ -127,8 +127,10 @@
     <string name="toast_need_accessibility_perm">Please enable Accessibility Service in system settings to support this feature</string>
     <string name="cd_floating_switcher">Quick switch to LexiSharp keyboard</string>
     <string name="label_floating_asr">Use floating ball for voice recognition</string>
-    <string name="label_tg_compat">Telegram compatibility mode (Empty text can contaminate the clipboard once.)</string>
-    <string name="label_douyin_compat">Douyin compatibility mode (Empty text can contaminate the clipboard once.)</string>
+    <string name="label_floating_write_compat">Floating write-text compatibility mode</string>
+    <string name="desc_floating_write_compat">Some apps expose background placeholder text to Accessibility, which contaminates final insertion. When enabled, in target apps the floating ball switches to Select-All + Paste with an invisible marker to avoid placeholder issues. The clipboard may be used temporarily (best-effort restore). Works for Telegram, Douyin, etc.</string>
+    <string name="label_floating_write_compat_pkgs">Target package names (one per line)</string>
+    <string name="hint_floating_write_compat_pkgs">Enter full package or prefix (e.g., org.telegram or com.ss.android.ugc.aweme). A trailing * means prefix match (e.g., org.telegram.*).</string>
     <string name="cd_floating_asr">Floating ball voice recognition</string>
     <string name="btn_grant_all_permissions">Grant all required permissions</string>
 
