@@ -143,6 +143,42 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         syncSystemBarsToKeyboardBackground(rootView)
         // 重新按偏好应用键盘高度缩放
         applyKeyboardHeightScale(rootView)
+
+        // 若正在录音（点按切换开启），恢复预览为 composing
+        if (asrEngine?.isRunning == true && currentSessionKind == null) {
+            // 不再调用 requestShowSelf，避免“输入法一直出现”
+            updateUiListening()
+            val partial = lastPartialText
+            if (!partial.isNullOrEmpty()) {
+                val ic = currentInputConnection
+                try {
+                    val beforeAll = try { ic?.getTextBeforeCursor(10000, 0)?.toString() } catch (_: Throwable) { null }
+                    if (!beforeAll.isNullOrEmpty() && beforeAll.endsWith(partial)) {
+                        // 退出前系统可能隐式 finishComposing 导致预览固化，这里将其删除后恢复为 composing
+                        try { ic?.deleteSurroundingText(partial.length, 0) } catch (_: Throwable) { }
+                    }
+                    ic?.setComposingText(partial, 1)
+                } catch (_: Throwable) { }
+            }
+        }
+    }
+
+    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(attribute, restarting)
+        // 若正在录音：在连接建立时同步一次预览为 composing
+        if (asrEngine?.isRunning == true && currentSessionKind == null) {
+            val partial = lastPartialText
+            if (!partial.isNullOrEmpty()) {
+                val ic = currentInputConnection
+                try {
+                    val beforeAll = try { ic?.getTextBeforeCursor(10000, 0)?.toString() } catch (_: Throwable) { null }
+                    if (!beforeAll.isNullOrEmpty() && beforeAll.endsWith(partial)) {
+                        try { ic?.deleteSurroundingText(partial.length, 0) } catch (_: Throwable) { }
+                    }
+                    ic?.setComposingText(partial, 1)
+                } catch (_: Throwable) { }
+            }
+        }
     }
 
     private fun isPasswordEditor(info: EditorInfo?): Boolean {
