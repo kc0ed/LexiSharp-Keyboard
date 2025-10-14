@@ -30,5 +30,11 @@ interface StreamingAsrEngine : AsrEngine {
 
         /** 接收中间结果（可选实现） */
         fun onPartial(text: String) { /* default no-op */ }
+
+        /**
+         * 录音阶段结束（例如用户松手或静音自动判停）。
+         * 默认空实现；用于让 UI 在上传/识别阶段将麦克风按钮恢复为“就绪”。
+         */
+        fun onStopped() { /* default no-op */ }
     }
 }

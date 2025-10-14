@@ -35,6 +35,57 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
+      <!-- Silence auto-stop section -->
+      <TextView
+        android:id="@+id/titleSilence"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/section_silence_autostop"
+        android:textStyle="bold" />
+
+      <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchAutoStopSilence"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/label_auto_stop_silence" />
+
+      <TextView
+        android:id="@+id/tvSilenceWindowLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/label_silence_window_ms" />
+
+      <com.google.android.material.slider.Slider
+        android:id="@+id/sliderSilenceWindow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:valueFrom="300"
+        android:valueTo="5000"
+        android:stepSize="100" />
+
+      <TextView
+        android:id="@+id/tvSilenceSensitivityLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/label_silence_sensitivity" />
+
+      <com.google.android.material.slider.Slider
+        android:id="@+id/sliderSilenceSensitivity"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:valueFrom="1"
+        android:valueTo="10"
+        android:stepSize="1" />
+
       <!-- Volcano Engine -->
       <TextView
         android:id="@+id/titleVolc"

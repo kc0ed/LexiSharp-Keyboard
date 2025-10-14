@@ -967,6 +967,18 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         }
     }
 
+    override fun onStopped() {
+        // 录音阶段结束：与手动停止的表现保持一致
+        serviceScope.launch {
+            if (!prefs.postProcessEnabled) {
+                updateUiIdle()
+            } else {
+                txtStatus?.text = getString(R.string.status_recognizing)
+                btnMic?.isSelected = false
+            }
+        }
+    }
+
     private fun trimTrailingPunctuation(s: String): String {
         if (s.isEmpty()) return s
         // Remove trailing ASCII and common CJK punctuation marks at end of utterance

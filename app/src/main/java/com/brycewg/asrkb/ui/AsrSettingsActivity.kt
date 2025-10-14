@@ -13,6 +13,7 @@ import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.store.Prefs
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.slider.Slider
 
 class AsrSettingsActivity : AppCompatActivity() {
 
@@ -27,6 +28,12 @@ class AsrSettingsActivity : AppCompatActivity() {
     val prefs = Prefs(this)
 
     val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
+    // Silence auto-stop controls
+    val switchAutoStopSilence = findViewById<MaterialSwitch>(R.id.switchAutoStopSilence)
+    val tvSilenceWindowLabel = findViewById<View>(R.id.tvSilenceWindowLabel)
+    val sliderSilenceWindow = findViewById<Slider>(R.id.sliderSilenceWindow)
+    val tvSilenceSensitivityLabel = findViewById<View>(R.id.tvSilenceSensitivityLabel)
+    val sliderSilenceSensitivity = findViewById<Slider>(R.id.sliderSilenceSensitivity)
     val groupVolc = findViewById<View>(R.id.groupVolc)
     val groupSf = findViewById<View>(R.id.groupSf)
     val groupEleven = findViewById<View>(R.id.groupEleven)
@@ -145,6 +152,10 @@ class AsrSettingsActivity : AppCompatActivity() {
     etGeminiApiKey.setText(prefs.gemApiKey)
     etGeminiModel.setText(prefs.gemModel)
     etGeminiPrompt.setText(prefs.gemPrompt)
+    // Silence auto-stop initial
+    switchAutoStopSilence.isChecked = prefs.autoStopOnSilenceEnabled
+    sliderSilenceWindow.value = prefs.autoStopSilenceWindowMs.toFloat()
+    sliderSilenceSensitivity.value = prefs.autoStopSilenceSensitivity.toFloat()
     switchVolcStreaming.isChecked = prefs.volcStreamingEnabled
     switchVolcDdc.isChecked = prefs.volcDdcEnabled
     switchVolcVad.isChecked = prefs.volcVadEnabled
@@ -221,6 +232,34 @@ class AsrSettingsActivity : AppCompatActivity() {
     etGeminiApiKey.bindString { prefs.gemApiKey = it }
     etGeminiModel.bindString { prefs.gemModel = it }
     etGeminiPrompt.bindString { prefs.gemPrompt = it }
+
+    fun updateSilenceOptionsVisibility(enabled: Boolean) {
+      val vis = if (enabled) View.VISIBLE else View.GONE
+      tvSilenceWindowLabel.visibility = vis
+      sliderSilenceWindow.visibility = vis
+      tvSilenceSensitivityLabel.visibility = vis
+      sliderSilenceSensitivity.visibility = vis
+    }
+
+    // Initial visibility per switch
+    updateSilenceOptionsVisibility(prefs.autoStopOnSilenceEnabled)
+
+    switchAutoStopSilence.setOnCheckedChangeListener { _, isChecked ->
+      prefs.autoStopOnSilenceEnabled = isChecked
+      updateSilenceOptionsVisibility(isChecked)
+    }
+
+    sliderSilenceWindow.addOnChangeListener { _, value, fromUser ->
+      if (fromUser) {
+        prefs.autoStopSilenceWindowMs = value.toInt().coerceIn(300, 5000)
+      }
+    }
+
+    sliderSilenceSensitivity.addOnChangeListener { _, value, fromUser ->
+      if (fromUser) {
+        prefs.autoStopSilenceSensitivity = value.toInt().coerceIn(1, 10)
+      }
+    }
 
     switchVolcStreaming.setOnCheckedChangeListener { _, isChecked ->
       prefs.volcStreamingEnabled = isChecked

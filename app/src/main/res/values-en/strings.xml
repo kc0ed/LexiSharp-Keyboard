@@ -254,4 +254,9 @@
     <!-- Settings test input -->
     <string name="label_test_input">Test input (try the IME here)</string>
     <string name="btn_test_input">Test Input</string>
+    <!-- Silence auto-stop (ASR) -->
+    <string name="section_silence_autostop">Auto-stop on Silence</string>
+    <string name="label_auto_stop_silence">Auto stop when no speech</string>
+    <string name="label_silence_window_ms">Stop window (ms)</string>
+    <string name="label_silence_sensitivity">Sensitivity (1-10; higher = more sensitive)</string>
 </resources>

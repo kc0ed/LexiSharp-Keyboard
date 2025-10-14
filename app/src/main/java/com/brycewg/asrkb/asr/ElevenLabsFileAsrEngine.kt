@@ -102,13 +102,21 @@ class ElevenLabsFileAsrEngine(
       try {
         recorder.startRecording()
         val buf = ByteArray(chunkBytes)
-        // 最大录音时长 5 分钟
-        val maxBytes = 5 * 60 * sampleRate * 2
+        // 最大录音时长 30 分钟
+        val maxBytes = 30 * 60 * sampleRate * 2
+        val silence = if (prefs.autoStopOnSilenceEnabled)
+          SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
+        else null
         while (true) {
           if (!running.get()) break
           val read = recorder.read(buf, 0, buf.size)
           if (read > 0) {
             pcmBuffer.write(buf, 0, read)
+            if (silence?.shouldStop(buf, read) == true) {
+              running.set(false)
+              try { listener.onStopped() } catch (_: Throwable) {}
+              break
+            }
             if (pcmBuffer.size() >= maxBytes) break
           }
         }

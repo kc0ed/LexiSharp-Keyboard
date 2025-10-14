@@ -104,13 +104,22 @@ class VolcFileAsrEngine(
             try {
                 recorder.startRecording()
                 val buf = ByteArray(chunkBytes)
-                // 软限制以避免在极长录音时占用过多内存（最大约5分钟）
-                val maxBytes = 5 * 60 * sampleRate * 2
+                // 软限制以避免在极长录音时占用过多内存（最大约30分钟）
+                val maxBytes = 30 * 60 * sampleRate * 2
+                val silence = if (prefs.autoStopOnSilenceEnabled)
+                    SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
+                  else null
                 while (true) {
                     if (!running.get()) break
                     val read = recorder.read(buf, 0, buf.size)
                     if (read > 0) {
                         pcmBuffer.write(buf, 0, read)
+                        if (silence?.shouldStop(buf, read) == true) {
+                            // 静音自动判停：立即结束录音阶段并更新 UI 状态
+                            running.set(false)
+                            try { listener.onStopped() } catch (_: Throwable) {}
+                            break
+                        }
                         if (pcmBuffer.size() >= maxBytes) {
                             // 超过限制时自动停止
                             break

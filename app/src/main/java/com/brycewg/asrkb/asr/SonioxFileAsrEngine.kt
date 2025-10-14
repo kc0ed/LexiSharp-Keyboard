@@ -111,13 +111,21 @@ class SonioxFileAsrEngine(
             try {
                 recorder.startRecording()
                 val buf = ByteArray(chunkBytes)
-                // 软限制最大约 5 分钟
-                val maxBytes = 5 * 60 * sampleRate * 2
+                // 软限制最大约 30 分钟
+                val maxBytes = 30 * 60 * sampleRate * 2
+                val silence = if (prefs.autoStopOnSilenceEnabled)
+                    SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
+                else null
                 while (true) {
                     if (!running.get()) break
                     val read = recorder.read(buf, 0, buf.size)
                     if (read > 0) {
                         pcmBuffer.write(buf, 0, read)
+                        if (silence?.shouldStop(buf, read) == true) {
+                            running.set(false)
+                            try { listener.onStopped() } catch (_: Throwable) {}
+                            break
+                        }
                         if (pcmBuffer.size() >= maxBytes) break
                     }
                 }

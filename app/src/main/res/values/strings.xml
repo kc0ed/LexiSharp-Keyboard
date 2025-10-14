@@ -238,6 +238,12 @@
   <string name="btn_download">前往下载</string>
     <string name="btn_manual_check">手动查看</string>
     <string name="btn_cancel">取消</string>
+
+    <!-- Silence auto-stop (ASR) -->
+    <string name="section_silence_autostop">录音判停设置</string>
+    <string name="label_auto_stop_silence">无人说话自动停止录音</string>
+    <string name="label_silence_window_ms">判停时间阈值（毫秒）</string>
+    <string name="label_silence_sensitivity">灵敏度（1-10，越高越敏感）</string>
     <string name="download_source_title">选择下载源</string>
 
     <!-- About -->
