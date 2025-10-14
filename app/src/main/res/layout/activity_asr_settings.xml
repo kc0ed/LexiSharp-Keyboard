@@ -23,18 +23,6 @@
       android:orientation="vertical"
       android:padding="16dp">
 
-      <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/label_asr_vendor"
-        android:textStyle="bold"
-        android:textColor="?attr/colorOnSurface" />
-
-      <Spinner
-        android:id="@+id/spAsrVendor"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
-
       <!-- Silence auto-stop section -->
       <TextView
         android:id="@+id/titleSilence"
@@ -85,6 +73,25 @@
         android:valueFrom="1"
         android:valueTo="10"
         android:stepSize="1" />
+
+      <!-- Divider between silence settings and vendor selection -->
+      <com.google.android.material.divider.MaterialDivider
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp" />
+
+      <!-- ASR vendor selection moved below divider -->
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/label_asr_vendor"
+        android:textStyle="bold"
+        android:textColor="?attr/colorOnSurface" />
+
+      <Spinner
+        android:id="@+id/spAsrVendor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 
       <!-- Volcano Engine -->
       <TextView
