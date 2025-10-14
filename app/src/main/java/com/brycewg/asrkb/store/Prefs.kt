@@ -94,6 +94,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_FLOATING_ASR_ENABLED, true)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_ASR_ENABLED, value) }
 
+    // 悬浮球：Telegram 兼容性模式（使用“全选+粘贴”等策略），默认开启
+    var telegramCompatEnabled: Boolean
+        get() = sp.getBoolean(KEY_FLOATING_TG_COMPAT_ENABLED, true)
+        set(value) = sp.edit { putBoolean(KEY_FLOATING_TG_COMPAT_ENABLED, value) }
+
+    // 悬浮球：抖音（com.ss.android.ugc.aweme）兼容性模式，默认开启
+    var douyinCompatEnabled: Boolean
+        get() = sp.getBoolean(KEY_FLOATING_DOUYIN_COMPAT_ENABLED, true)
+        set(value) = sp.edit { putBoolean(KEY_FLOATING_DOUYIN_COMPAT_ENABLED, value) }
+
     // LLM后处理设置（旧版单一字段；当存在多配置且已选择活动项时仅作回退）
     var postProcessEnabled: Boolean
         get() = sp.getBoolean(KEY_POSTPROC_ENABLED, false)
@@ -428,6 +438,8 @@ class Prefs(context: Context) {
         private const val KEY_FLOATING_POS_Y = "floating_ball_pos_y"
         private const val KEY_FLOATING_ASR_ENABLED = "floating_asr_enabled"
         private const val KEY_FLOATING_ONLY_WHEN_IME_VISIBLE = "floating_only_when_ime_visible"
+        private const val KEY_FLOATING_TG_COMPAT_ENABLED = "floating_tg_compat_enabled"
+        private const val KEY_FLOATING_DOUYIN_COMPAT_ENABLED = "floating_douyin_compat_enabled"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_APP_LANGUAGE_TAG = "app_language_tag"
         private const val KEY_LAST_UPDATE_CHECK_DATE = "last_update_check_date"
@@ -588,6 +600,9 @@ class Prefs(context: Context) {
         o.put(KEY_PUNCT_4, punct4)
         // 统计信息
         o.put(KEY_TOTAL_ASR_CHARS, totalAsrChars)
+        // 兼容性模式
+        o.put(KEY_FLOATING_TG_COMPAT_ENABLED, telegramCompatEnabled)
+        o.put(KEY_FLOATING_DOUYIN_COMPAT_ENABLED, douyinCompatEnabled)
         return o.toString()
     }
 
@@ -619,6 +634,8 @@ class Prefs(context: Context) {
             optInt(KEY_FLOATING_POS_Y)?.let { floatingBallPosY = it }
             optBool(KEY_FLOATING_ASR_ENABLED)?.let { floatingAsrEnabled = it }
             optBool(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE)?.let { floatingSwitcherOnlyWhenImeVisible = it }
+            optBool(KEY_FLOATING_TG_COMPAT_ENABLED)?.let { telegramCompatEnabled = it }
+            optBool(KEY_FLOATING_DOUYIN_COMPAT_ENABLED)?.let { douyinCompatEnabled = it }
 
             optString(KEY_LLM_ENDPOINT)?.let { llmEndpoint = it.ifBlank { DEFAULT_LLM_ENDPOINT } }
             optString(KEY_LLM_API_KEY)?.let { llmApiKey = it }

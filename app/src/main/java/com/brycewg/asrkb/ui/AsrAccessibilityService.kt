@@ -90,6 +90,55 @@ class AsrAccessibilityService : AccessibilityService() {
             return service.performInsertTextSilent(text)
         }
         
+        /**
+         * 获取当前活动窗口的包名（尽力而为）。
+         */
+        fun getActiveWindowPackage(): String? {
+            val service = instance ?: return null
+            return try {
+                // 优先 rootInActiveWindow
+                val root = service.rootInActiveWindow
+                val pkg = root?.packageName?.toString()
+                if (!pkg.isNullOrEmpty()) return pkg
+
+                // 回退：遍历窗口，取 active/focused 的 root 包名
+                val ws = service.windows
+                if (ws != null) {
+                    for (w in ws) {
+                        try {
+                            if (w == null) continue
+                            if (w.isActive || w.isFocused) {
+                                val r = w.root
+                                val p = r?.packageName?.toString()
+                                if (!p.isNullOrEmpty()) return p
+                            }
+                        } catch (_: Throwable) { }
+                    }
+                }
+                null
+            } catch (_: Throwable) { null }
+        }
+
+        /**
+         * 静默粘贴文本：临时放入剪贴板并对焦点输入框执行 PASTE 动作。
+         * 成功返回 true，不弹 Toast、不修改用户可见状态。
+         */
+        fun pasteTextSilent(text: String): Boolean {
+            val service = instance ?: return false
+            return service.performPasteTextSilent(text)
+        }
+
+        /**
+         * 选中全部并以粘贴方式替换为给定文本（静默）。
+         * - 备份并恢复剪贴板；
+         * - 尝试设置选区为[0, 当前文本长度]，失败则回退到大范围；
+         * - 粘贴完成后尝试把光标移到末尾。
+         */
+        fun selectAllAndPasteSilent(text: String): Boolean {
+            val service = instance ?: return false
+            return service.performSelectAllAndPasteSilent(text)
+        }
+        
         private fun copyToClipboard(context: Context, text: String) {
             try {
                 val clipboard = context.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
@@ -188,30 +237,39 @@ class AsrAccessibilityService : AccessibilityService() {
                 return false
             }
 
-            val focusedNode = findFocusedEditableNode(rootNode)
+            val target = findFocusedEditableNode(rootNode)
 
-            if (focusedNode != null) {
-                // 找到可编辑的焦点节点,插入文本
-                Log.d(TAG, "Found focused editable node, inserting text")
-                val arguments = Bundle()
-                arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
-                val success = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
-                // Note: recycle() is deprecated in API 31+, but we keep it for compatibility
-                @Suppress("DEPRECATION")
-                focusedNode.recycle()
-
-                if (success) {
-                    Log.d(TAG, "Text inserted successfully")
+            if (target != null) {
+                Log.d(TAG, "Found editable/focusable node; trying ACTION_SET_TEXT")
+                // 先尝试 ACTION_SET_TEXT 直接写入
+                val args = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
+                }
+                // 保障焦点在目标上
+                try { target.performAction(AccessibilityNodeInfo.ACTION_FOCUS) } catch (_: Throwable) { }
+                val setOk = try { target.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args) } catch (_: Throwable) { false }
+                if (setOk) {
+                    @Suppress("DEPRECATION")
+                    target.recycle()
+                    Log.d(TAG, "ACTION_SET_TEXT success")
                     Toast.makeText(this, getString(com.brycewg.asrkb.R.string.floating_asr_inserted), Toast.LENGTH_SHORT).show()
                     return true
-                } else {
-                    Log.w(TAG, "Failed to insert text")
+                }
+
+                Log.w(TAG, "ACTION_SET_TEXT failed; try clipboard paste fallback")
+                val pasteOk = performPasteFallback(target, text)
+                @Suppress("DEPRECATION")
+                target.recycle()
+                if (pasteOk) {
+                    Log.d(TAG, "Paste fallback success")
+                    Toast.makeText(this, getString(com.brycewg.asrkb.R.string.floating_asr_inserted), Toast.LENGTH_SHORT).show()
+                    return true
                 }
             } else {
-                Log.w(TAG, "No focused editable node found")
+                Log.w(TAG, "No focused editable-like node found")
             }
 
-            // 未找到焦点节点或插入失败,复制到剪贴板
+            // 兜底：复制剪贴板
             copyToClipboard(this, text)
             Toast.makeText(this, getString(com.brycewg.asrkb.R.string.floating_asr_copied), Toast.LENGTH_SHORT).show()
             return false
@@ -240,37 +298,161 @@ class AsrAccessibilityService : AccessibilityService() {
         } catch (_: Throwable) { false }
     }
 
-    private fun findFocusedEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        // 首先尝试查找具有焦点的可编辑节点
-        val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        if (focused != null && focused.isEditable) {
-            return focused
-        }
-        @Suppress("DEPRECATION")
-        focused?.recycle()
+    // 静默粘贴：使用剪贴板 + ACTION_PASTE，尽量不干扰用户当前剪贴板内容
+    private fun performPasteTextSilent(text: String): Boolean {
+        return try {
+            val rootNode = rootInActiveWindow ?: return false
+            val focusedNode = findFocusedEditableNode(rootNode) ?: return false
 
-        // 递归查找可编辑且有焦点的节点
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val previous = try { clipboard.primaryClip } catch (_: Throwable) { null }
+
+            val clip = ClipData.newPlainText("ASR Paste", text)
+            clipboard.setPrimaryClip(clip)
+
+            val ok = focusedNode.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+            @Suppress("DEPRECATION")
+            focusedNode.recycle()
+
+            // 恢复之前的剪贴板（尽最大努力）；若没有之前内容则尝试清空
+            try {
+                if (previous != null) {
+                    clipboard.setPrimaryClip(previous)
+                } else {
+                    try { clipboard.clearPrimaryClip() } catch (_: Throwable) { }
+                }
+            } catch (_: Throwable) {
+                try { clipboard.setPrimaryClip(ClipData.newPlainText("", "")) } catch (_: Throwable) { }
+            }
+
+            ok
+        } catch (_: Throwable) { false }
+    }
+
+    // 选中全部并以“粘贴”方式替换文本（静默）
+    private fun performSelectAllAndPasteSilent(text: String): Boolean {
+        return try {
+            val rootNode = rootInActiveWindow ?: return false
+            val target = findFocusedEditableNode(rootNode) ?: return false
+
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val previous = try { clipboard.primaryClip } catch (_: Throwable) { null }
+
+            val len = try {
+                val full = target.text?.toString() ?: ""
+                full.length
+            } catch (_: Throwable) { 0 }
+
+            // 先尽量聚焦
+            try { target.performAction(AccessibilityNodeInfo.ACTION_FOCUS) } catch (_: Throwable) { }
+            // 选中全部（若失败，后续直接尝试粘贴也可能覆盖）
+            val selArgs = Bundle().apply {
+                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, 0)
+                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, if (len > 0) len else Int.MAX_VALUE)
+            }
+            try { target.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selArgs) } catch (_: Throwable) { }
+
+            // 设置剪贴板并粘贴
+            val clip = ClipData.newPlainText("ASR PasteAll", text)
+            clipboard.setPrimaryClip(clip)
+            var ok = try { target.performAction(AccessibilityNodeInfo.ACTION_PASTE) } catch (_: Throwable) { false }
+            if (!ok) {
+                // 回退：长按后再粘贴一次
+                try { target.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK) } catch (_: Throwable) { }
+                Thread.sleep(100)
+                ok = try { target.performAction(AccessibilityNodeInfo.ACTION_PASTE) } catch (_: Throwable) { false }
+            }
+
+            // 粘贴后把光标尽量移到末尾
+            if (ok) {
+                val endSel = Bundle().apply {
+                    putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, text.length)
+                    putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, text.length)
+                }
+                try { target.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, endSel) } catch (_: Throwable) { }
+            }
+
+            // 恢复剪贴板（或清空）
+            try {
+                if (previous != null) {
+                    clipboard.setPrimaryClip(previous)
+                } else {
+                    try { clipboard.clearPrimaryClip() } catch (_: Throwable) { }
+                }
+            } catch (_: Throwable) {
+                try { clipboard.setPrimaryClip(ClipData.newPlainText("", "")) } catch (_: Throwable) { }
+            }
+
+            @Suppress("DEPRECATION")
+            target.recycle()
+            ok
+        } catch (_: Throwable) { false }
+    }
+
+    private fun findFocusedEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        // 1) 优先取焦点节点且满足“可编辑或类名含 EditText 或支持 setText/paste”
+        root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { f ->
+            if (isEditableLike(f)) return f
+            @Suppress("DEPRECATION") f.recycle()
+        }
+        // 2) 递归寻找“已聚焦且可编辑样式”的节点
         return findEditableNodeRecursive(root)
     }
 
     private fun findEditableNodeRecursive(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        if (node.isEditable && node.isFocused) {
-            return node
-        }
-
+        if (node.isFocused && isEditableLike(node)) return node
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
             val result = findEditableNodeRecursive(child)
             if (result != null) {
-                @Suppress("DEPRECATION")
-                child.recycle()
+                @Suppress("DEPRECATION") child.recycle()
                 return result
             }
-            @Suppress("DEPRECATION")
-            child.recycle()
+            @Suppress("DEPRECATION") child.recycle()
         }
-
         return null
+    }
+
+    private fun isEditableLike(node: AccessibilityNodeInfo): Boolean {
+        if (node.isEditable) return true
+        val cls = node.className?.toString() ?: ""
+        if (cls.contains("EditText", ignoreCase = true)) return true
+        if (nodeHasAction(node, AccessibilityNodeInfo.ACTION_SET_TEXT)) return true
+        if (nodeHasAction(node, AccessibilityNodeInfo.ACTION_PASTE)) return true
+        return false
+    }
+
+    private fun nodeHasAction(node: AccessibilityNodeInfo, action: Int): Boolean {
+        return try {
+            val list = node.actionList
+            list?.any { it.id == action } == true
+        } catch (_: Throwable) { false }
+    }
+
+    private fun performPasteFallback(target: AccessibilityNodeInfo, text: String): Boolean {
+        return try {
+            // 将文本放入剪贴板（带备份并恢复）
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val previous = try { clipboard.primaryClip } catch (_: Throwable) { null }
+            val clip = ClipData.newPlainText("ASR PasteFallback", text)
+            try { clipboard.setPrimaryClip(clip) } catch (_: Throwable) { }
+            // 确保焦点在输入框
+            target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+            // 若可长按，尝试长按以唤出粘贴菜单（部分应用要求）
+            target.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)
+            // 尝试直接执行粘贴动作（多数输入框支持）
+            var ok = target.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+            if (!ok) {
+                // 延迟再试一次，等待长按菜单弹出
+                Thread.sleep(120)
+                ok = target.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+            }
+            // 恢复剪贴板
+            try {
+                if (previous != null) clipboard.setPrimaryClip(previous) else clipboard.clearPrimaryClip()
+            } catch (_: Throwable) { }
+            ok
+        } catch (_: Throwable) { false }
     }
 
     private fun hasEditableFocusNow(): Boolean {

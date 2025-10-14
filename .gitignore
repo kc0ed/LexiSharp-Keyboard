@@ -7,3 +7,4 @@ app/build
 build/
 app/release
 build/reports/problems/problems-report.html
+.worktrees/

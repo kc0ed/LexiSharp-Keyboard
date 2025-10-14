@@ -79,6 +79,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     // 预览会话上下文：记录焦点输入框前后缀与上次中间结果，便于动态预览
     private var focusContext: FocusContext? = null
     private var lastPartialForPreview: String? = null
+    // Telegram 占位符修复：记录是否已注入零宽标记及使用的字符
+    private var markerInserted: Boolean = false
+    private var markerChar: String? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private var imeVisible: Boolean = false
@@ -321,11 +324,18 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         updateBallState()
         showToast(getString(R.string.floating_asr_recording))
 
+        // Telegram 特判：为空时其占位文本会作为真实 text 暴露，先注入零宽字符使其进入“非空”状态，后续全量替换即可避开占位符拼接
+        tryFixTelegramPlaceholderIfNeeded()
+
         asrEngine = buildEngineForCurrentMode()
         Log.d(TAG, "ASR engine created: ${asrEngine?.javaClass?.simpleName}")
         // 记录开始录音时的焦点上下文（prefix/suffix），用于最终写入时避免覆盖原有内容。
-        // 流式与非流式都需要此上下文；仅预览（onPartial）在流式下才会使用。
+        // 注意：在 Telegram 修复逻辑后抓取，但部分 App（如 Telegram）对 ACTION_PASTE 的文本刷新是异步的，
+        // 因此这里先抓取一次，并在短延迟后再刷新一次快照，提升准确性。
         focusContext = AsrAccessibilityService.getCurrentFocusContext()
+        handler.postDelayed({
+            try { focusContext = AsrAccessibilityService.getCurrentFocusContext() } catch (_: Throwable) { }
+        }, 120)
         lastPartialForPreview = null
         asrEngine?.start()
     }
@@ -418,9 +428,30 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             // 插入文本：优先使用开始录音时的焦点快照；若为空，再尝试在提交时获取一次快照，避免覆盖
             if (finalText.isNotEmpty()) {
                 val ctx = focusContext ?: AsrAccessibilityService.getCurrentFocusContext()
-                val toWrite = if (ctx != null) ctx.prefix + finalText + ctx.suffix else finalText
+                var toWrite = if (ctx != null) ctx.prefix + finalText + ctx.suffix else finalText
+                // 若曾注入零宽标记，最终写入前将其移除（包含多个候选标记的兜底去除）
+                toWrite = stripMarkersIfAny(toWrite)
                 Log.d(TAG, "Inserting text: $toWrite (previewCtx=${ctx != null})")
-                AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
+                val pkg = AsrAccessibilityService.getActiveWindowPackage()
+                val isTg = pkg != null && isTelegramLikePackage(pkg)
+                val isDy = pkg != null && isDouyinLikePackage(pkg)
+                val tgCompat = try { prefs.telegramCompatEnabled } catch (_: Throwable) { true }
+                val dyCompat = try { prefs.douyinCompatEnabled } catch (_: Throwable) { true }
+                if (isTg && markerInserted) {
+                    // 初始为空场景（通过注入标记确认），忽略任何“已有文本”前后缀，直接使用最终识别结果
+                    toWrite = finalText
+                }
+                var wrote = false
+                if ((isTg && tgCompat) || (isDy && dyCompat)) {
+                    // 兼容性模式：直接使用“全选+粘贴”，不再先尝试 ACTION_SET_TEXT
+                    wrote = AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
+                    if (!wrote) {
+                        // 兜底一次普通写入，避免彻底失败
+                        wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
+                    }
+                } else {
+                    wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
+                }
                 showToast(getString(R.string.floating_asr_completed))
             } else {
                 Log.w(TAG, "Final text is empty")
@@ -428,6 +459,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             // 结束会话，清理状态
             focusContext = null
             lastPartialForPreview = null
+            markerInserted = false
+            markerChar = null
         }
     }
 
@@ -445,6 +478,47 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             AsrAccessibilityService.insertTextSilent(toWrite)
         }
         lastPartialForPreview = text
+    }
+
+    private fun tryFixTelegramPlaceholderIfNeeded() {
+        markerInserted = false
+        markerChar = null
+        val pkg = AsrAccessibilityService.getActiveWindowPackage() ?: return
+        val tgCompat = try { prefs.telegramCompatEnabled } catch (_: Throwable) { true }
+        // Telegram 家族/分支：官方包前缀 + 常见分支（Nagram）
+        if (!tgCompat || !isTelegramLikePackage(pkg)) return
+        // 候选零宽标记：优先 U+2060（WORD JOINER），若失败回退 U+200B（ZWSP）
+        val candidates = listOf("\u2060", "\u200B")
+        for (m in candidates) {
+            val ok = AsrAccessibilityService.pasteTextSilent(m)
+            if (ok) {
+                markerInserted = true
+                markerChar = m
+                Log.d(TAG, "Telegram fix: injected marker ${Integer.toHexString(m.codePointAt(0))}")
+                break
+            }
+        }
+        // 无论是否注入成功，都不阻塞；后续逻辑仍可工作
+    }
+
+    private fun stripMarkersIfAny(s: String): String {
+        var out = s
+        // 若有会话内记录的标记，优先去除
+        markerChar?.let { if (it.isNotEmpty()) out = out.replace(it, "") }
+        // 保险起见，去除两种候选零宽字符（避免极个别情况下会话记录缺失）
+        out = out.replace("\u2060", "")
+        out = out.replace("\u200B", "")
+        return out
+    }
+
+    private fun isTelegramLikePackage(pkg: String): Boolean {
+        if (pkg.startsWith("org.telegram")) return true
+        if (pkg == "nu.gpu.nagram") return true // Nagram 分支
+        return false
+    }
+
+    private fun isDouyinLikePackage(pkg: String): Boolean {
+        return pkg == "com.ss.android.ugc.aweme"
     }
 
     override fun onError(message: String) {

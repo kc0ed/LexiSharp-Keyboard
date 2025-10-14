@@ -43,7 +43,7 @@
   <string name="title_asr_settings">ASR 设置</string>
   <string name="title_ai_settings">AI 后处理设置</string>
   <string name="title_punct_settings">自定义标点设置</string>
-  <string name="title_floating_settings">悬浮球设置</string>
+    <string name="title_floating_settings">悬浮球设置</string>
     <string name="volc_section_title">Volcano Engine 鉴权参数</string>
     <string name="sf_section_title">SiliconFlow 鉴权参数</string>
     <string name="label_app_key">X-Api-App-Key</string>
@@ -92,6 +92,8 @@
     <string name="toast_need_overlay_perm">请在系统设置中授予“在其他应用上层显示”权限以启用悬浮球</string>
     <string name="cd_floating_switcher">快速切换到 言犀键盘</string>
     <string name="label_floating_asr">使用悬浮球进行语音识别</string>
+    <string name="label_tg_compat">Telegram 兼容性模式（空文本会污染一次粘贴板）</string>
+    <string name="label_douyin_compat">抖音兼容性模式（空文本会污染一次粘贴板）</string>
     <string name="toast_need_accessibility_perm">请在系统设置中授予“无障碍服务”权限以支持此功能</string>
     <string name="cd_floating_asr">悬浮球语音识别</string>
     <string name="btn_grant_all_permissions">授予所有需要的权限</string>

@@ -93,6 +93,8 @@
     <string name="toast_need_accessibility_perm">Please enable Accessibility Service in system settings to support this feature</string>
     <string name="cd_floating_switcher">Quick switch to LexiSharp keyboard</string>
     <string name="label_floating_asr">Use floating ball for voice recognition</string>
+    <string name="label_tg_compat">Telegram compatibility mode (Empty text can contaminate the clipboard once.)</string>
+    <string name="label_douyin_compat">Douyin compatibility mode (Empty text can contaminate the clipboard once.)</string>
     <string name="cd_floating_asr">Floating ball voice recognition</string>
     <string name="btn_grant_all_permissions">Grant all required permissions</string>
 

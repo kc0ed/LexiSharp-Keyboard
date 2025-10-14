@@ -28,6 +28,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     val sliderFloatingAlpha = findViewById<Slider>(R.id.sliderFloatingAlpha)
     val sliderFloatingSize = findViewById<Slider>(R.id.sliderFloatingSize)
     val switchFloatingAsr = findViewById<MaterialSwitch>(R.id.switchFloatingAsr)
+    val switchTelegramCompat = findViewById<MaterialSwitch>(R.id.switchTelegramCompat)
+    val switchDouyinCompat = findViewById<MaterialSwitch>(R.id.switchDouyinCompat)
 
     // 初始状态
     switchFloating.isChecked = prefs.floatingSwitcherEnabled
@@ -35,6 +37,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     sliderFloatingAlpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
     sliderFloatingSize.value = prefs.floatingBallSizeDp.toFloat()
     switchFloatingAsr.isChecked = prefs.floatingAsrEnabled
+    switchTelegramCompat.isChecked = prefs.telegramCompatEnabled
+    switchDouyinCompat.isChecked = prefs.douyinCompatEnabled
 
     // 若两者同开，兜底优先语音识别
     if (switchFloating.isChecked && switchFloatingAsr.isChecked) {
@@ -150,6 +154,16 @@ class FloatingSettingsActivity : AppCompatActivity() {
           stopService(Intent(this, FloatingAsrService::class.java))
         } catch (_: Throwable) { }
       }
+    }
+
+    // Telegram 兼容性模式（默认开）
+    switchTelegramCompat.setOnCheckedChangeListener { _, isChecked ->
+      prefs.telegramCompatEnabled = isChecked
+    }
+
+    // 抖音兼容性模式（默认开）
+    switchDouyinCompat.setOnCheckedChangeListener { _, isChecked ->
+      prefs.douyinCompatEnabled = isChecked
     }
   }
 
