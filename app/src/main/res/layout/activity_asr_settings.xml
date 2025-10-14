@@ -226,6 +226,32 @@
             android:textColor="?attr/colorOnSurface"
             android:textColorHint="?attr/colorOnSurfaceVariant" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchSfUseOmni"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_sf_use_omni" />
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:id="@+id/tilSfOmniPrompt"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_sf_omni_prompt">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etSfOmniPrompt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:maxLines="6"
+            android:gravity="top|start"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
       </LinearLayout>
 
       <!-- ElevenLabs -->

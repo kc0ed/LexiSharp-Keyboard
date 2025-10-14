@@ -54,6 +54,8 @@
     <string name="vendor_soniox">Soniox</string>
     <string name="label_sf_api_key">API Key (Bearer)</string>
     <string name="label_sf_model">Model Name (e.g., FunAudioLLM/SenseVoiceSmall)</string>
+    <string name="label_sf_use_omni">Use voice multimodal model (Qwen3-Omni)</string>
+    <string name="label_sf_omni_prompt">Multimodal transcription prompt (optional)</string>
     <string name="dash_section_title">Alibaba Cloud DashScope ASR Parameters</string>
     <string name="soniox_section_title">Soniox Credentials</string>
     <string name="label_dash_api_key">DashScope API Key (Bearer)</string>

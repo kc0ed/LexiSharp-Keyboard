@@ -286,6 +286,16 @@ class Prefs(context: Context) {
 
     var sfModel: String by stringPref(KEY_SF_MODEL, DEFAULT_SF_MODEL)
 
+    // SiliconFlow：是否使用多模态（Qwen3-Omni 系列，通过 chat/completions）
+    var sfUseOmni: Boolean
+        get() = sp.getBoolean(KEY_SF_USE_OMNI, false)
+        set(value) = sp.edit { putBoolean(KEY_SF_USE_OMNI, value) }
+
+    // SiliconFlow：多模态识别提示词（chat/completions 文本部分）
+    var sfOmniPrompt: String
+        get() = sp.getString(KEY_SF_OMNI_PROMPT, DEFAULT_SF_OMNI_PROMPT) ?: DEFAULT_SF_OMNI_PROMPT
+        set(value) = sp.edit { putString(KEY_SF_OMNI_PROMPT, value) }
+
     // 阿里云百炼（DashScope）凭证
     var dashApiKey: String by stringPref(KEY_DASH_API_KEY, "")
 
@@ -523,6 +533,8 @@ class Prefs(context: Context) {
         private const val KEY_ASR_VENDOR = "asr_vendor"
         private const val KEY_SF_API_KEY = "sf_api_key"
         private const val KEY_SF_MODEL = "sf_model"
+        private const val KEY_SF_USE_OMNI = "sf_use_omni"
+        private const val KEY_SF_OMNI_PROMPT = "sf_omni_prompt"
         private const val KEY_ELEVEN_API_KEY = "eleven_api_key"
         private const val KEY_ELEVEN_MODEL_ID = "eleven_model_id"
         private const val KEY_OA_ASR_ENDPOINT = "oa_asr_endpoint"
@@ -553,7 +565,10 @@ class Prefs(context: Context) {
 
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
         const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
+        const val SF_CHAT_COMPLETIONS_ENDPOINT = "https://api.siliconflow.cn/v1/chat/completions"
         const val DEFAULT_SF_MODEL = "FunAudioLLM/SenseVoiceSmall"
+        const val DEFAULT_SF_OMNI_MODEL = "Qwen/Qwen3-Omni-30B-A3B-Instruct"
+        const val DEFAULT_SF_OMNI_PROMPT = "请将以下音频逐字转写为文本，不要输出解释或前后缀。输入语言可能是中文、英文或其他语言"
 
         // OpenAI Audio Transcriptions 默认值
         const val DEFAULT_OA_ASR_ENDPOINT = "https://api.openai.com/v1/audio/transcriptions"

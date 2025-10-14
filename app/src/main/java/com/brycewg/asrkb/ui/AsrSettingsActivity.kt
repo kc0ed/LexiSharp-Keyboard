@@ -41,6 +41,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     val groupDash = findViewById<View>(R.id.groupDashScope)
     val groupGemini = findViewById<View>(R.id.groupGemini)
     val groupSoniox = findViewById<View>(R.id.groupSoniox)
+    val switchSfUseOmni = findViewById<MaterialSwitch>(R.id.switchSfUseOmni)
+    val tilSfOmniPrompt = findViewById<View>(R.id.tilSfOmniPrompt)
 
     val titleVolc = findViewById<View>(R.id.titleVolc)
     val titleSf = findViewById<View>(R.id.titleSf)
@@ -54,6 +56,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val etAccessKey = findViewById<EditText>(R.id.etAccessKey)
     val etSfApiKey = findViewById<EditText>(R.id.etSfApiKey)
     val etSfModel = findViewById<EditText>(R.id.etSfModel)
+    val etSfOmniPrompt = findViewById<EditText>(R.id.etSfOmniPrompt)
     val etElevenApiKey = findViewById<EditText>(R.id.etElevenApiKey)
     val etElevenModel = findViewById<EditText>(R.id.etElevenModel)
     val etDashApiKey = findViewById<EditText>(R.id.etDashApiKey)
@@ -141,6 +144,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     etAccessKey.setText(prefs.accessKey)
     etSfApiKey.setText(prefs.sfApiKey)
     etSfModel.setText(prefs.sfModel)
+    switchSfUseOmni.isChecked = prefs.sfUseOmni
+    etSfOmniPrompt.setText(prefs.sfOmniPrompt)
     etElevenApiKey.setText(prefs.elevenApiKey)
     etElevenModel.setText(prefs.elevenModelId)
     etDashApiKey.setText(prefs.dashApiKey)
@@ -221,6 +226,17 @@ class AsrSettingsActivity : AppCompatActivity() {
     etAccessKey.bindString { prefs.accessKey = it }
     etSfApiKey.bindString { prefs.sfApiKey = it }
     etSfModel.bindString { prefs.sfModel = it }
+    etSfOmniPrompt.bindString { prefs.sfOmniPrompt = it }
+
+    fun updateSfOmniVisibility(enabled: Boolean) {
+      tilSfOmniPrompt.visibility = if (enabled) View.VISIBLE else View.GONE
+    }
+    // 初始可见性
+    updateSfOmniVisibility(prefs.sfUseOmni)
+    switchSfUseOmni.setOnCheckedChangeListener { _, isChecked ->
+      prefs.sfUseOmni = isChecked
+      updateSfOmniVisibility(isChecked)
+    }
     etElevenApiKey.bindString { prefs.elevenApiKey = it }
     etElevenModel.bindString { prefs.elevenModelId = it }
     etDashApiKey.bindString { prefs.dashApiKey = it }
