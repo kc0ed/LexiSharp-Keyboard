@@ -222,6 +222,19 @@ class AiPostSettingsActivity : AppCompatActivity() {
       Toast.makeText(this, getString(R.string.toast_preset_added), Toast.LENGTH_SHORT).show()
     }
 
+    findViewById<Button>(R.id.btnDeletePromptPreset).setOnClickListener {
+      val list = prefs.getPromptPresets().toMutableList()
+      if (list.isEmpty()) return@setOnClickListener
+      val idx = list.indexOfFirst { it.id == prefs.activePromptId }
+      if (idx >= 0) {
+        list.removeAt(idx)
+        prefs.setPromptPresets(list)
+        prefs.activePromptId = list.firstOrNull()?.id ?: ""
+        refreshPromptPresets()
+        Toast.makeText(this, getString(R.string.toast_preset_deleted), Toast.LENGTH_SHORT).show()
+      }
+    }
+
     // 初始载入
     refreshPromptPresets()
   }

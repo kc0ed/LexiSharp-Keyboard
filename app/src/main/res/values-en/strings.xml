@@ -134,6 +134,7 @@
     <string name="label_llm_prompt_title">Prompt Preset Title</string>
     <string name="label_llm_prompt_presets">Choose Prompt Preset</string>
     <string name="btn_add_preset">Add/Save as Preset</string>
+    <string name="btn_delete_preset">Delete Preset</string>
     <string name="btn_export_settings">Export Settings</string>
     <string name="btn_import_settings">Import Settings</string>
     <string name="label_llm_choose_profile">Select post-processing model</string>
@@ -159,6 +160,7 @@
     <string name="lang_en">English</string>
     <string name="toast_saved">Saved</string>
     <string name="toast_preset_added">Preset added</string>
+    <string name="toast_preset_deleted">Preset deleted</string>
     <string name="untitled_preset">Untitled preset</string>
     <string name="switched_preset">Switched: %1$s</string>
     <string name="toast_export_success">Exported: %1$s</string>
