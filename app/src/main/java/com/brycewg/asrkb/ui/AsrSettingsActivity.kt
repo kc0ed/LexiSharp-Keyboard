@@ -56,6 +56,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val etOpenAiModel = findViewById<EditText>(R.id.etOpenAiModel)
     val etGeminiApiKey = findViewById<EditText>(R.id.etGeminiApiKey)
     val etGeminiModel = findViewById<EditText>(R.id.etGeminiModel)
+    val etGeminiPrompt = findViewById<EditText>(R.id.etGeminiPrompt)
     val switchVolcStreaming = findViewById<MaterialSwitch>(R.id.switchVolcStreaming)
     val switchVolcDdc = findViewById<MaterialSwitch>(R.id.switchVolcDdc)
     val switchVolcVad = findViewById<MaterialSwitch>(R.id.switchVolcVad)
@@ -139,6 +140,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     etOpenAiModel.setText(prefs.oaAsrModel)
     etGeminiApiKey.setText(prefs.gemApiKey)
     etGeminiModel.setText(prefs.gemModel)
+    etGeminiPrompt.setText(prefs.gemPrompt)
     switchVolcStreaming.isChecked = prefs.volcStreamingEnabled
     switchVolcDdc.isChecked = prefs.volcDdcEnabled
     switchVolcVad.isChecked = prefs.volcVadEnabled
@@ -213,6 +215,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     etOpenAiModel.bindString { prefs.oaAsrModel = it }
     etGeminiApiKey.bindString { prefs.gemApiKey = it }
     etGeminiModel.bindString { prefs.gemModel = it }
+    etGeminiPrompt.bindString { prefs.gemPrompt = it }
 
     switchVolcStreaming.setOnCheckedChangeListener { _, isChecked ->
       prefs.volcStreamingEnabled = isChecked
