@@ -18,6 +18,7 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.appcompat.app.AppCompatActivity
 import com.brycewg.asrkb.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import android.view.LayoutInflater
 import com.brycewg.asrkb.store.Prefs
 import android.view.View
@@ -26,6 +27,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -73,6 +75,11 @@ class SettingsActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnCheckUpdate).setOnClickListener {
             checkForUpdates()
+        }
+
+        // 测试输入：点击按钮弹出底部输入框（用于体验输入法）
+        findViewById<Button>(R.id.btnTestInput)?.setOnClickListener {
+            showTestInputBottomSheet()
         }
 
         // 关于
@@ -567,6 +574,25 @@ class SettingsActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.btn_cancel, null)
             .show()
+    }
+
+    // 设置页测试输入：底部浮层输入框
+    private fun showTestInputBottomSheet() {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.dialog_test_input, null, false)
+        dialog.setContentView(view)
+
+        val edit = view.findViewById<TextInputEditText>(R.id.etBottomTestInput)
+        // 自动聚焦并弹出输入法
+        edit?.post {
+            try {
+                edit.requestFocus()
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(edit, InputMethodManager.SHOW_IMPLICIT)
+            } catch (_: Throwable) { }
+        }
+
+        dialog.show()
     }
 
     private fun buildDirectApkUrl(originalUrl: String, version: String): String {

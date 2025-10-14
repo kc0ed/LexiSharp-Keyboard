@@ -82,6 +82,15 @@
           style="@style/Widget.Material3.Button.OutlinedButton"
           android:text="@string/btn_check_update" />
 
+        <!-- 测试输入：按钮，点击后弹出底部输入框 -->
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnTestInput"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.OutlinedButton"
+          android:text="@string/btn_test_input" />
+
         <com.google.android.material.divider.MaterialDivider
           android:layout_width="match_parent"
           android:layout_height="wrap_content"

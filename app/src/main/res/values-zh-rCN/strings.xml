@@ -244,4 +244,8 @@
     <string name="about_project_url">https://github.com/BryceWG/LexiSharp-Keyboard</string>
     <string name="about_desc">简洁高效的语音输入法，支持多家 ASR 与 LLM 后处理</string>
 
+    <!-- Settings test input -->
+    <string name="label_test_input">测试输入（用于体验输入法）</string>
+    <string name="btn_test_input">测试输入</string>
+
 </resources>

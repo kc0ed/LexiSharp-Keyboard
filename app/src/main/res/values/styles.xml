@@ -1,0 +1,7 @@
+<resources>
+  <!-- 让 TextInputLayout 使用与按钮类似的大圆角外观 -->
+  <style name="AsrkbShapeOverlayLarge">
+    <item name="cornerFamily">rounded</item>
+    <item name="cornerSize">20dp</item>
+  </style>
+</resources>
