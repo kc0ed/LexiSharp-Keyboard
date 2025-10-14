@@ -537,6 +537,22 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         }
     }
 
+    override fun onStopped() {
+        // 录音阶段结束：若开启后处理，切至处理中；否则恢复空闲外观但仍显示“识别中…”
+        serviceScope.launch {
+            isRecording = false
+            if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
+                isProcessing = true
+                updateBallState()
+                showToast(getString(R.string.floating_asr_processing))
+            } else {
+                isProcessing = false
+                updateBallState()
+                showToast(getString(R.string.floating_asr_recognizing))
+            }
+        }
+    }
+
     override fun onPartial(text: String) {
         // 仅在录音中且存在焦点可编辑框时进行动态预览；
         // 无焦点时按需忽略（不预览）。

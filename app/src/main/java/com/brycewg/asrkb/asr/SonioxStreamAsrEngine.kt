@@ -148,9 +148,17 @@ class SonioxStreamAsrEngine(
             try {
                 recorder.startRecording()
                 val buf = ByteArray(readSize)
+                val silence = if (prefs.autoStopOnSilenceEnabled)
+                    SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
+                else null
                 while (running.get()) {
                     val n = recorder.read(buf, 0, buf.size)
                     if (n > 0) {
+                        if (silence?.shouldStop(buf, n) == true) {
+                            try { listener.onStopped() } catch (_: Throwable) {}
+                            stop()
+                            break
+                        }
                         webSocket.send(ByteString.of(*buf.copyOfRange(0, n)))
                     }
                 }

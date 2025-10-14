@@ -215,9 +215,18 @@ class VolcStreamAsrEngine(
                     return@launch
                 }
                 val buf = ByteArray(chunkBytes)
+                val silence = if (prefs.autoStopOnSilenceEnabled)
+                    SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
+                else null
                 while (isActive && running.get()) {
                     val read = recorder.read(buf, 0, buf.size)
                     if (read > 0) {
+                        // 客户端静音判停：触发后立即停止录音并让 UI 进入“识别中/就绪”
+                        if (silence?.shouldStop(buf, read) == true) {
+                            try { listener.onStopped() } catch (_: Throwable) {}
+                            stop()
+                            break
+                        }
                         sendAudioFrame(buf.copyOf(read), last = false)
                     } else if (read < 0) {
                         throw IOException("AudioRecord read error: $read")
