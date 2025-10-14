@@ -6,7 +6,7 @@
 
 简体中文 | [English](README_EN.md)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](https://www.android.com/)
 [![Language](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue?logo=telegram)](https://t.me/+SqgKaDglg540YjIx)
@@ -26,6 +26,7 @@
 ### 🎤 语音识别
 
 - **长按录音** - 简单直观的录音操作
+- **智能判停** - 静音自动停止录音,无需手动操作
 - **极速识别** - 松开即上传，快速返回结果
 - **多引擎支持** - 7+ 主流 ASR 服务
 - **AI 文本后处理** - LLM 后处理修正识别结果
@@ -38,6 +39,7 @@
 - **跨输入法使用** - 任何输入法都能语音输入
 - **无缝集成** - 保持原有输入习惯
 - **自动插入** - 识别结果自动填入
+- **兼容性模式** - 支持 Telegram、抖音等特殊应用
 - **视觉反馈** - 录音/处理状态一目了然
 
 </td>
@@ -59,8 +61,11 @@
 
 - **Material3 设计** - 现代化界面风格，Monet 色彩适配
 - **多语言支持** - 中英文快速切换
+- **键盘高度调节** - 三档高度自由选择
+- **测试输入** - 设置页内直接测试输入法
 - **统计功能** - 识别字数统计
 - **振动反馈** - 按下麦克风时振动反馈
+- **自动更新检查** - 每日打开软件自动检查新版本
 
 </td>
 </tr>
@@ -154,6 +159,11 @@
 2. 松开按钮后，音频会自动上传到所选的 ASR 服务进行识别
 3. 识别结果会自动插入到当前输入框
 
+**智能判停功能**:
+
+- 开启后,检测到连续静音会自动停止录音
+- 可在设置中调整静音时长(0.5-3 秒)和灵敏度(1-10 档)
+
 </details>
 
 <details>
@@ -246,6 +256,19 @@
 - 🔘 **空闲状态**：麦克风图标显示为灰色
 - 🔴 **录音中**：图标变为红色
 - 🔵 **AI 处理中**：图标变为蓝色
+
+</details>
+
+<details>
+<summary><b>兼容性模式</b></summary>
+
+部分应用对无障碍服务文本插入支持不佳，可在悬浮球设置中开启兼容性模式：
+
+| 应用类型    | 兼容性问题                | 解决方案                    |
+| ----------- | ------------------------- | --------------------------- |
+| 📱 Telegram | 占位符显示异常            | 使用零宽字符 + 全选粘贴策略 |
+| 🎵 抖音     | 文本插入失败              | 使用全选粘贴策略            |
+| 📝 其他应用 | 部分输入框不支持 SET_TEXT | 自动回退到剪贴板粘贴        |
 
 </details>
 
@@ -357,6 +380,8 @@
 
 - `API Key`: API 密钥
 - `Model`: 模型名称
+- `识别提示词`: 自定义上下文引导
+- `识别语言`: 手动指定语种
 
 > 📝 采用 OSS 中转，延迟稍高
 
@@ -369,6 +394,7 @@
 
 - `API Key`: API 密钥
 - `Model`: 模型名称
+- `转录提示词`: 自定义转录指导
 
 **特点**: 通过提示词进行语音理解
 
@@ -387,6 +413,7 @@
 **配置参数**:
 
 - `API Key`: API 密钥
+- `识别语言`: 支持多语言选择
 
 **端点**:
 
@@ -414,12 +441,23 @@
 | 服务端点   | LLM API 地址         | `https://api.openai.com/v1/chat/completions` |
 | 模型名称   | 使用的 LLM 模型      | `gpt-4o-mini`                                |
 | 温度参数   | 控制生成文本的随机性 | `0.0 - 2.0`                                  |
-| 提示词预设 | 多种预设提示词       | 可自定义添加                                 |
+| 提示词预设 | 多种预设提示词       | 可自定义添加和删除                           |
 | 自动后处理 | 自动后处理开关       | 开启/关闭                                    |
 
 </details>
 
 ### 🎛️ 其他功能配置
+
+<details>
+<summary><b>ASR 高级设置</b></summary>
+
+- **静音自动判停**: 开启/关闭自动判停功能
+- **判停时长**: 0.5-3 秒可调
+- **判停灵敏度**: 低/中/高三档
+- **识别提示词**: 支持 Gemini、DashScope 等引擎自定义提示词
+- **语言选择**: Soniox、DashScope 支持多语言选择
+
+</details>
 
 <details>
 <summary><b>输入设置</b></summary>
@@ -433,7 +471,7 @@
 <details>
 <summary><b>悬浮球设置</b></summary>
 
-- **语音识别悬浮球**: 透明度、大小调节
+- **语音识别悬浮球**: 透明度、大小调节、兼容性模式
 - **输入法切换悬浮球**: 快速切换功能
 
 </details>
@@ -441,8 +479,11 @@
 <details>
 <summary><b>体验设置</b></summary>
 
+- **键盘高度**: 小/中/大三档可调
 - **振动反馈**: 麦克风 / 键盘按键振动
 - **语言设置**: 跟随系统 / 简体中文 / 英文
+- **测试输入**: 设置页内直接测试输入法
+- **自动更新**: 每日自动检查新版本
 
 </details>
 
@@ -523,10 +564,10 @@ SharedPreferences (数据存储)
 
 ## 📄 许可证
 
-本项目采用 **MIT 许可证**，详见 [LICENSE](LICENSE) 文件。
+本项目采用 **Apache 2.0 许可证**，详见 [LICENSE](LICENSE) 文件。
 
 ```
-MIT License - 自由使用、修改、分发
+Apache 2.0 License - 自由使用、修改、分发，需保留版权声明
 ```
 
 ---

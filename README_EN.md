@@ -6,7 +6,7 @@
 
 English | [简体中文](README.md)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](https://www.android.com/)
 [![Language](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue?logo=telegram)](https://t.me/+SqgKaDglg540YjIx)
@@ -26,6 +26,7 @@ English | [简体中文](README.md)
 ### 🎤 Voice Recognition
 
 - **Press & Hold Recording** - Simple and intuitive recording
+- **Smart Auto-Stop** - Automatically stops recording on silence
 - **Fast Recognition** - Release to upload, quick results
 - **Multi-Engine Support** - 7+ mainstream ASR services
 - **AI Text Optimization** - LLM smart correction of recognition results
@@ -38,7 +39,8 @@ English | [简体中文](README.md)
 - **Cross-IME Usage** - Voice input with any input method
 - **Seamless Integration** - Maintain your original typing habits
 - **Auto Insertion** - Recognition results automatically inserted
-- **Visual Feedback**
+- **Compatibility Mode** - Support for Telegram, TikTok and other special apps
+- **Visual Feedback** - Recording/processing status at a glance
 
 </td>
 </tr>
@@ -59,8 +61,11 @@ English | [简体中文](README.md)
 
 - **Material3 Design** - Modern interface style with Monet color adaptation
 - **Multi-language Support** - Quick switching between Chinese and English
+- **Keyboard Height Adjustment** - Three height levels to choose from
+- **Test Input** - Test input method directly in settings
 - **Statistics** - Recognition character count
 - **Vibration Feedback** - Customizable feedback intensity
+- **Auto Update Check** - Daily automatic update check on app launch
 
 </td>
 </tr>
@@ -155,6 +160,12 @@ English | [简体中文](README.md)
 2. Release the button, and the audio will be automatically uploaded to the selected ASR service for recognition
 3. Recognition results will be automatically inserted into the current input field
 
+**Smart Auto-Stop Feature**:
+
+- When enabled, automatically stops recording when continuous silence is detected
+- Adjustable silence duration (0.5-3 seconds) and sensitivity (1-10 levels) in settings
+- Supports both streaming recognition (Volcengine, Soniox) and file recognition modes
+
 </details>
 
 <details>
@@ -247,6 +258,21 @@ English | [简体中文](README.md)
 - 🔘 **Idle State**: Microphone icon shows in gray
 - 🔴 **Recording**: Icon turns red
 - 🔵 **AI Processing**: Icon turns blue
+
+</details>
+
+<details>
+<summary><b>Compatibility Mode</b></summary>
+
+Some apps have poor support for accessibility service text insertion. You can enable compatibility mode in floating ball settings:
+
+| App Type      | Compatibility Issue                      | Solution                                      |
+| ------------- | ---------------------------------------- | --------------------------------------------- |
+| 📱 Telegram   | Placeholder display abnormality          | Use zero-width character + select all & paste |
+| 🎵 TikTok     | Text insertion failure                   | Use select all & paste strategy               |
+| 📝 Other Apps | Some input fields don't support SET_TEXT | Auto fallback to clipboard paste              |
+
+> 💡 **Tip**: If you encounter text insertion issues, try enabling compatibility mode for the corresponding app
 
 </details>
 
@@ -358,6 +384,8 @@ The settings page supports configuration switching by vendor, showing only corre
 
 - `API Key`: API key
 - `Model`: Model name
+- `Recognition Prompt`: Custom context guidance
+- `Recognition Language`: Manually specify language
 
 > 📝 Uses OSS relay, slightly higher latency
 
@@ -370,6 +398,7 @@ The settings page supports configuration switching by vendor, showing only corre
 
 - `API Key`: API key
 - `Model`: Model name
+- `Transcription Prompt`: Custom transcription guidance
 
 **Feature**: Voice understanding through prompts
 
@@ -388,6 +417,7 @@ The settings page supports configuration switching by vendor, showing only corre
 **Configuration Parameters**:
 
 - `API Key`: API key
+- `Recognition Language`: Multi-language support
 
 **Endpoints**:
 
@@ -415,12 +445,23 @@ The settings page supports configuration switching by vendor, showing only corre
 | Service Endpoint  | LLM API address                      | `https://api.openai.com/v1/chat/completions` |
 | Model Name        | LLM model to use                     | `gpt-4o-mini`                                |
 | Temperature       | Control randomness of generated text | `0.0 - 2.0`                                  |
-| Prompt Presets    | Multiple preset prompts              | Customizable                                 |
+| Prompt Presets    | Multiple preset prompts              | Customizable, can add and delete             |
 | Auto Post-Process | Automatic post-processing toggle     | Enable/Disable                               |
 
 </details>
 
 ### 🎛️ Other Feature Configurations
+
+<details>
+<summary><b>ASR Advanced Settings</b></summary>
+
+- **Silence Auto-Stop**: Enable/disable auto-stop feature
+- **Stop Duration**: Adjustable from 0.5-3 seconds
+- **Stop Sensitivity**: Three levels - 1-10
+- **Recognition Prompt**: Support custom prompts for Gemini, DashScope and other engines
+- **Language Selection**: Soniox, DashScope support multi-language selection
+
+</details>
 
 <details>
 <summary><b>Input Settings</b></summary>
@@ -434,7 +475,7 @@ The settings page supports configuration switching by vendor, showing only corre
 <details>
 <summary><b>Floating Ball Settings</b></summary>
 
-- **Voice Recognition Ball**: Transparency, size adjustment
+- **Voice Recognition Ball**: Transparency, size adjustment, compatibility mode
 - **IME Switching Ball**: Quick switching function
 
 </details>
@@ -442,8 +483,11 @@ The settings page supports configuration switching by vendor, showing only corre
 <details>
 <summary><b>Experience Settings</b></summary>
 
+- **Keyboard Height**: Three levels - Small/Medium/Large
 - **Vibration Feedback**: Microphone / keyboard button vibration
 - **Language Settings**: Follow system / Simplified Chinese / English
+- **Test Input**: Test input method directly in settings
+- **Auto Update**: Daily automatic update check on app launch
 
 </details>
 
@@ -524,10 +568,10 @@ Compression: GZIP support
 
 ## 📄 License
 
-This project is licensed under the **MIT License**, see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Apache 2.0 License**, see the [LICENSE](LICENSE) file for details.
 
 ```
-MIT License - Free to use, modify, distribute
+Apache 2.0 License - Free to use, modify, distribute, must retain copyright notice
 ```
 
 ---
