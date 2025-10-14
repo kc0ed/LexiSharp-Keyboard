@@ -65,6 +65,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     val tvVolcLanguageLabel = findViewById<View>(R.id.tvVolcLanguageLabel)
     val etSonioxApiKey = findViewById<EditText>(R.id.etSonioxApiKey)
     val switchSonioxStreaming = findViewById<MaterialSwitch>(R.id.switchSonioxStreaming)
+    val tvSonioxLanguageLabel = findViewById<View>(R.id.tvSonioxLanguageLabel)
+    val tvSonioxLanguageValue = findViewById<android.widget.TextView>(R.id.tvSonioxLanguageValue)
 
     fun applyVendorVisibility(v: AsrVendor) {
       val visMap = mapOf(
@@ -144,6 +146,59 @@ class AsrSettingsActivity : AppCompatActivity() {
     switchVolcFirstCharAccel.isChecked = prefs.volcFirstCharAccelEnabled
     etSonioxApiKey.setText(prefs.sonioxApiKey)
     switchSonioxStreaming.isChecked = prefs.sonioxStreamingEnabled
+    // Soniox 语言：多选（language_hints）
+    val sonioxLangLabels = listOf(
+      getString(R.string.soniox_lang_auto),
+      getString(R.string.soniox_lang_en),
+      getString(R.string.soniox_lang_zh),
+      getString(R.string.soniox_lang_ja),
+      getString(R.string.soniox_lang_ko),
+      getString(R.string.soniox_lang_es),
+      getString(R.string.soniox_lang_pt),
+      getString(R.string.soniox_lang_de),
+      getString(R.string.soniox_lang_fr),
+      getString(R.string.soniox_lang_id),
+      getString(R.string.soniox_lang_ru),
+      getString(R.string.soniox_lang_ar),
+      getString(R.string.soniox_lang_hi),
+      getString(R.string.soniox_lang_vi),
+      getString(R.string.soniox_lang_th),
+      getString(R.string.soniox_lang_ms),
+      getString(R.string.soniox_lang_fil)
+    )
+    val sonioxLangCodes = listOf(
+      "",      // Auto / unset hints
+      "en",
+      "zh",
+      "ja",
+      "ko",
+      "es",
+      "pt",
+      "de",
+      "fr",
+      "id",
+      "ru",
+      "ar",
+      "hi",
+      "vi",
+      "th",
+      "ms",
+      "fil"
+    )
+
+    fun updateSonioxLangSummary() {
+      val selected = prefs.getSonioxLanguages()
+      if (selected.isEmpty()) {
+        tvSonioxLanguageValue.text = getString(R.string.soniox_lang_auto)
+        return
+      }
+      val names = selected.mapNotNull { code ->
+        val idx = sonioxLangCodes.indexOf(code)
+        if (idx >= 0) sonioxLangLabels[idx] else null
+      }
+      tvSonioxLanguageValue.text = if (names.isEmpty()) getString(R.string.soniox_lang_auto) else names.joinToString(separator = "、")
+    }
+    updateSonioxLangSummary()
 
     etAppKey.bindString { prefs.appKey = it }
     etAccessKey.bindString { prefs.accessKey = it }
@@ -238,6 +293,40 @@ class AsrSettingsActivity : AppCompatActivity() {
     etSonioxApiKey.bindString { prefs.sonioxApiKey = it }
     switchSonioxStreaming.setOnCheckedChangeListener { _, isChecked ->
       prefs.sonioxStreamingEnabled = isChecked
+    }
+    tvSonioxLanguageValue.setOnClickListener {
+      val saved = prefs.getSonioxLanguages()
+      val checked = BooleanArray(sonioxLangCodes.size) { idx ->
+        // Auto（空）特殊处理：若未选任何语言则默认选中 auto
+        if (idx == 0) saved.isEmpty() else sonioxLangCodes[idx] in saved
+      }
+      val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        .setTitle(R.string.label_soniox_language)
+        .setMultiChoiceItems(sonioxLangLabels.toTypedArray(), checked) { _, which, isChecked ->
+          if (which == 0) {
+            // 选择了 自动 -> 清空其余
+            if (isChecked) {
+              for (i in 1 until checked.size) checked[i] = false
+            }
+          } else if (isChecked) {
+            // 选择任意非自动 -> 取消 自动
+            checked[0] = false
+          }
+        }
+        .setPositiveButton(R.string.btn_save) { _, _ ->
+          // 收集选择
+          val codes = mutableListOf<String>()
+          for (i in checked.indices) {
+            if (checked[i]) {
+              val code = sonioxLangCodes[i]
+              if (code.isNotEmpty()) codes.add(code)
+            }
+          }
+          prefs.setSonioxLanguages(codes)
+          updateSonioxLangSummary()
+        }
+        .setNegativeButton(R.string.btn_cancel, null)
+      builder.show()
     }
   }
 }

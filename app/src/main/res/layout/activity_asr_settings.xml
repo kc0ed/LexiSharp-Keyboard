@@ -417,6 +417,26 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           android:text="@string/label_soniox_streaming" />
+
+        <TextView
+          android:id="@+id/tvSonioxLanguageLabel"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:textColor="?attr/colorOnSurface"
+          android:text="@string/label_soniox_language" />
+
+        <TextView
+          android:id="@+id/tvSonioxLanguageValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/soniox_lang_auto" />
       </LinearLayout>
     </LinearLayout>
   </ScrollView>

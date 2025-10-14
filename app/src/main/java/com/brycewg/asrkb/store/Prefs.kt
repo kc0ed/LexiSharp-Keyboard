@@ -300,6 +300,40 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SONIOX_STREAMING_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_SONIOX_STREAMING_ENABLED, value) }
 
+    // Soniox：识别语言提示（language_hints）；空字符串表示不设置（多语言自动）
+    var sonioxLanguage: String
+        get() = sp.getString(KEY_SONIOX_LANGUAGE, "") ?: ""
+        set(value) = sp.edit { putString(KEY_SONIOX_LANGUAGE, value.trim()) }
+
+    // Soniox：多语言提示（JSON 数组字符串），优先于单一字段
+    var sonioxLanguagesJson: String by stringPref(KEY_SONIOX_LANGUAGES, "")
+
+    fun getSonioxLanguages(): List<String> {
+        val raw = sonioxLanguagesJson.trim()
+        if (raw.isBlank()) {
+            val single = sonioxLanguage.trim()
+            return if (single.isNotEmpty()) listOf(single) else emptyList()
+        }
+        return try {
+            val arr = org.json.JSONArray(raw)
+            val list = mutableListOf<String>()
+            for (i in 0 until arr.length()) {
+                val v = arr.optString(i).trim()
+                if (v.isNotEmpty()) list.add(v)
+            }
+            list.distinct()
+        } catch (_: Throwable) { emptyList() }
+    }
+
+    fun setSonioxLanguages(list: List<String>) {
+        val distinct = list.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        val arr = org.json.JSONArray()
+        distinct.forEach { arr.put(it) }
+        sonioxLanguagesJson = arr.toString()
+        // 兼容旧字段：保留第一个；为空则清空
+        sonioxLanguage = distinct.firstOrNull() ?: ""
+    }
+
     // 火山引擎：流式识别开关（与文件模式共享凭证）
     var volcStreamingEnabled: Boolean
         get() = sp.getBoolean(KEY_VOLC_STREAMING_ENABLED, false)
@@ -473,6 +507,8 @@ class Prefs(context: Context) {
         private const val KEY_DASH_MODEL = "dash_model"
         private const val KEY_SONIOX_API_KEY = "soniox_api_key"
         private const val KEY_SONIOX_STREAMING_ENABLED = "soniox_streaming_enabled"
+        private const val KEY_SONIOX_LANGUAGE = "soniox_language"
+        private const val KEY_SONIOX_LANGUAGES = "soniox_languages"
         private const val KEY_PUNCT_1 = "punct_1"
         private const val KEY_PUNCT_2 = "punct_2"
         private const val KEY_PUNCT_3 = "punct_3"
@@ -579,6 +615,9 @@ class Prefs(context: Context) {
         o.put(KEY_VOLC_VAD_ENABLED, volcVadEnabled)
         o.put(KEY_VOLC_NONSTREAM_ENABLED, volcNonstreamEnabled)
         o.put(KEY_VOLC_LANGUAGE, volcLanguage)
+        // Soniox（同时导出单值与数组，便于兼容）
+        o.put(KEY_SONIOX_LANGUAGE, sonioxLanguage)
+        o.put(KEY_SONIOX_LANGUAGES, sonioxLanguagesJson)
         o.put(KEY_VOLC_FIRST_CHAR_ACCEL_ENABLED, volcFirstCharAccelEnabled)
         // 多 LLM 配置
         o.put(KEY_LLM_PROVIDERS, llmProvidersJson)
@@ -647,6 +686,12 @@ class Prefs(context: Context) {
             optBool(KEY_VOLC_NONSTREAM_ENABLED)?.let { volcNonstreamEnabled = it }
             optString(KEY_VOLC_LANGUAGE)?.let { volcLanguage = it }
             optBool(KEY_VOLC_FIRST_CHAR_ACCEL_ENABLED)?.let { volcFirstCharAccelEnabled = it }
+            // Soniox（若提供数组则优先；否则回退单值）
+            if (o.has(KEY_SONIOX_LANGUAGES)) {
+                optString(KEY_SONIOX_LANGUAGES)?.let { sonioxLanguagesJson = it }
+            } else {
+                optString(KEY_SONIOX_LANGUAGE)?.let { sonioxLanguage = it }
+            }
             // 多 LLM 配置（优先于旧字段，仅当存在时覆盖）
             optString(KEY_LLM_PROVIDERS)?.let { llmProvidersJson = it }
             optString(KEY_LLM_ACTIVE_ID)?.let { activeLlmId = it }

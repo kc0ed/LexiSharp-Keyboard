@@ -165,14 +165,21 @@ class AsrAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var pendingCheck = false
     private var lastImeSceneActive: Boolean? = null
+    private var lastEditableFocusAt: Long = 0L
+    private val holdAfterFocusMs: Long = 1200L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // 现用于辅助判断“仅在输入法面板显示时显示悬浮球”的场景
         // 为避免频繁遍历树，做轻量节流
         if (event == null) return
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-            event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
-            event.eventType != AccessibilityEvent.TYPE_VIEW_FOCUSED) {
+        val type = event.eventType
+        // 扩大触发范围：窗口变化/内容变化/焦点变化/选区变化/文本变化/窗口集合变化
+        if (type != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            type != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
+            type != AccessibilityEvent.TYPE_VIEW_FOCUSED &&
+            type != AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED &&
+            type != AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED &&
+            type != AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
             return
         }
         if (!pendingCheck) {
@@ -191,7 +198,10 @@ class AsrAccessibilityService : AccessibilityService() {
         if (!anyFloatingEnabled) return
 
         // 优先：是否存在输入法窗口（更接近“键盘显示”）
-        val active = isImeWindowVisible() || hasEditableFocusNow()
+        val now = System.currentTimeMillis()
+        val hasFocus = hasEditableFocusNow()
+        if (hasFocus) lastEditableFocusAt = now
+        val active = isImeWindowVisible() || hasFocus || (now - lastEditableFocusAt <= holdAfterFocusMs)
         val prev = lastImeSceneActive
         if (prev == null || prev != active) {
             lastImeSceneActive = active

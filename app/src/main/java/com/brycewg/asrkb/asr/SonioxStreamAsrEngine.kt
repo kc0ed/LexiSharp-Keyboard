@@ -174,6 +174,13 @@ class SonioxStreamAsrEngine(
             // 辅助能力（尽量低延迟）
             put("enable_endpoint_detection", true)
             put("enable_language_identification", true)
+            // 若选择了识别语言，作为 language_hints 提示（显著提升准确率）
+            val langs = prefs.getSonioxLanguages()
+            if (langs.isNotEmpty()) {
+                val arr = org.json.JSONArray()
+                langs.forEach { arr.put(it) }
+                put("language_hints", arr)
+            }
             // put("enable_speaker_diarization", true) // 如需说话人区分
         }
         return o.toString()

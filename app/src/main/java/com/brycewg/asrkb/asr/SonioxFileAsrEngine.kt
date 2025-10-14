@@ -194,6 +194,12 @@ class SonioxFileAsrEngine(
             put("model", "stt-async-preview")
             // 可选能力：语言提示/语言识别/说话人分离等
             put("enable_language_identification", true)
+            val langs = prefs.getSonioxLanguages()
+            if (langs.isNotEmpty()) {
+                val arr = org.json.JSONArray()
+                langs.forEach { arr.put(it) }
+                put("language_hints", arr)
+            }
         }
         val req = Request.Builder()
             .url(Prefs.SONIOX_TRANSCRIPTIONS_ENDPOINT)
