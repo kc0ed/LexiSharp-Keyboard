@@ -162,9 +162,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         }
 
         if (ballView != null) {
-            Log.d(TAG, "Ball already shown; updating alpha/size")
             applyBallAlpha()
             applyBallSize()
+            updateBallState()
             return
         }
         
@@ -215,6 +215,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             lp = params
             applyBallAlpha()
             applyBallSize()
+            updateBallState()
             Log.d(TAG, "Ball view added successfully")
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to add ball view", e)
