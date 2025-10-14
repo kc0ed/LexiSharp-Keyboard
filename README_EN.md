@@ -8,7 +8,8 @@ English | [简体中文](README.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](https://www.android.com/)
-[![Language](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/
+[![Language](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
+[![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue?logo=telegram)](https://t.me/+SqgKaDglg540YjIx)
 
 [Features](#-features) • [Quick Start](#-quick-start) • [User Guide](#-user-guide) • [Configuration](#-configuration) • [Architecture](#-architecture)
 
@@ -37,7 +38,7 @@ English | [简体中文](README.md)
 - **Cross-IME Usage** - Voice input with any input method
 - **Seamless Integration** - Maintain your original typing habits
 - **Auto Insertion** - Recognition results automatically inserted
-- **Visual Feedback** - Clear recording/processing status
+- **Visual Feedback**
 
 </td>
 </tr>
@@ -551,6 +552,18 @@ Welcome to submit Issues and Pull Requests to improve the project!
 ## 🌟 Star History
 
 If this project helps you, please give it a Star ⭐️
+
+---
+
+## 💬 Community
+
+Welcome to join our Telegram group to exchange experiences, report issues, or share suggestions with other users!
+
+<div align="center">
+
+[![Telegram Group](https://img.shields.io/badge/Telegram-Join%20Group-blue?style=for-the-badge&logo=telegram)](https://t.me/+SqgKaDglg540YjIx)
+
+</div>
 
 ---
 

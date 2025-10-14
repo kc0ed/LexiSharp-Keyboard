@@ -9,6 +9,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](https://www.android.com/)
 [![Language](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
+[![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue?logo=telegram)](https://t.me/+SqgKaDglg540YjIx)
 
 [功能特性](#-功能特性) • [快速开始](#-快速开始) • [使用指南](#-使用指南) • [配置说明](#-配置说明) • [技术架构](#-技术架构)
 
@@ -27,7 +28,7 @@
 - **长按录音** - 简单直观的录音操作
 - **极速识别** - 松开即上传，快速返回结果
 - **多引擎支持** - 7+ 主流 ASR 服务
-- **AI 文本优化** - LLM 智能修正识别结果
+- **AI 文本后处理** - LLM 后处理修正识别结果
 
 </td>
 <td width="50%">
@@ -59,7 +60,7 @@
 - **Material3 设计** - 现代化界面风格，Monet 色彩适配
 - **多语言支持** - 中英文快速切换
 - **统计功能** - 识别字数统计
-- **振动反馈** - 可自定义反馈强度
+- **振动反馈** - 按下麦克风时振动反馈
 
 </td>
 </tr>
@@ -550,6 +551,18 @@ MIT License - 自由使用、修改、分发
 ## 🌟 Star History
 
 如果这个项目对你有帮助，请给个 Star ⭐️
+
+---
+
+## 💬 社区交流
+
+欢迎加入我们的 Telegram 群组,与其他用户交流使用心得、反馈问题或提出建议!
+
+<div align="center">
+
+[![Telegram Group](https://img.shields.io/badge/Telegram-加入群组-blue?style=for-the-badge&logo=telegram)](https://t.me/+SqgKaDglg540YjIx)
+
+</div>
 
 ---
 
