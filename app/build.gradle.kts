@@ -9,10 +9,10 @@ android {
 
     defaultConfig {
         applicationId = "com.brycewg.asrkb"
-        minSdk =31
+        minSdk =29
         targetSdk = 34
-        versionCode = 54
-        versionName = "2.8.8"
+        versionCode = 55
+        versionName = "2.8.9"
     }
 
     signingConfigs {
