@@ -141,6 +141,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         refreshPermissionUi()
         // Keep system toolbar/nav colors in sync with our panel background
         syncSystemBarsToKeyboardBackground(rootView)
+        // 重新按偏好应用键盘高度缩放
+        applyKeyboardHeightScale(rootView)
     }
 
     private fun isPasswordEditor(info: EditorInfo?): Boolean {
@@ -466,11 +468,81 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         // Apply visibility based on settings
         btnImeSwitcher?.visibility = View.VISIBLE
 
+        // 应用键盘高度缩放
+        applyKeyboardHeightScale(view)
+
         updateUiIdle()
         refreshPermissionUi()
         // Align system toolbar/navigation bar color to our surface color so they match
         syncSystemBarsToKeyboardBackground(view)
         return view
+    }
+
+    private fun applyKeyboardHeightScale(view: View?) {
+        if (view == null) return
+        val tier = try { prefs.keyboardHeightTier } catch (_: Throwable) { 1 }
+        val scale = when (tier) { 2 -> 1.15f; 3 -> 1.30f; else -> 1.0f }
+        if (scale == 1.0f) return
+
+        fun dp(v: Float): Int {
+            val d = view.resources.displayMetrics.density
+            return (v * d + 0.5f).toInt()
+        }
+
+        // 根容器 padding 垂直方向按比例
+        try {
+            val fl = view as? android.widget.FrameLayout
+            if (fl != null) {
+                val ps = fl.paddingStart
+                val pe = fl.paddingEnd
+                val pt = dp(8f * scale)
+                val pb = dp(12f * scale)
+                fl.setPaddingRelative(ps, pt, pe, pb)
+            }
+        } catch (_: Throwable) {}
+
+        // 顶部行高度（默认 80dp）
+        try {
+            val topRow = view.findViewById<androidx.constraintlayout.widget.ConstraintLayout>(R.id.rowTop)
+            if (topRow != null) {
+                val lp = topRow.layoutParams
+                lp.height = dp(80f * scale)
+                topRow.layoutParams = lp
+            }
+        } catch (_: Throwable) {}
+
+        // 统一缩放小图标按钮（默认 40dp）
+        fun scaleSquareButton(id: Int) {
+            try {
+                val v = view.findViewById<View>(id) ?: return
+                val lp = v.layoutParams
+                lp.width = dp(40f * scale)
+                lp.height = dp(40f * scale)
+                v.layoutParams = lp
+            } catch (_: Throwable) {}
+        }
+        val ids40 = intArrayOf(
+            R.id.btnHide, R.id.btnPostproc, R.id.btnBackspace, R.id.btnPromptPicker,
+            R.id.btnSettings, R.id.btnImeSwitcher, R.id.btnEnter, R.id.btnAiEdit,
+            R.id.btnPunct1, R.id.btnPunct2, R.id.btnPunct3, R.id.btnPunct4
+        )
+        ids40.forEach { scaleSquareButton(it) }
+
+        // Mic 按钮自定义尺寸（默认 72dp）
+        try {
+            btnMic?.setCustomSize(dp(72f * scale))
+        } catch (_: Throwable) {}
+
+        // 状态文本左右边距（默认 90dp）
+        try {
+            val tv = view.findViewById<TextView>(R.id.txtStatus)
+            val lp = tv?.layoutParams as? android.widget.LinearLayout.LayoutParams
+            if (lp != null) {
+                lp.marginStart = dp(90f * scale)
+                lp.marginEnd = dp(90f * scale)
+                tv.layoutParams = lp
+            }
+        } catch (_: Throwable) {}
     }
 
     override fun onEvaluateFullscreenMode(): Boolean {

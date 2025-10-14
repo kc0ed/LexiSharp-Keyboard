@@ -126,6 +126,21 @@
           android:layout_marginTop="8dp"
           android:text="@string/label_mic_tap_toggle" />
 
+        <!-- 键盘高度 -->
+        <TextView
+          android:id="@+id/labelKeyboardHeight"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="16dp"
+          android:textColor="?attr/colorOnSurface"
+          android:textStyle="bold"
+          android:text="@string/label_keyboard_height" />
+
+        <Spinner
+          android:id="@+id/spKeyboardHeight"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content" />
+
         <!-- 悬浮球设置迁移到单独的子设置页 -->
 
         <com.google.android.material.divider.MaterialDivider

@@ -108,6 +108,7 @@ class SettingsActivity : AppCompatActivity() {
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
         val switchMicTapToggle = findViewById<MaterialSwitch>(R.id.switchMicTapToggle)
+        val spKeyboardHeight = findViewById<Spinner>(R.id.spKeyboardHeight)
 
 
         fun applyPrefsToUi() {
@@ -120,6 +121,15 @@ class SettingsActivity : AppCompatActivity() {
             } catch (_: Throwable) { }
         }
         applyPrefsToUi()
+
+        // 键盘高度：三档
+        val kbHeightOptions = arrayOf<String>(
+            getString(R.string.keyboard_height_small),
+            getString(R.string.keyboard_height_medium),
+            getString(R.string.keyboard_height_large)
+        )
+        spKeyboardHeight.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, kbHeightOptions)
+        spKeyboardHeight.setSelection((prefs.keyboardHeightTier - 1).coerceIn(0, 2))
         // 已在 applyPrefsToUi 中统一设置上述字段
 
         // 应用语言选择器设置（独立于高级视图）
@@ -164,6 +174,7 @@ class SettingsActivity : AppCompatActivity() {
             prefs.autoSwitchOnPassword = switchAutoSwitchPassword.isChecked
             prefs.micHapticEnabled = switchMicHaptic.isChecked
             prefs.micTapToggleEnabled = switchMicTapToggle.isChecked
+            prefs.keyboardHeightTier = (spKeyboardHeight.selectedItemPosition + 1).coerceIn(1, 3)
             Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
         }
 

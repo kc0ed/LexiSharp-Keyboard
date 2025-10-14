@@ -254,6 +254,13 @@
     <!-- Settings test input -->
     <string name="label_test_input">Test input (try the IME here)</string>
     <string name="btn_test_input">Test Input</string>
+
+    <!-- Keyboard height -->
+    <string name="label_keyboard_height">Keyboard height</string>
+    <string name="keyboard_height_small">Small</string>
+    <string name="keyboard_height_medium">Medium</string>
+    <string name="keyboard_height_large">Large</string>
+
     <!-- Silence auto-stop (ASR) -->
     <string name="section_silence_autostop">Auto-stop on Silence</string>
     <string name="label_auto_stop_silence">Auto stop when no speech</string>

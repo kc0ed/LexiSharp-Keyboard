@@ -66,6 +66,12 @@ class Prefs(context: Context) {
     var autoStopSilenceSensitivity: Int
         get() = sp.getInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY, DEFAULT_SILENCE_SENSITIVITY).coerceIn(1, 10)
         set(value) = sp.edit { putInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY, value.coerceIn(1, 10)) }
+
+    // 键盘高度档位（1/2/3），默认一档
+    var keyboardHeightTier: Int
+        get() = sp.getInt(KEY_KEYBOARD_HEIGHT_TIER, 1).coerceIn(1, 3)
+        set(value) = sp.edit { putInt(KEY_KEYBOARD_HEIGHT_TIER, value.coerceIn(1, 3)) }
+
     // 应用内语言（空字符串表示跟随系统；如："zh-Hans"、"en"）
     var appLanguageTag: String
         get() = sp.getString(KEY_APP_LANGUAGE_TAG, "") ?: ""
@@ -492,6 +498,7 @@ class Prefs(context: Context) {
         private const val KEY_AUTO_STOP_ON_SILENCE_ENABLED = "auto_stop_on_silence_enabled"
         private const val KEY_AUTO_STOP_SILENCE_WINDOW_MS = "auto_stop_silence_window_ms"
         private const val KEY_AUTO_STOP_SILENCE_SENSITIVITY = "auto_stop_silence_sensitivity"
+        private const val KEY_KEYBOARD_HEIGHT_TIER = "keyboard_height_tier"
         private const val KEY_FLOATING_SWITCHER_ENABLED = "floating_switcher_enabled"
         private const val KEY_FLOATING_SWITCHER_ALPHA = "floating_switcher_alpha"
         private const val KEY_FLOATING_BALL_SIZE_DP = "floating_ball_size_dp"
@@ -631,6 +638,7 @@ class Prefs(context: Context) {
         o.put(KEY_AUTO_STOP_ON_SILENCE_ENABLED, autoStopOnSilenceEnabled)
         o.put(KEY_AUTO_STOP_SILENCE_WINDOW_MS, autoStopSilenceWindowMs)
         o.put(KEY_AUTO_STOP_SILENCE_SENSITIVITY, autoStopSilenceSensitivity)
+        o.put(KEY_KEYBOARD_HEIGHT_TIER, keyboardHeightTier)
         o.put(KEY_APP_LANGUAGE_TAG, appLanguageTag)
         o.put(KEY_FLOATING_SWITCHER_ENABLED, floatingSwitcherEnabled)
         o.put(KEY_FLOATING_SWITCHER_ALPHA, floatingSwitcherAlpha)
@@ -703,6 +711,7 @@ class Prefs(context: Context) {
             optBool(KEY_AUTO_STOP_ON_SILENCE_ENABLED)?.let { autoStopOnSilenceEnabled = it }
             optInt(KEY_AUTO_STOP_SILENCE_WINDOW_MS)?.let { autoStopSilenceWindowMs = it }
             optInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY)?.let { autoStopSilenceSensitivity = it }
+            optInt(KEY_KEYBOARD_HEIGHT_TIER)?.let { keyboardHeightTier = it }
             optString(KEY_APP_LANGUAGE_TAG)?.let { appLanguageTag = it }
             optBool(KEY_POSTPROC_ENABLED)?.let { postProcessEnabled = it }
             optBool(KEY_FLOATING_SWITCHER_ENABLED)?.let { floatingSwitcherEnabled = it }
@@ -764,4 +773,5 @@ class Prefs(context: Context) {
             false
         }
     }
+
 }

@@ -37,7 +37,7 @@
     <string name="btn_enable">启用键盘</string>
     <string name="btn_choose">选择键盘</string>
   <string name="btn_show_guide">查看使用指南</string>
-  <string name="btn_check_update">检查更新</string>
+    <string name="btn_check_update">检查更新</string>
   <!-- Material UI additions -->
   <string name="settings_title">言犀键盘设置</string>
   <string name="title_asr_settings">ASR 设置</string>
@@ -259,4 +259,10 @@
     <!-- Settings test input -->
     <string name="label_test_input">测试输入（用于体验输入法）</string>
     <string name="btn_test_input">测试输入</string>
+
+    <!-- Keyboard height -->
+    <string name="label_keyboard_height">键盘高度</string>
+    <string name="keyboard_height_small">小</string>
+    <string name="keyboard_height_medium">中</string>
+    <string name="keyboard_height_large">大</string>
 </resources>
