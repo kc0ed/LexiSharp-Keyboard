@@ -47,6 +47,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import androidx.core.graphics.toColorInt
 
 /**
@@ -82,6 +84,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     // Telegram 占位符修复：记录是否已注入零宽标记及使用的字符
     private var markerInserted: Boolean = false
     private var markerChar: String? = null
+    // 结果提交与超时兜底
+    private var processingTimeoutJob: Job? = null
+    private var hasCommittedResult: Boolean = false
 
     private val handler = Handler(Looper.getMainLooper())
     private var imeVisible: Boolean = false
@@ -329,6 +334,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
 
         asrEngine = buildEngineForCurrentMode()
         Log.d(TAG, "ASR engine created: ${asrEngine?.javaClass?.simpleName}")
+        // 开启新会话前清理提交标记与超时任务
+        try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+        processingTimeoutJob = null
+        hasCommittedResult = false
         // 记录开始录音时的焦点上下文（prefix/suffix），用于最终写入时避免覆盖原有内容。
         // 注意：在 Telegram 修复逻辑后抓取，但部分 App（如 Telegram）对 ACTION_PASTE 的文本刷新是异步的，
         // 因此这里先抓取一次，并在短延迟后再刷新一次快照，提升准确性。
@@ -350,6 +359,62 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             isProcessing = true
             updateBallState()
             showToast(getString(R.string.floating_asr_recognizing))
+            // 启动超时兜底：若迟迟未收到 onFinal，则使用最后一次预览结果提交，避免卡在蓝色状态
+            try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+            processingTimeoutJob = serviceScope.launch {
+                val timeoutMs = 8000L
+                delay(timeoutMs)
+                // 若仍处于处理态且未提交结果，则走兜底提交
+                if (isProcessing && !isRecording && !hasCommittedResult) {
+                    val candidate = lastPartialForPreview?.trim().orEmpty()
+                    Log.w(TAG, "Post-process timeout; fallback with preview='${candidate}'")
+                    if (candidate.isNotEmpty()) {
+                        var textOut = candidate
+                        // 可选：保持与最终逻辑一致的尾部标点裁剪与后处理
+                        if (prefs.trimFinalTrailingPunct) textOut = trimTrailingPunctuation(textOut)
+                        if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
+                            try {
+                                textOut = postproc.process(textOut, prefs).ifBlank { textOut }
+                            } catch (_: Throwable) { /* keep original */ }
+                            if (prefs.trimFinalTrailingPunct) textOut = trimTrailingPunctuation(textOut)
+                        }
+                        // 插入文本（与 onFinal 相同的写入策略与兼容分支）
+                        val ctx = focusContext ?: AsrAccessibilityService.getCurrentFocusContext()
+                        var toWrite = if (ctx != null) ctx.prefix + textOut + ctx.suffix else textOut
+                        toWrite = stripMarkersIfAny(toWrite)
+                        val pkg = AsrAccessibilityService.getActiveWindowPackage()
+                        val isTg = pkg != null && isTelegramLikePackage(pkg)
+                        val isDy = pkg != null && isDouyinLikePackage(pkg)
+                        val tgCompat = try { prefs.telegramCompatEnabled } catch (_: Throwable) { true }
+                        val dyCompat = try { prefs.douyinCompatEnabled } catch (_: Throwable) { true }
+                        if (isTg && markerInserted) {
+                            // 初始为空场景（通过注入标记确认），忽略任何“已有文本”前后缀
+                            toWrite = textOut
+                        }
+                        var wrote = false
+                        if ((isTg && tgCompat) || (isDy && dyCompat)) {
+                            wrote = AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
+                            if (!wrote) {
+                                wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
+                            }
+                        } else {
+                            wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
+                        }
+                        Log.d(TAG, "Fallback inserted=$wrote text='$toWrite'")
+                        showToast(getString(R.string.floating_asr_completed))
+                        hasCommittedResult = true
+                    } else {
+                        Log.w(TAG, "Fallback has no candidate text; only clear state")
+                    }
+                    // 清理状态
+                    isProcessing = false
+                    updateBallState()
+                    focusContext = null
+                    lastPartialForPreview = null
+                    markerInserted = false
+                    markerChar = null
+                }
+            }
         } else {
             updateBallState()
             showToast(getString(R.string.floating_asr_recognizing))
@@ -396,6 +461,13 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     override fun onFinal(text: String) {
         Log.d(TAG, "onFinal called with text: $text")
         serviceScope.launch {
+            // 收到最终结果，取消兜底任务
+            try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+            processingTimeoutJob = null
+            if (hasCommittedResult) {
+                Log.w(TAG, "Result already committed by fallback; ignoring onFinal")
+                return@launch
+            }
             var finalText = text
 
             if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
@@ -457,6 +529,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 Log.w(TAG, "Final text is empty")
             }
             // 结束会话，清理状态
+            hasCommittedResult = true
             focusContext = null
             lastPartialForPreview = null
             markerInserted = false
