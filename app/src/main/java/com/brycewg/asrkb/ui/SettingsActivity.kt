@@ -542,17 +542,17 @@ class SettingsActivity : AppCompatActivity() {
             "GitHub 镜像 (gh-proxy.net)"
         )
 
-        // 根据 release 页面构造官方直链（仅用于镜像站）；官方仍跳转 release 页面
+        // 根据 release 页面构造 APK 直链（用于镜像站加速）；官方仍跳转 release 页面
         val directApkUrl = buildDirectApkUrl(originalUrl, version)
 
         // 生成对应的 URL：
         // - 官方：release 页面（originalUrl）
-        // - 镜像：若能构造直链则加速直链，否则退回镜像的 release 页面
+        // - 镜像：一律使用 APK 直链
         val downloadUrls = arrayOf(
             originalUrl,
-            convertToMirrorUrl(originalUrl, "https://ghproxy.net/"),
-            convertToMirrorUrl(originalUrl, "https://hub.gitmirror.com/"),
-            convertToMirrorUrl(originalUrl, "https://gh-proxy.net/")
+            convertToMirrorUrl(directApkUrl, "https://ghproxy.net/"),
+            convertToMirrorUrl(directApkUrl, "https://hub.gitmirror.com/"),
+            convertToMirrorUrl(directApkUrl, "https://gh-proxy.net/")
         )
 
         MaterialAlertDialogBuilder(this)
@@ -569,33 +569,18 @@ class SettingsActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun buildDirectApkUrl(originalUrl: String, version: String): String? {
-        // 期望 originalUrl 形如: https://github.com/{owner}/{repo}/releases/tag/{tag}
-        // 生成: https://github.com/{owner}/{repo}/releases/download/{tag}/lexisharp-keyboard-{version}-release.apk
-        return try {
-            val uri = Uri.parse(originalUrl)
-            val path = uri.path ?: return null
-            val idx = path.indexOf("/releases/tag/")
-            if (idx <= 0) return null
-
-            val base = originalUrl.substring(0, originalUrl.indexOf("/releases/tag/"))
-            val tag = path.substring(path.indexOf("/releases/tag/") + "/releases/tag/".length)
-                .trim('/')
-                .ifBlank { "v$version" }
-
-            val apkName = "lexisharp-keyboard-$version-release.apk"
-            "$base/releases/download/$tag/$apkName"
-        } catch (_: Exception) {
-            null
-        }
+    private fun buildDirectApkUrl(originalUrl: String, version: String): String {
+        // 输入 URL 形如: https://github.com/{owner}/{repo}/releases/tag/{tag}
+        // 输出直链: https://github.com/{owner}/{repo}/releases/download/v{version}/lexisharp-keyboard-{version}-release.apk
+        val baseEnd = originalUrl.indexOf("/releases/tag/")
+        val base = if (baseEnd > 0) originalUrl.substring(0, baseEnd) else "https://github.com/BryceWG/LexiSharp-Keyboard"
+        val tag = "v$version"
+        val apkName = "lexisharp-keyboard-$version-release.apk"
+        return "$base/releases/download/$tag/$apkName"
     }
 
     private fun convertToMirrorUrl(originalUrl: String, mirrorPrefix: String): String {
-        // 如果是 GitHub Release 页面，直接添加镜像前缀
-        return if (originalUrl.startsWith("https://github.com/")) {
-            mirrorPrefix + originalUrl
-        } else {
-            originalUrl
-        }
+        // 只对 GitHub 链接加镜像前缀；既支持 release 页面也支持 releases/download 直链
+        return if (originalUrl.startsWith("https://github.com/")) mirrorPrefix + originalUrl else originalUrl
     }
 }
