@@ -202,6 +202,8 @@ class VolcFileAsrEngine(
             put("model_name", "bigmodel")
             put("enable_itn", true)
             put("enable_punc", true)
+            // 语义顺滑（与流式一致，提升口语冗余与重复的处理效果）
+            put("enable_ddc", prefs.volcDdcEnabled)
         }
         val root = JSONObject().apply {
             put("user", user)

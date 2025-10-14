@@ -59,6 +59,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     val etSfOmniPrompt = findViewById<EditText>(R.id.etSfOmniPrompt)
     val etElevenApiKey = findViewById<EditText>(R.id.etElevenApiKey)
     val etElevenModel = findViewById<EditText>(R.id.etElevenModel)
+    val tvElevenLanguageLabel = findViewById<View>(R.id.tvElevenLanguageLabel)
+    val spElevenLanguage = findViewById<Spinner>(R.id.spElevenLanguage)
     val etDashApiKey = findViewById<EditText>(R.id.etDashApiKey)
     val etDashModel = findViewById<EditText>(R.id.etDashModel)
     val etDashPrompt = findViewById<EditText>(R.id.etDashPrompt)
@@ -239,6 +241,44 @@ class AsrSettingsActivity : AppCompatActivity() {
     }
     etElevenApiKey.bindString { prefs.elevenApiKey = it }
     etElevenModel.bindString { prefs.elevenModelId = it }
+    // ElevenLabs 语言选择（单选，空=自动）
+    run {
+      val elLabels = listOf(
+        getString(R.string.eleven_lang_auto),
+        getString(R.string.eleven_lang_zh),
+        getString(R.string.eleven_lang_en),
+        getString(R.string.eleven_lang_ja),
+        getString(R.string.eleven_lang_ko),
+        getString(R.string.eleven_lang_de),
+        getString(R.string.eleven_lang_fr),
+        getString(R.string.eleven_lang_es),
+        getString(R.string.eleven_lang_pt),
+        getString(R.string.eleven_lang_ru),
+        getString(R.string.eleven_lang_it)
+      )
+      val elCodes = listOf(
+        "",
+        "zh",
+        "en",
+        "ja",
+        "ko",
+        "de",
+        "fr",
+        "es",
+        "pt",
+        "ru",
+        "it"
+      )
+      spElevenLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, elLabels)
+      spElevenLanguage.setSelection(elCodes.indexOf(prefs.elevenLanguageCode).coerceAtLeast(0))
+      spElevenLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+          val code = elCodes.getOrNull(position) ?: ""
+          if (code != prefs.elevenLanguageCode) prefs.elevenLanguageCode = code
+        }
+        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+      }
+    }
     etDashApiKey.bindString { prefs.dashApiKey = it }
     etDashModel.bindString { prefs.dashModel = it }
     etDashPrompt.bindString { prefs.dashPrompt = it }
@@ -338,7 +378,7 @@ class AsrSettingsActivity : AppCompatActivity() {
 
     fun updateVolcStreamOptionsVisibility(enabled: Boolean) {
       val vis = if (enabled) View.VISIBLE else View.GONE
-      switchVolcDdc.visibility = vis
+      // 语义顺滑开关：非流式也有意义，保持常显
       switchVolcVad.visibility = vis
       switchVolcNonstream.visibility = vis
       switchVolcFirstCharAccel.visibility = vis

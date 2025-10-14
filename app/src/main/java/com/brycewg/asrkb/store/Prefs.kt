@@ -407,6 +407,11 @@ class Prefs(context: Context) {
         get() = AsrVendor.fromId(sp.getString(KEY_ASR_VENDOR, AsrVendor.Volc.id))
         set(value) = sp.edit { putString(KEY_ASR_VENDOR, value.id) }
 
+    // ElevenLabs：语言代码（空=自动识别）
+    var elevenLanguageCode: String
+        get() = sp.getString(KEY_ELEVEN_LANGUAGE_CODE, "") ?: ""
+        set(value) = sp.edit { putString(KEY_ELEVEN_LANGUAGE_CODE, value.trim()) }
+
     // --- 供应商配置通用化 ---
     private data class VendorField(val key: String, val required: Boolean = false, val default: String = "")
 
@@ -421,7 +426,8 @@ class Prefs(context: Context) {
         ),
         AsrVendor.ElevenLabs to listOf(
             VendorField(KEY_ELEVEN_API_KEY, required = true),
-            VendorField(KEY_ELEVEN_MODEL_ID)
+            VendorField(KEY_ELEVEN_MODEL_ID),
+            VendorField(KEY_ELEVEN_LANGUAGE_CODE)
         ),
         AsrVendor.OpenAI to listOf(
             VendorField(KEY_OA_ASR_ENDPOINT, required = true, default = DEFAULT_OA_ASR_ENDPOINT),
@@ -537,6 +543,7 @@ class Prefs(context: Context) {
         private const val KEY_SF_OMNI_PROMPT = "sf_omni_prompt"
         private const val KEY_ELEVEN_API_KEY = "eleven_api_key"
         private const val KEY_ELEVEN_MODEL_ID = "eleven_model_id"
+        private const val KEY_ELEVEN_LANGUAGE_CODE = "eleven_language_code"
         private const val KEY_OA_ASR_ENDPOINT = "oa_asr_endpoint"
         private const val KEY_OA_ASR_API_KEY = "oa_asr_api_key"
         private const val KEY_OA_ASR_MODEL = "oa_asr_model"

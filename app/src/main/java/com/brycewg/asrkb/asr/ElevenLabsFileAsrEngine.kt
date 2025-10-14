@@ -157,6 +157,11 @@ class ElevenLabsFileAsrEngine(
           return@launch
         }
         multipartBuilder.addFormDataPart("model_id", modelId)
+        // 语言（可选，空=自动）
+        val lang = prefs.elevenLanguageCode.trim()
+        if (lang.isNotEmpty()) {
+          multipartBuilder.addFormDataPart("language_code", lang)
+        }
 
         val request = Request.Builder()
           .url("https://api.elevenlabs.io/v1/speech-to-text")
