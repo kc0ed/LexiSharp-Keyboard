@@ -57,6 +57,9 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_APP_LANGUAGE_TAG, "") ?: ""
         set(value) = sp.edit { putString(KEY_APP_LANGUAGE_TAG, value) }
 
+    // 最近一次检查更新的日期（格式：yyyyMMdd，本地时区）；用于“每天首次进入设置页自动检查”
+    var lastUpdateCheckDate: String by stringPref(KEY_LAST_UPDATE_CHECK_DATE, "")
+
     // 输入法切换悬浮球开关
     var floatingSwitcherEnabled: Boolean
         get() = sp.getBoolean(KEY_FLOATING_SWITCHER_ENABLED, false)
@@ -427,6 +430,7 @@ class Prefs(context: Context) {
         private const val KEY_FLOATING_ONLY_WHEN_IME_VISIBLE = "floating_only_when_ime_visible"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_APP_LANGUAGE_TAG = "app_language_tag"
+        private const val KEY_LAST_UPDATE_CHECK_DATE = "last_update_check_date"
         private const val KEY_LLM_ENDPOINT = "llm_endpoint"
         private const val KEY_LLM_API_KEY = "llm_api_key"
         private const val KEY_LLM_MODEL = "llm_model"

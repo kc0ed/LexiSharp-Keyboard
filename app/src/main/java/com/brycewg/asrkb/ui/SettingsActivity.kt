@@ -231,6 +231,9 @@ class SettingsActivity : AppCompatActivity() {
 
         wasAccessibilityEnabled = isNowEnabled
 
+        // 每天首次进入设置页时，静默检查一次更新（仅在有新版本时弹窗提示）
+        maybeAutoCheckUpdatesDaily()
+
         // 提前标记即可，实际弹出放到 onWindowFocusChanged，避免过早调用被系统忽略
         // 如果没有该标记，不做任何处理
     }
@@ -339,6 +342,39 @@ class SettingsActivity : AppCompatActivity() {
                     }
                     .setNegativeButton(R.string.btn_cancel, null)
                     .show()
+            }
+        }
+    }
+
+    // 静默检查更新：不显示“正在检查”或“已是最新版本”的提示，仅在有更新时弹窗提示
+    private fun maybeAutoCheckUpdatesDaily() {
+        try {
+            val prefs = Prefs(this)
+            val today = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.getDefault())
+                .format(java.util.Date())
+            if (prefs.lastUpdateCheckDate == today) return
+            // 记录为今日已检查，避免同日重复触发
+            prefs.lastUpdateCheckDate = today
+        } catch (_: Throwable) {
+            // 读取或写入失败则不自动检查
+            return
+        }
+
+        // 开始静默检查
+        lifecycleScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) { checkGitHubRelease() }
+                if (result.hasUpdate) {
+                    showUpdateDialog(
+                        result.currentVersion,
+                        result.latestVersion,
+                        result.downloadUrl,
+                        result.updateTime,
+                        result.releaseNotes
+                    )
+                }
+            } catch (e: Exception) {
+                Log.d("SettingsActivity", "Auto update check failed", e)
             }
         }
     }
