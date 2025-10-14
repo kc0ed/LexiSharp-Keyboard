@@ -214,9 +214,8 @@ class DashscopeFileAsrEngine(
 
         // 3) 调用生成接口进行识别
         val asrOptions = JSONObject().apply {
-          put("enable_lid", true)
-          // ITN 默认关闭；如需启用可在后续扩展设置
-          put("enable_itn", false)
+          put("enable_lid", false)
+          put("enable_itn", true)
           val lang = prefs.dashLanguage.trim()
           if (lang.isNotEmpty()) put("language", lang)
         }
