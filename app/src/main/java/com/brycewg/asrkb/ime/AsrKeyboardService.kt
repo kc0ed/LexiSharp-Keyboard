@@ -2,6 +2,8 @@ package com.brycewg.asrkb.ime
 
 import android.Manifest
 import android.content.Context
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.Intent
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
@@ -48,6 +50,9 @@ import com.google.android.material.color.MaterialColors
 import com.brycewg.asrkb.LocaleHelper
 
 class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
+    companion object {
+        const val ACTION_REFRESH_IME_UI = "com.brycewg.asrkb.action.REFRESH_IME_UI"
+    }
     override fun attachBaseContext(newBase: Context?) {
         val wrapped = newBase?.let { LocaleHelper.wrap(it) }
         super.attachBaseContext(wrapped ?: newBase)
@@ -114,11 +119,27 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     )
     private var currentSessionKind: SessionKind? = null
     private var aiEditState: AiEditState? = null
+    private var prefsReceiver: BroadcastReceiver? = null
 
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
         asrEngine = buildEngineForCurrentMode()
+        // 监听设置变化以即时刷新键盘 UI
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == ACTION_REFRESH_IME_UI) {
+                    val v = rootView
+                    if (v != null) {
+                        applyKeyboardHeightScale(v)
+                        applyButtonSwapAccordingToPrefs(v)
+                        v.requestLayout()
+                    }
+                }
+            }
+        }
+        prefsReceiver = r
+        try { registerReceiver(r, IntentFilter(ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -144,6 +165,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         syncSystemBarsToKeyboardBackground(rootView)
         // 重新按偏好应用键盘高度缩放
         applyKeyboardHeightScale(rootView)
+        // 重新按偏好应用按钮位置交换
+        applyButtonSwapAccordingToPrefs(rootView)
 
         // 若正在录音（点按切换开启），恢复预览为 composing
         if (asrEngine?.isRunning == true && currentSessionKind == null) {
@@ -200,6 +223,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         super.onDestroy()
         asrEngine?.stop()
         serviceScope.cancel()
+        try { prefsReceiver?.let { unregisterReceiver(it) } } catch (_: Throwable) { }
+        prefsReceiver = null
     }
 
     @SuppressLint("InflateParams")
@@ -224,50 +249,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnPunct4 = view.findViewById(R.id.btnPunct4)
         txtStatus = view.findViewById(R.id.txtStatus)
 
-        // 根据偏好精确交换 AI 编辑 与 输入法切换 按钮的“位置语义”（复制对方在 XML 中的约束与边距）
-        try {
-            if (prefs.swapAiEditWithImeSwitcher) {
-                val ai = btnAiEdit
-                val ime = btnImeSwitcher
-                if (ai != null && ime != null) {
-                    val lpAi = ai.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
-                    val lpIme = ime.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
-                    if (lpAi != null && lpIme != null) {
-                        // 记录原始边距（XML 中定义）
-                        val aiMarginStart = lpAi.marginStart
-                        val aiMarginEnd = lpAi.marginEnd
-                        val imeMarginStart = lpIme.marginStart
-                        val imeMarginEnd = lpIme.marginEnd
-
-                        // 1) 让 AI 编辑复制“原输入法切换键”的定位：位于 设置 右侧，仅设置 startToEnd
-                        lpAi.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
-                        lpAi.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
-                        lpAi.endToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
-                        lpAi.startToEnd = R.id.btnSettings
-                        // 边距也复制：使用 ime 的 start 边距（通常为 6dp），清空 end 边距
-                        lpAi.marginStart = imeMarginStart
-                        lpAi.marginEnd = 0
-                        // 该位置无需 bias；设置为默认值
-                        lpAi.horizontalBias = 0.5f
-                        ai.layoutParams = lpAi
-
-                        // 2) 让 输入法切换键 复制“原 AI 编辑键”的定位：位于 AI 与 回车之间，左右皆有约束
-                        lpIme.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
-                        lpIme.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
-                        lpIme.startToEnd = R.id.btnAiEdit
-                        lpIme.endToStart = R.id.btnEnter
-                        // 边距复制：使用 ai 的 end 边距作为自身 end 边距（通常为 6dp），清空 start 边距
-                        lpIme.marginStart = 0
-                        lpIme.marginEnd = aiMarginEnd
-                        // 复制原 AI 的偏好：靠近右侧
-                        lpIme.horizontalBias = 1.0f
-                        ime.layoutParams = lpIme
-
-                        (rootView ?: view).requestLayout()
-                    }
-                }
-            }
-        } catch (_: Throwable) { }
+        // 初次创建时按偏好应用按钮位置
+        applyButtonSwapAccordingToPrefs(view)
 
         // 统一绑定：根据偏好在事件时分支，免去重开键盘
         btnMic?.setOnClickListener { v ->
@@ -558,6 +541,62 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         // Align system toolbar/navigation bar color to our surface color so they match
         syncSystemBarsToKeyboardBackground(view)
         return view
+    }
+
+    private fun applyButtonSwapAccordingToPrefs(view: View?) {
+        if (view == null) return
+        val ai = btnAiEdit ?: return
+        val ime = btnImeSwitcher ?: return
+        val lpAi = ai.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams ?: return
+        val lpIme = ime.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams ?: return
+        val unset = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+
+        // 将 6dp 转换为像素，用于左右边距
+        val sixPx = try {
+            val d = view.resources.displayMetrics.density
+            (6f * d + 0.5f).toInt()
+        } catch (_: Throwable) { 0 }
+
+        if (prefs.swapAiEditWithImeSwitcher) {
+            // AI -> 紧邻“设置”右侧
+            lpAi.startToStart = unset
+            lpAi.endToEnd = unset
+            lpAi.endToStart = unset
+            lpAi.startToEnd = R.id.btnSettings
+            lpAi.marginStart = sixPx
+            lpAi.marginEnd = 0
+            lpAi.horizontalBias = 0.5f
+            ai.layoutParams = lpAi
+
+            // IME 切换 -> 位于 AI 与 回车之间
+            lpIme.startToStart = unset
+            lpIme.endToEnd = unset
+            lpIme.startToEnd = R.id.btnAiEdit
+            lpIme.endToStart = R.id.btnEnter
+            lpIme.marginStart = 0
+            lpIme.marginEnd = sixPx
+            lpIme.horizontalBias = 1.0f
+            ime.layoutParams = lpIme
+        } else {
+            // 还原 XML 默认：IME 紧邻“设置”右侧；AI 位于 IME 与“回车”之间
+            lpIme.startToStart = unset
+            lpIme.endToEnd = unset
+            lpIme.endToStart = unset
+            lpIme.startToEnd = R.id.btnSettings
+            lpIme.marginStart = sixPx
+            lpIme.marginEnd = 0
+            lpIme.horizontalBias = 0.5f
+            ime.layoutParams = lpIme
+
+            lpAi.startToStart = unset
+            lpAi.endToEnd = unset
+            lpAi.startToEnd = R.id.btnImeSwitcher
+            lpAi.endToStart = R.id.btnEnter
+            lpAi.marginStart = 0
+            lpAi.marginEnd = sixPx
+            lpAi.horizontalBias = 1.0f
+            ai.layoutParams = lpAi
+        }
     }
 
     private fun applyKeyboardHeightScale(view: View?) {

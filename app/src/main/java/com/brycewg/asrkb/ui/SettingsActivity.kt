@@ -29,6 +29,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
+import com.brycewg.asrkb.ime.AsrKeyboardService
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -170,6 +171,24 @@ class SettingsActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
 
+        // 实时刷新：AI编辑与切换键位置交换
+        switchSwapAiEditWithSwitcher.setOnCheckedChangeListener { _, isChecked ->
+            prefs.swapAiEditWithImeSwitcher = isChecked
+            try { sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
+        }
+
+        // 实时刷新：键盘高度（保存到偏好并通知 IME 立即按比例缩放）
+        spKeyboardHeight.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val tier = (position + 1).coerceIn(1, 3)
+                if (prefs.keyboardHeightTier != tier) {
+                    prefs.keyboardHeightTier = tier
+                    try { sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
+                }
+            }
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+
 
         findViewById<Button>(R.id.btnSaveKeys).setOnClickListener {
             prefs.trimFinalTrailingPunct = switchTrimTrailingPunct.isChecked
@@ -178,6 +197,8 @@ class SettingsActivity : AppCompatActivity() {
             prefs.micTapToggleEnabled = switchMicTapToggle.isChecked
             prefs.swapAiEditWithImeSwitcher = switchSwapAiEditWithSwitcher.isChecked
             prefs.keyboardHeightTier = (spKeyboardHeight.selectedItemPosition + 1).coerceIn(1, 3)
+            // 即时刷新 IME：键盘高度与按钮交换状态
+            try { sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
             Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
         }
 
@@ -215,6 +236,8 @@ class SettingsActivity : AppCompatActivity() {
                                 else -> 0
                             }
                         )
+                        // 通知 IME 即时刷新（包含高度与按钮交换）
+                        try { sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
                         Toast.makeText(this, getString(R.string.toast_import_success), Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(this, getString(R.string.toast_import_failed), Toast.LENGTH_SHORT).show()
