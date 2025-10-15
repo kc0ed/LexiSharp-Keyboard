@@ -301,6 +301,7 @@ class FloatingImeSwitcherService : Service() {
     }
 
     private var edgeAnimator: ValueAnimator? = null
+    private fun currentUiAlpha(): Float = try { Prefs(this).floatingSwitcherAlpha } catch (_: Throwable) { 1f }
 
     private fun attachDrag(target: View) {
         var downX = 0f
@@ -405,8 +406,9 @@ class FloatingImeSwitcherService : Service() {
             isClickable = true
             setOnClickListener { hideRadialMenu() }
         }
+        root.alpha = currentUiAlpha()
         val btnSize = try { Prefs(this).floatingBallSizeDp } catch (_: Throwable) { 44 }
-        val radius = dp((btnSize * 1.8f).toInt().coerceAtLeast(60))
+        val radius = dp((btnSize * 2.2f).toInt().coerceAtLeast(72))
         val isLeft = isBallOnLeft()
         // 4 个功能：ASR供应商、输入法选择器、移动、AI后处理开关
         val items = listOf(
@@ -419,7 +421,7 @@ class FloatingImeSwitcherService : Service() {
                 getString(R.string.label_radial_postproc)
             ) { togglePostprocFromMenu() }
         )
-        val angles = floatArrayOf(-60f, -20f, 20f, 60f)
+        val angles = floatArrayOf(-75f, -25f, 25f, 75f)
         val centerX = p.x + (ballView?.width ?: p.width) / 2
         val centerY = p.y + (ballView?.height ?: p.height) / 2
         val base = if (isLeft) 0f else 180f
@@ -429,40 +431,36 @@ class FloatingImeSwitcherService : Service() {
             val a = Math.toRadians((base + angles[index]).toDouble())
             val cx = (centerX + radius * Math.cos(a)).toInt()
             val cy = (centerY + radius * Math.sin(a)).toInt()
-            val iv = buildCircleButton(it.iconRes, it.contentDescription) {
-                hideRadialMenu()
-                it.onClick()
+            val capsule = buildCapsule(it.iconRes, it.label, it.contentDescription) {
+                hideRadialMenu(); it.onClick()
             }
-            val sizePx = dp(btnSize)
-            val lpBtn = android.widget.FrameLayout.LayoutParams(sizePx, sizePx)
-            lpBtn.leftMargin = cx - sizePx / 2
-            lpBtn.topMargin = cy - sizePx / 2
-            root.addView(iv, lpBtn)
-
-            // 文字说明，按朝向放置在图标一侧
-            val tv = android.widget.TextView(this).apply {
-                text = it.label
-                setTextColor(0xFF222222.toInt())
-                textSize = 12f
-                setOnClickListener { _ ->
-                    hideRadialMenu()
-                    it.onClick()
-                }
-            }
-            val spacing = dp(6)
-            val lpText: android.widget.FrameLayout.LayoutParams
-            if (isLeft) {
-                // 文本放在图标右侧
-                lpText = android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT)
-                lpText.leftMargin = cx + sizePx / 2 + spacing
-                lpText.topMargin = cy - dp(8)
+            val lpCap: android.widget.FrameLayout.LayoutParams = if (isLeft) {
+                android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT)
             } else {
-                // 文本放在图标左侧（使用 END 对齐，基于屏幕宽度计算 rightMargin）
-                lpText = android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.END)
-                lpText.rightMargin = (screenW - (cx - sizePx / 2 - spacing)).coerceAtLeast(0)
-                lpText.topMargin = cy - dp(8)
+                android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.END)
             }
-            root.addView(tv, lpText)
+            root.addView(capsule, lpCap)
+            capsule.alpha = 0f
+            capsule.scaleX = 0.95f
+            capsule.scaleY = 0.95f
+            capsule.post {
+                val spacing = dp(6)
+                val w = capsule.width
+                val h = capsule.height
+                val lp2 = capsule.layoutParams as android.widget.FrameLayout.LayoutParams
+                if (isLeft) {
+                    lp2.leftMargin = (cx + spacing)
+                } else {
+                    lp2.rightMargin = (screenW - (cx - spacing)).coerceAtLeast(0)
+                }
+                val dm2 = resources.displayMetrics
+                val screenH2 = dm2.heightPixels
+                val top = (cy - h / 2)
+                lp2.topMargin = top.coerceIn(dp(8), (screenH2 - h - dp(8)).coerceAtLeast(0))
+                capsule.layoutParams = lp2
+                // 简单弹入动画
+                capsule.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(140).setStartDelay((index * 20).toLong()).start()
+            }
         }
 
         val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -483,11 +481,20 @@ class FloatingImeSwitcherService : Service() {
     }
 
     private fun hideRadialMenu() {
-        radialMenuView?.let {
-            try { windowManager.removeView(it) } catch (_: Throwable) { }
-        }
-        radialMenuView = null
-        updateBallVisibility()
+        radialMenuView?.let { v ->
+            try {
+                fun cancelAllAnim(view: View) {
+                    try { view.animate().cancel() } catch (_: Throwable) { }
+                    if (view is android.view.ViewGroup) {
+                        for (i in 0 until view.childCount) cancelAllAnim(view.getChildAt(i))
+                    }
+                }
+                cancelAllAnim(v)
+                try { windowManager.removeView(v) } catch (_: Throwable) { }
+            } catch (_: Throwable) { }
+            radialMenuView = null
+            updateBallVisibility()
+        } ?: run { updateBallVisibility() }
     }
 
     private data class RadialItem(
@@ -508,6 +515,32 @@ class FloatingImeSwitcherService : Service() {
         try { iv.setColorFilter(0xFF111111.toInt()) } catch (_: Throwable) { }
         iv.setOnClickListener { onClick() }
         return iv
+    }
+
+    private fun buildCapsule(iconRes: Int, label: String, cd: String, onClick: () -> Unit): View {
+        val layout = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            background = ContextCompat.getDrawable(this@FloatingImeSwitcherService, R.drawable.ripple_capsule)
+            val p = dp(10)
+            setPadding(p, p, p, p)
+            isClickable = true
+            isFocusable = true
+            contentDescription = cd
+            setOnClickListener { onClick() }
+        }
+        val iv = ImageView(this).apply {
+            setImageResource(iconRes)
+            try { setColorFilter(0xFF111111.toInt()) } catch (_: Throwable) { }
+        }
+        val tv = android.widget.TextView(this).apply {
+            text = label
+            setTextColor(0xFF111111.toInt())
+            textSize = 12f
+            setPadding(dp(6), 0, 0, 0)
+        }
+        layout.addView(iv, android.widget.LinearLayout.LayoutParams(dp(18), dp(18)))
+        layout.addView(tv, android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT))
+        return layout
     }
 
     private fun isBallOnLeft(): Boolean {
@@ -569,6 +602,7 @@ class FloatingImeSwitcherService : Service() {
             isClickable = true
             setOnClickListener { hideVendorMenu() }
         }
+        root.alpha = currentUiAlpha()
         val container = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             background = ContextCompat.getDrawable(this@FloatingImeSwitcherService, R.drawable.bg_panel_round)
@@ -621,6 +655,9 @@ class FloatingImeSwitcherService : Service() {
         root.addView(container, paramsContainer)
         val p = lp ?: return
         val isLeft = isBallOnLeft()
+        // 入场动画：从靠近悬浮球一侧轻微平移并淡入
+        container.alpha = 0f
+        container.translationX = if (isLeft) dp(8).toFloat() else -dp(8).toFloat()
         container.post {
             try {
                 val dm = resources.displayMetrics
@@ -637,6 +674,9 @@ class FloatingImeSwitcherService : Service() {
                 lpC.leftMargin = left.coerceIn(0, (screenW - w).coerceAtLeast(0))
                 lpC.topMargin = top.coerceIn(0, (screenH - h).coerceAtLeast(0))
                 container.layoutParams = lpC
+                try {
+                    container.animate().alpha(1f).translationX(0f).setDuration(160).start()
+                } catch (_: Throwable) { }
             } catch (_: Throwable) { }
         }
 
@@ -657,11 +697,20 @@ class FloatingImeSwitcherService : Service() {
     }
 
     private fun hideVendorMenu() {
-        vendorMenuView?.let {
-            try { windowManager.removeView(it) } catch (_: Throwable) { }
-        }
-        vendorMenuView = null
-        updateBallVisibility()
+        vendorMenuView?.let { v ->
+            try {
+                fun cancelAllAnim(view: View) {
+                    try { view.animate().cancel() } catch (_: Throwable) { }
+                    if (view is android.view.ViewGroup) {
+                        for (i in 0 until view.childCount) cancelAllAnim(view.getChildAt(i))
+                    }
+                }
+                cancelAllAnim(v)
+                try { windowManager.removeView(v) } catch (_: Throwable) { }
+            } catch (_: Throwable) { }
+            vendorMenuView = null
+            updateBallVisibility()
+        } ?: run { updateBallVisibility() }
     }
 
     private fun snapToEdge(v: View) {
