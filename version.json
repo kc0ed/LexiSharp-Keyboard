@@ -2,7 +2,7 @@
   "version": "2.9.4",
   "version_code": 60,
   "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.9.4",
-  "release_notes": "本次更新包含 8 个提交:\n- feat(build): 更新版本号至 2.9.4\n- feat(ui): 优化 ASR 错误提示和空结果处理\n- chore(readme): 移除拼音输入和 LLM 转换相关描述\n- feat(keyboard): 添加交换 AI 编辑与输入法切换键位置的选项\n- chore(ui): 移除浮动 ASR 文本插入成功提示和日志\n- feat(asr): 优化流式 ASR 启动延迟，增加音频预缓冲\n- feat(llm): 使 LLM API 密钥为可选\n- feat(asr): 使 OpenAI ASR API 密钥可选",
+  "release_notes": "本次更新包含 5 个提交:\n- feat(ui): 更新输入法配置以支持语音模式并添加查询权限\n- feat(ui): 实验性为悬浮球引入轮盘菜单和供应商选择面板\n- feat(ui): 在录音时强制显示悬浮球\n- feat(ui): 设置自动保存\n- feat(ui): 实时刷新 IME 键盘布局以响应设置更改",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-15T06:18:22Z"
+  "update_time": "2025-10-15T14:41:54Z"
 }
