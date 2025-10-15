@@ -164,6 +164,9 @@ jobs:
             echo "" >> changelog.md
             echo "### 所有提交" >> changelog.md
             git log --pretty=format:"- %s (%h) - %an" --no-merges >> changelog.md
+
+            # 生成简短版本用于 version.json
+            echo "首个发布版本" > release_notes_short.txt
           else
             echo "## 📝 更新日志 ($PREV_TAG → $CURRENT_TAG)" > changelog.md
             echo "" >> changelog.md
@@ -172,8 +175,13 @@ jobs:
             echo "- **版本代码**: ${{ steps.version.outputs.version_code }}" >> changelog.md
             echo "- **上一版本**: ${{ steps.version.outputs.prev_version_name }} (code: ${{ steps.version.outputs.prev_version_code }})" >> changelog.md
             echo "" >> changelog.md
-            echo "### 📋 提交记录" >> changelog.md
-            git log $PREV_TAG..HEAD --pretty=format:"- %s (%h) - %an" --no-merges >> changelog.md
+
+            echo "### 📋 本次更新内容" >> changelog.md
+            echo "" >> changelog.md
+
+            # 获取详细的 commit 信息
+            git log $PREV_TAG..HEAD --pretty=format:"- **%s**%n  - 提交: %h | 作者: %an | 时间: %ai%n" --no-merges >> changelog.md
+
             echo "" >> changelog.md
             echo "" >> changelog.md
             echo "### 📊 统计信息" >> changelog.md
@@ -183,11 +191,20 @@ jobs:
             if [ -n "$FILES_CHANGED" ]; then
               echo "- 文件变更: $FILES_CHANGED" >> changelog.md
             fi
+
+            # 生成简短版本用于 version.json（只包含 commit 标题）
+            echo "本次更新包含 $COMMIT_COUNT 个提交:" > release_notes_short.txt
+            git log $PREV_TAG..HEAD --pretty=format:"- %s" --no-merges >> release_notes_short.txt
           fi
 
           # 输出到 GitHub output
           echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
           cat changelog.md >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          # 输出简短版本
+          echo "release_notes_short<<EOF" >> "$GITHUB_OUTPUT"
+          cat release_notes_short.txt >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Set up Android SDK
@@ -301,6 +318,7 @@ jobs:
           version = os.environ.get('VERSION', '0.0.0')
           version_code = os.environ.get('VERSION_CODE', '0')
           tag = os.environ.get('TAG', 'v0.0.0')
+          release_notes = os.environ.get('RELEASE_NOTES', f'版本 {version} 已发布')
 
           # 使用 ISO 8601 格式的时间戳（UTC）
           current_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -316,7 +334,7 @@ jobs:
           data['version'] = version
           data['version_code'] = int(version_code) if version_code.isdigit() else 0
           data['download_url'] = f"https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/{tag}"
-          data['release_notes'] = f"版本 {version} 已发布"
+          data['release_notes'] = release_notes
           data['min_supported_version'] = data.get('min_supported_version', '2.6.5')
           data['update_time'] = current_timestamp
 
@@ -343,6 +361,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version_name }}
           VERSION_CODE: ${{ steps.version.outputs.version_code }}
           TAG: ${{ steps.tag.outputs.tag }}
+          RELEASE_NOTES: ${{ steps.changelog.outputs.release_notes_short }}
 
       - name: Commit and push version.json
         if: steps.update_version_json.outputs.version_changed == 'true'
@@ -372,6 +391,7 @@ jobs:
           version = os.environ.get('VERSION', '0.0.0')
           version_code = os.environ.get('VERSION_CODE', '0')
           tag = os.environ.get('TAG', 'v0.0.0')
+          release_notes = os.environ.get('RELEASE_NOTES', f'版本 {version} 已发布')
 
           current_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -384,7 +404,7 @@ jobs:
           data['version'] = version
           data['version_code'] = int(version_code) if version_code.isdigit() else 0
           data['download_url'] = f"https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/{tag}"
-          data['release_notes'] = f"版本 {version} 已发布"
+          data['release_notes'] = release_notes
           data['min_supported_version'] = data.get('min_supported_version', '2.6.5')
           data['update_time'] = current_timestamp
 
@@ -422,6 +442,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version_name }}
           VERSION_CODE: ${{ steps.version.outputs.version_code }}
           TAG: ${{ steps.tag.outputs.tag }}
+          RELEASE_NOTES: ${{ steps.changelog.outputs.release_notes_short }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

@@ -249,6 +249,13 @@
     <string name="label_silence_window_ms">判停时间阈值（毫秒）</string>
     <string name="label_silence_sensitivity">灵敏度（1-10，越高越敏感）</string>
     <string name="download_source_title">选择下载源</string>
+    <string name="download_source_github_official">GitHub 官方</string>
+    <string name="download_source_mirror_ghproxy">GitHub 镜像 (ghproxy.net)</string>
+    <string name="download_source_mirror_gitmirror">GitHub 镜像 (hub.gitmirror.com)</string>
+    <string name="download_source_mirror_gh_proxynet">GitHub 镜像 (gh-proxy.net)</string>
+    <string name="update_timestamp_label">更新时间：%1$s</string>
+    <string name="update_release_notes_label">更新说明：\n%1$s</string>
+    <string name="error_open_browser">无法打开浏览器</string>
 
     <!-- About -->
     <string name="btn_about">关于</string>

@@ -359,7 +359,7 @@ class SettingsActivity : AppCompatActivity() {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/BryceWG/LexiSharp-Keyboard/releases"))
                             startActivity(intent)
                         } catch (_: Exception) {
-                            Toast.makeText(this@SettingsActivity, "无法打开浏览器", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@SettingsActivity, getString(R.string.error_open_browser), Toast.LENGTH_SHORT).show()
                         }
                     }
                     .setNegativeButton(R.string.btn_cancel, null)
@@ -535,13 +535,17 @@ class SettingsActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 updateTime // 如果解析失败，直接显示原始时间
             }
-            messageBuilder.append("更新时间：$formattedTime")
+            messageBuilder.append(
+                "${getString(R.string.update_timestamp_label, formattedTime)}"
+            )
         }
 
-        // 添加发布说明（如果有）
-        if (!releaseNotes.isNullOrEmpty() && releaseNotes != "版本 $latestVersion 已发布") {
+        // 添加发布说明
+        if (!releaseNotes.isNullOrEmpty()) {
             messageBuilder.append("\n\n")
-            messageBuilder.append("更新说明：\n$releaseNotes")
+            messageBuilder.append(
+                getString(R.string.update_release_notes_label, releaseNotes)
+            )
         }
 
         MaterialAlertDialogBuilder(this)
@@ -558,10 +562,10 @@ class SettingsActivity : AppCompatActivity() {
     private fun showDownloadSourceDialog(originalUrl: String, version: String) {
         // 准备下载源列表
         val downloadSources = arrayOf(
-            "GitHub 官方",
-            "GitHub 镜像 (ghproxy.net)",
-            "GitHub 镜像 (hub.gitmirror.com)",
-            "GitHub 镜像 (gh-proxy.net)"
+            getString(R.string.download_source_github_official),
+            getString(R.string.download_source_mirror_ghproxy),
+            getString(R.string.download_source_mirror_gitmirror),
+            getString(R.string.download_source_mirror_gh_proxynet)
         )
 
         // 根据 release 页面构造 APK 直链（用于镜像站加速）；官方仍跳转 release 页面
@@ -584,7 +588,7 @@ class SettingsActivity : AppCompatActivity() {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrls[which]))
                     startActivity(intent)
                 } catch (_: Exception) {
-                    Toast.makeText(this, "无法打开浏览器", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.error_open_browser), Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
