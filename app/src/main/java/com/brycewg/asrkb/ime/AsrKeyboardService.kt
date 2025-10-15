@@ -38,6 +38,7 @@ import com.brycewg.asrkb.asr.SonioxFileAsrEngine
 import com.brycewg.asrkb.asr.SonioxStreamAsrEngine
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.SettingsActivity
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -1059,6 +1060,16 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             } else {
                 val ic = currentInputConnection
                 val finalText = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+                // 若最终识别为空，直接反馈明确提示，避免无提示等待
+                if (finalText.isBlank()) {
+                    txtStatus?.text = getString(R.string.asr_error_empty_result)
+                    vibrateTick()
+                    committedStableLen = 0
+                    lastPartialText = null
+                    lastPostprocCommit = null
+                    goIdleWithTimingHint()
+                    return@launch
+                }
                 val partial = lastPartialText
                 if (!partial.isNullOrEmpty()) {
                     // 已有流式中间结果作为 composing
@@ -1115,9 +1126,98 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     override fun onError(message: String) {
         // Switch to main thread before touching views
         serviceScope.launch {
-            txtStatus?.text = message
+            val mapped = mapErrorToFriendlyMessage(message)
+            txtStatus?.text = mapped ?: message
             vibrateTick()
         }
+    }
+
+    /**
+     * 将底层错误字符串归类为用户可理解的提示文案（与悬浮球一致）。
+     */
+    private fun mapErrorToFriendlyMessage(raw: String): String? {
+        if (raw.isEmpty()) return null
+        val lower = raw.lowercase(Locale.ROOT)
+
+        // 空结果/空音频
+        try {
+            val emptyHints = listOf(
+                getString(R.string.error_asr_empty_result),
+                getString(R.string.error_audio_empty),
+                "empty asr result",
+                "empty audio",
+                "识别返回为空",
+                "空音频"
+            )
+            if (emptyHints.any { lower.contains(it.lowercase(Locale.ROOT)) }) {
+                return getString(R.string.asr_error_empty_result)
+            }
+        } catch (_: Throwable) { }
+
+        // HTTP 状态码分类（401/403）
+        try {
+            val httpCode = Regex("HTTP\\s+(\\d{3})").find(raw)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            when (httpCode) {
+                401 -> return getString(R.string.asr_error_auth_invalid)
+                403 -> return getString(R.string.asr_error_auth_forbidden)
+            }
+        } catch (_: Throwable) { }
+
+        // 通用 code 提示（如：ASR Error 401）
+        try {
+            val code = Regex("(?:ASR\\s*Error|status|code)\\s*(\\d{3})").find(raw)?.groupValues?.getOrNull(1)?.toIntOrNull()
+            when (code) {
+                401 -> return getString(R.string.asr_error_auth_invalid)
+                403 -> return getString(R.string.asr_error_auth_forbidden)
+            }
+        } catch (_: Throwable) { }
+
+        // 录音权限
+        try {
+            val permHints = listOf(
+                getString(R.string.error_record_permission_denied),
+                getString(R.string.hint_need_permission),
+                "record audio permission"
+            )
+            if (permHints.any { lower.contains(it.lowercase(Locale.ROOT)) }) {
+                return getString(R.string.asr_error_mic_permission_denied)
+            }
+        } catch (_: Throwable) { }
+
+        // 麦克风被占用/录音初始化失败
+        try {
+            val micBusyHints = listOf(
+                getString(R.string.error_audio_init_failed),
+                "audio recorder busy",
+                "resource busy",
+                "in use",
+                "device busy"
+            )
+            if (micBusyHints.any { lower.contains(it.lowercase(Locale.ROOT)) }) {
+                return getString(R.string.asr_error_mic_in_use)
+            }
+        } catch (_: Throwable) { }
+
+        // 握手失败（SSL/TLS、证书）
+        if (lower.contains("handshake") || lower.contains("sslhandshakeexception") || lower.contains("trust anchor") || lower.contains("certificate")) {
+            return getString(R.string.asr_error_network_handshake)
+        }
+
+        // 网络不可用/连接失败/超时
+        if (
+            lower.contains("unable to resolve host") ||
+            lower.contains("no address associated") ||
+            lower.contains("failed to connect") ||
+            lower.contains("connect exception") ||
+            lower.contains("network is unreachable") ||
+            lower.contains("software caused connection abort") ||
+            lower.contains("timeout") ||
+            lower.contains("timed out")
+        ) {
+            return getString(R.string.asr_error_network_unavailable)
+        }
+
+        return null
     }
 
     override fun onStopped() {

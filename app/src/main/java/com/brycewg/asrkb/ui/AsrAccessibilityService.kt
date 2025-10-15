@@ -14,11 +14,17 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
 import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.LocaleHelper
 
 /**
  * 无障碍服务,用于悬浮球语音识别后将文本插入到当前焦点的输入框中
  */
 class AsrAccessibilityService : AccessibilityService() {
+
+    override fun attachBaseContext(newBase: Context?) {
+        val wrapped = newBase?.let { LocaleHelper.wrap(it) }
+        super.attachBaseContext(wrapped ?: newBase)
+    }
 
     /**
      * 焦点输入框上下文：用于在悬浮球语音识别期间进行“前缀 + 预览 + 后缀”的拼接写入。

@@ -247,7 +247,7 @@ class SettingsActivity : AppCompatActivity() {
         if (!wasAccessibilityEnabled && isNowEnabled) {
             // 无障碍服务刚刚被启用
             Log.d("SettingsActivity", "Accessibility service just enabled")
-            Toast.makeText(this, "无障碍服务已启用,现在可以自动插入文本了", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_accessibility_enabled), Toast.LENGTH_SHORT).show()
         }
 
         wasAccessibilityEnabled = isNowEnabled

@@ -33,7 +33,7 @@ class AboutActivity : AppCompatActivity() {
 
     val versionName = pInfo?.versionName ?: ""
     val versionCodeLong = if (pInfo != null) {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pInfo.longVersionCode else @Suppress("DEPRECATION") pInfo.versionCode.toLong()
+        pInfo.longVersionCode
     } else 0L
     tvVersion.text = getString(R.string.about_version, "$versionName ($versionCodeLong)")
     tvPackage.text = getString(R.string.about_package, packageName)

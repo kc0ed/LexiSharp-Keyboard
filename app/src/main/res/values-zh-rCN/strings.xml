@@ -208,6 +208,15 @@
     <string name="error_recognize_failed_with_reason">识别失败: %1$s</string>
     <string name="label_soniox_api_key">API Key（Bearer）</string>
 
+    <!-- User-facing ASR error toasts (floating + keyboard) -->
+    <string name="asr_error_empty_result">未识别到内容，请再说一遍</string>
+    <string name="asr_error_network_unavailable">网络连接失败，请检查网络后重试</string>
+    <string name="asr_error_network_handshake">网络连接异常（握手失败），请稍后重试或切换网络</string>
+    <string name="asr_error_mic_permission_denied">需要麦克风权限才能识别，请在设置中开启</string>
+    <string name="asr_error_mic_in_use">麦克风正被其他应用使用，请稍后再试</string>
+    <string name="asr_error_auth_invalid">鉴权失败，凭证无效或已过期，请在设置中更新</string>
+    <string name="asr_error_auth_forbidden">权限不足，请检查服务开通状态</string>
+
     <!-- Enhanced Quick Guide -->
     <string name="guide_subtitle">让语音输入更简单高效</string>
     <string name="guide_keyboard_layout_title">键盘布局说明</string>
@@ -254,6 +263,9 @@
     <string name="about_open_github">查看项目主页</string>
     <string name="about_project_url">https://github.com/BryceWG/LexiSharp-Keyboard</string>
     <string name="about_desc">简洁高效的语音输入法，支持多家 ASR 与 LLM 后处理</string>
+
+    <!-- Generic toasts -->
+    <string name="toast_accessibility_enabled">无障碍服务已启用，现在可以自动插入文本了</string>
 
     <!-- Settings test input -->
     <string name="label_test_input">测试输入（用于体验输入法）</string>

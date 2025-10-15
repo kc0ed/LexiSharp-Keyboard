@@ -212,6 +212,15 @@
     <string name="error_recognize_failed_with_reason">Recognition failed: %1$s</string>
     <string name="label_soniox_api_key">API Key (Bearer)</string>
 
+    <!-- User-facing ASR error toasts (floating + keyboard) -->
+    <string name="asr_error_empty_result">No speech recognized. Please try again.</string>
+    <string name="asr_error_network_unavailable">Network connection failed. Check connection and retry.</string>
+    <string name="asr_error_network_handshake">Connection handshake failed. Try again or switch network.</string>
+    <string name="asr_error_mic_permission_denied">Microphone permission required. Enable it in Settings.</string>
+    <string name="asr_error_mic_in_use">Microphone is in use by another app. Try again later.</string>
+    <string name="asr_error_auth_invalid">Authentication failed. Credentials invalid or expired. Update in Settings.</string>
+    <string name="asr_error_auth_forbidden">Forbidden. Please check your service permissions.</string>
+
     <!-- Enhanced Quick Guide -->
     <string name="guide_subtitle">Making voice input simpler and more efficient</string>
     <string name="guide_keyboard_layout_title">Keyboard Layout Guide</string>
@@ -251,6 +260,9 @@
     <string name="update_timestamp_label">Release time: %1$s</string>
     <string name="update_release_notes_label">Release notes:\n%1$s</string>
     <string name="error_open_browser">Unable to open browser</string>
+
+    <!-- Generic toasts -->
+    <string name="toast_accessibility_enabled">Accessibility service enabled. Auto-insert is now available.</string>
     
     <!-- About -->
     <string name="btn_about">About</string>

@@ -21,12 +21,18 @@ import android.animation.AnimatorListenerAdapter
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.LocaleHelper
 
 /**
  * 悬浮球：当当前输入法不是本应用 IME 时显示，点击快速呼出系统输入法选择器，
  * 方便用户切换到 ASR 键盘。
  */
 class FloatingImeSwitcherService : Service() {
+
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        val wrapped = newBase?.let { LocaleHelper.wrap(it) }
+        super.attachBaseContext(wrapped ?: newBase)
+    }
 
     companion object {
         const val ACTION_SHOW = "com.brycewg.asrkb.action.FLOATING_SHOW"
