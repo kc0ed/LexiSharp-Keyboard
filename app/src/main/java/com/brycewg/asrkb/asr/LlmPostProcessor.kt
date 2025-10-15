@@ -53,12 +53,14 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
 
     val body = reqJson.toRequestBody(jsonMedia)
     val http = (client ?: OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build())
-    val req = Request.Builder()
+    val builder = Request.Builder()
       .url(url)
-      .addHeader("Authorization", "Bearer $apiKey")
       .addHeader("Content-Type", "application/json")
       .post(body)
-      .build()
+    if (apiKey.isNotBlank()) {
+      builder.addHeader("Authorization", "Bearer $apiKey")
+    }
+    val req = builder.build()
 
     val resp = http.newCall(req).execute()
     if (!resp.isSuccessful) {
@@ -154,12 +156,14 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
 
     val body = reqJson.toRequestBody(jsonMedia)
     val http = (client ?: OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build())
-    val req = Request.Builder()
+    val builder = Request.Builder()
       .url(url)
-      .addHeader("Authorization", "Bearer $apiKey")
       .addHeader("Content-Type", "application/json")
       .post(body)
-      .build()
+    if (apiKey.isNotBlank()) {
+      builder.addHeader("Authorization", "Bearer $apiKey")
+    }
+    val req = builder.build()
 
     val resp = http.newCall(req).execute()
     if (!resp.isSuccessful) {

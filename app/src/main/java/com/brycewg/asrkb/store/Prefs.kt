@@ -471,9 +471,9 @@ class Prefs(context: Context) {
     fun hasLlmKeys(): Boolean {
         val p = getActiveLlmProvider()
         return if (p != null) {
-            p.apiKey.isNotBlank() && p.endpoint.isNotBlank() && p.model.isNotBlank()
+            p.endpoint.isNotBlank() && p.model.isNotBlank()
         } else {
-            llmApiKey.isNotBlank() && llmEndpoint.isNotBlank() && llmModel.isNotBlank()
+            llmEndpoint.isNotBlank() && llmModel.isNotBlank()
         }
     }
 
