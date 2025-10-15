@@ -197,21 +197,9 @@ jobs:
             git log $PREV_TAG..HEAD --pretty=format:"- %s" --no-merges >> release_notes_short.txt
           fi
 
-          # 输出到 GitHub output（使用随机分隔符，避免内容中出现固定 EOF 导致解析失败）
-          D1="DELIM_$(date +%s)_$RANDOM"
-          {
-            echo "changelog<<$D1"
-            cat changelog.md
-            echo "$D1"
-          } >> "$GITHUB_OUTPUT"
-
-          # 输出简短版本（使用另一随机分隔符）
-          D2="DELIM_$(date +%s)_$RANDOM"
-          {
-            echo "release_notes_short<<$D2"
-            cat release_notes_short.txt
-            echo "$D2"
-          } >> "$GITHUB_OUTPUT"
+          # 不再通过 $GITHUB_OUTPUT 传递多行内容，以避免分隔符解析问题。
+          # 后续步骤直接读取 changelog.md 与 release_notes_short.txt 文件。
+          echo "✅ changelog 与简短更新说明已生成到工作区文件。"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -324,7 +312,14 @@ jobs:
           version = os.environ.get('VERSION', '0.0.0')
           version_code = os.environ.get('VERSION_CODE', '0')
           tag = os.environ.get('TAG', 'v0.0.0')
-          release_notes = os.environ.get('RELEASE_NOTES', f'版本 {version} 已发布')
+          # 优先使用 env 中的 RELEASE_NOTES；若为空，则读取文件 release_notes_short.txt
+          release_notes = os.environ.get('RELEASE_NOTES')
+          if not release_notes:
+              try:
+                  with open('release_notes_short.txt', 'r', encoding='utf-8') as f:
+                      release_notes = f.read().strip()
+              except FileNotFoundError:
+                  release_notes = f'版本 {version} 已发布'
 
           # 使用 ISO 8601 格式的时间戳（UTC）
           current_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -367,7 +362,8 @@ jobs:
           VERSION: ${{ steps.version.outputs.version_name }}
           VERSION_CODE: ${{ steps.version.outputs.version_code }}
           TAG: ${{ steps.tag.outputs.tag }}
-          RELEASE_NOTES: ${{ steps.changelog.outputs.release_notes_short }}
+          # RELEASE_NOTES 通过文件回退，不再依赖多行 step 输出
+          RELEASE_NOTES: ""
 
       - name: Commit and push version.json
         if: steps.update_version_json.outputs.version_changed == 'true'
@@ -397,7 +393,13 @@ jobs:
           version = os.environ.get('VERSION', '0.0.0')
           version_code = os.environ.get('VERSION_CODE', '0')
           tag = os.environ.get('TAG', 'v0.0.0')
-          release_notes = os.environ.get('RELEASE_NOTES', f'版本 {version} 已发布')
+          release_notes = os.environ.get('RELEASE_NOTES')
+          if not release_notes:
+              try:
+                  with open('release_notes_short.txt', 'r', encoding='utf-8') as f:
+                      release_notes = f.read().strip()
+              except FileNotFoundError:
+                  release_notes = f'版本 {version} 已发布'
 
           current_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -448,14 +450,14 @@ jobs:
           VERSION: ${{ steps.version.outputs.version_name }}
           VERSION_CODE: ${{ steps.version.outputs.version_code }}
           TAG: ${{ steps.tag.outputs.tag }}
-          RELEASE_NOTES: ${{ steps.changelog.outputs.release_notes_short }}
+          RELEASE_NOTES: ""
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: "Release ${{ steps.tag.outputs.version_display }}"
-          body: ${{ steps.changelog.outputs.changelog }}
+          body_path: changelog.md
           files: ${{ steps.rename_apk.outputs.renamed_apk_path }}
           draft: false
           prerelease: false
