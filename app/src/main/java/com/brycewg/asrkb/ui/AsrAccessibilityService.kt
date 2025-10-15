@@ -49,8 +49,20 @@ class AsrAccessibilityService : AccessibilityService() {
                 val root = svc.rootInActiveWindow ?: return null
                 val focused = svc.findFocusedEditableNode(root)
                 if (focused != null) {
-                    // 抓取当前输入框完整文本作为“全量文本”，用于基于选区切分前后缀
-                    val full = focused.text?.toString() ?: ""
+                    val text = focused.text?.toString()
+                    val hint = try { focused.hintText?.toString() } catch (_: Throwable) { null }
+                    val desc = try { focused.contentDescription?.toString() } catch (_: Throwable) { null }
+
+                    // 三重检查以确定当前文本是否为“提示”
+                    // 1. 标准 isShowingHintText API
+                    // 2. 文本与 hintText 相同
+                    // 3. 文本与 contentDescription 相同 (Telegram 等应用的非标准实现)
+                    val isHint = focused.isShowingHintText ||
+                                (!text.isNullOrEmpty() && text == hint) ||
+                                (!text.isNullOrEmpty() && text == desc)
+
+                    val full = if (isHint) "" else (text ?: "")
+
                     val selStart = focused.textSelectionStart.takeIf { it >= 0 } ?: full.length
                     val selEnd = focused.textSelectionEnd.takeIf { it >= 0 } ?: full.length
                     val start = selStart.coerceIn(0, full.length)
