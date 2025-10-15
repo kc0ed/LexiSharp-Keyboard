@@ -1,8 +1,8 @@
 {
-  "version": "2.9.2",
-  "version_code": 58,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.9.2",
-  "release_notes": "版本 2.9.2 已发布",
+  "version": "2.9.3",
+  "version_code": 59,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.9.3",
+  "release_notes": "本次更新包含 6 个提交:\n- ci(workflow): 优化 CI/CD 工作流中多行输出的传递方式\n- ci(workflow): 使用随机分隔符避免 GitHub Actions 输出解析失败\n- chore: 更新应用版本号至 2.9.3\n- feat(release): 优化发布日志生成与应用内更新信息显示\n- feat(ui): 优化 ASR 字符统计与设置页显示\n- fix(accessibility): 强化无障碍服务文本提取，避免将提示文本误识别为实际输入",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-14T16:04:45Z"
+  "update_time": "2025-10-15T03:40:05Z"
 }
