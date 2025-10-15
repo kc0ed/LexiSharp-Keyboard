@@ -197,15 +197,21 @@ jobs:
             git log $PREV_TAG..HEAD --pretty=format:"- %s" --no-merges >> release_notes_short.txt
           fi
 
-          # 输出到 GitHub output
-          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
-          cat changelog.md >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          # 输出到 GitHub output（使用随机分隔符，避免内容中出现固定 EOF 导致解析失败）
+          D1="DELIM_$(date +%s)_$RANDOM"
+          {
+            echo "changelog<<$D1"
+            cat changelog.md
+            echo "$D1"
+          } >> "$GITHUB_OUTPUT"
 
-          # 输出简短版本
-          echo "release_notes_short<<EOF" >> "$GITHUB_OUTPUT"
-          cat release_notes_short.txt >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          # 输出简短版本（使用另一随机分隔符）
+          D2="DELIM_$(date +%s)_$RANDOM"
+          {
+            echo "release_notes_short<<$D2"
+            cat release_notes_short.txt
+            echo "$D2"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
