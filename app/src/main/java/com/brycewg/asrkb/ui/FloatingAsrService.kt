@@ -162,7 +162,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             return
         }
 
-        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible) {
+        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible && !isRecording) {
             Log.d(TAG, "Pref requires IME visible; hiding for now")
             hideBall()
             return
@@ -233,7 +233,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         if (!prefs.floatingAsrEnabled) {
             hideBall(); return
         }
-        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible) {
+        // 录音中不受“仅在键盘显示时显示悬浮球”限制
+        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible && !isRecording) {
             hideBall(); return
         }
         showBall()
@@ -335,6 +336,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
 
         isRecording = true
         updateBallState()
+        // 录音开始后，若当前键盘未显示，也应强制展示悬浮球
+        updateVisibilityByPref()
         showToast(getString(R.string.floating_asr_recording))
 
         // Telegram 特判：为空时其占位文本会作为真实 text 暴露，先注入零宽字符使其进入“非空”状态，后续全量替换即可避开占位符拼接
@@ -429,6 +432,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             updateBallState()
             showToast(getString(R.string.floating_asr_recognizing))
         }
+        // 录音结束后根据偏好与当前场景重新评估显隐
+        updateVisibilityByPref()
     }
 
     private fun showToast(message: String) {
@@ -507,6 +512,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             isProcessing = false
             isRecording = false
             updateBallState()
+            // 结果提交后根据偏好恢复显隐规则
+            updateVisibilityByPref()
 
             // 插入文本：优先使用开始录音时的焦点快照；若为空，再尝试在提交时获取一次快照，避免覆盖
             if (finalText.isNotEmpty()) {
@@ -565,6 +572,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 updateBallState()
                 showToast(getString(R.string.floating_asr_recognizing))
             }
+            // 非录音阶段恢复“仅在键盘显示时显示悬浮球”的约束
+            updateVisibilityByPref()
         }
     }
 
@@ -633,6 +642,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             isRecording = false
             isProcessing = false
             updateBallState()
+            // 出错时也根据偏好恢复显隐规则
+            updateVisibilityByPref()
             val mapped = mapErrorToFriendlyMessage(message)
             if (mapped != null) {
                 showToast(mapped)
