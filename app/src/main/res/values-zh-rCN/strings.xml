@@ -161,6 +161,14 @@
     <string name="toast_llm_profile_deleted">已删除配置</string>
     <string name="untitled_profile">未命名配置</string>
 
+    <!-- Floating radial menu -->
+    <string name="label_radial_switch_asr">切换 ASR 供应商</string>
+    <string name="label_radial_switch_ime">切换输入法</string>
+    <string name="label_radial_move">移动悬浮球</string>
+    <string name="label_radial_postproc">切换 AI 后处理</string>
+    <string name="label_choose_asr_vendor">选择 ASR 供应商</string>
+    <string name="toast_move_mode_on">已进入移动模式，再次点击悬浮球退出</string>
+
     <string name="custom_punct_section_title">自定义标点按钮</string>
     <string name="label_custom_punct_1">按钮1（字符或标点）</string>
     <string name="label_custom_punct_2">按钮2（字符或标点）</string>

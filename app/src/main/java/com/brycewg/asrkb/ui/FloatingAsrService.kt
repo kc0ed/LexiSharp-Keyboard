@@ -71,6 +71,13 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private var ballIcon: ImageView? = null
     private var ballProgress: ProgressBar? = null
     private var lp: WindowManager.LayoutParams? = null
+    // 轮盘菜单与供应商选择面板
+    private var radialMenuView: View? = null
+    private var vendorMenuView: View? = null
+    // 悬浮球移动模式：开启后可直接拖动，点按一次退出
+    private var moveModeEnabled: Boolean = false
+    // 触摸期间的可见性保护（首轮长按出现轮盘时防止被隐藏）
+    private var touchActiveGuard: Boolean = false
     
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var asrEngine: StreamingAsrEngine? = null
@@ -147,6 +154,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     override fun onDestroy() {
         super.onDestroy()
         hideBall()
+        hideRadialMenu()
+        hideVendorMenu()
         asrEngine?.stop()
         serviceScope.cancel()
         try { unregisterReceiver(hintReceiver) } catch (_: Throwable) { }
@@ -230,11 +239,12 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     }
 
     private fun updateVisibilityByPref() {
+        val forceVisible = (radialMenuView != null || vendorMenuView != null || moveModeEnabled || touchActiveGuard)
         if (!prefs.floatingAsrEnabled) {
             hideBall(); return
         }
-        // 录音中不受“仅在键盘显示时显示悬浮球”限制
-        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible && !isRecording) {
+        // 录音中/正在交互（轮盘/面板/移动模式）不受“仅在键盘显示时显示悬浮球”限制
+        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible && !isRecording && !forceVisible) {
             hideBall(); return
         }
         showBall()
@@ -242,6 +252,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
 
     private fun hideBall() {
         val v = ballView ?: return
+        try { persistBallPosition() } catch (_: Throwable) { }
         try { windowManager.removeView(v) } catch (_: Throwable) { }
         ballView = null
         lp = null
@@ -262,6 +273,14 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     }
 
     private fun onBallClick() {
+        // 移动模式：点按退出，不触发录音开关
+        if (moveModeEnabled) {
+            moveModeEnabled = false
+            ballView?.let { try { animateSnapToEdge(it) } catch (_: Throwable) { snapToEdge(it) } }
+            hideRadialMenu(); hideVendorMenu()
+            try { persistBallPosition() } catch (_: Throwable) { }
+            return
+        }
         // 检查无障碍权限
         if (!AsrAccessibilityService.isEnabled()) {
             Log.w(TAG, "Accessibility service not enabled")
@@ -715,22 +734,16 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         var startY = 0
         var moved = false
         var isDragging = false
-        var longActionFired = false // 是否已触发2s长按动作（呼出输入法选择器）
+        var longActionFired = false // 保留变量占位（但不再使用 2s 长按呼出输入法选择器）
         val touchSlop = dp(4)
         val tinyMoveSlop = dp(6) // “极小范围移动”阈值
         val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
-        val longHoldSwitchTimeout = 2000L // 2 秒长按触发输入法选择器
         var longPressPosted = false
-        var switchImePosted = false
         val longPressRunnable = Runnable {
-            isDragging = true
             longPressPosted = false
-        }
-        val switchImeRunnable = Runnable {
-            switchImePosted = false
             longActionFired = true
-            // 触发输入法选择器
-            invokeImePicker()
+            // 长按打开轮盘菜单（替代此前的长按拖动/长按打开选择器）
+            showRadialMenu()
         }
 
         target.setOnTouchListener { v, e ->
@@ -739,19 +752,17 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 MotionEvent.ACTION_DOWN -> {
                     edgeAnimator?.cancel()
                     moved = false
-                    isDragging = false
+                    isDragging = moveModeEnabled
                     longActionFired = false
+                    touchActiveGuard = true
                     downX = e.rawX
                     downY = e.rawY
                     startX = p.x
                     startY = p.y
-                    if (!longPressPosted) {
+                    // 移动模式下不允许长按触发轮盘
+                    if (!moveModeEnabled && !longPressPosted) {
                         handler.postDelayed(longPressRunnable, longPressTimeout)
                         longPressPosted = true
-                    }
-                    if (!switchImePosted) {
-                        handler.postDelayed(switchImeRunnable, longHoldSwitchTimeout)
-                        switchImePosted = true
                     }
                     true
                 }
@@ -759,12 +770,6 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                     val dx = (e.rawX - downX).toInt()
                     val dy = (e.rawY - downY).toInt()
                     if (!moved && (kotlin.math.abs(dx) > touchSlop || kotlin.math.abs(dy) > touchSlop)) moved = true
-
-                    // 若在2秒长按触发前移动超过“极小阈值”，则取消输入法选择器触发
-                    if ((kotlin.math.abs(dx) > tinyMoveSlop || kotlin.math.abs(dy) > tinyMoveSlop) && switchImePosted) {
-                        handler.removeCallbacks(switchImeRunnable)
-                        switchImePosted = false
-                    }
 
                     if (!isDragging) {
                         if (moved && longPressPosted) {
@@ -792,26 +797,266 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                         handler.removeCallbacks(longPressRunnable)
                         longPressPosted = false
                     }
-                    if (switchImePosted) {
-                        handler.removeCallbacks(switchImeRunnable)
-                        switchImePosted = false
-                    }
                     if (longActionFired) {
-                        // 已触发2秒长按动作，抬起时不再处理点击或吸附
-                    } else if (!isDragging && !moved) {
-                        // 由根视图处理点击，避免子视图消费导致拖动无法触发
-                        onBallClick()
+                        // 已触发长按动作，抬起时不再处理点击或吸附
                     } else if (isDragging) {
-                        try { animateSnapToEdge(v) } catch (_: Throwable) { snapToEdge(v) }
+                        // 移动模式下：若未移动则视为点击（用于退出移动模式）；若已移动则吸附
+                        if (!moved) {
+                            onBallClick()
+                        } else {
+                            try { animateSnapToEdge(v) } catch (_: Throwable) { snapToEdge(v) }
+                        }
+                    } else if (!moved) {
+                        // 非移动模式的点按
+                        onBallClick()
                     }
                     moved = false
                     isDragging = false
                     longActionFired = false
+                    touchActiveGuard = false
+                    updateVisibilityByPref()
                     true
                 }
                 else -> false
             }
         }
+    }
+
+    // —— 轮盘菜单（与输入法切换悬浮球一致）——
+    private fun showRadialMenu() {
+        if (radialMenuView != null) return
+        val p = lp ?: return
+        val root = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            isClickable = true
+            setOnClickListener { hideRadialMenu() }
+        }
+        val btnSize = try { prefs.floatingBallSizeDp } catch (_: Throwable) { 56 }
+        val radius = dp((btnSize * 1.8f).toInt().coerceAtLeast(72))
+        val isLeft = isBallOnLeft()
+        val items = listOf(
+            RadialItem(R.drawable.ic_waveform, getString(R.string.label_radial_switch_asr), getString(R.string.label_radial_switch_asr)) { onPickAsrVendor() },
+            RadialItem(R.drawable.ic_keyboard, getString(R.string.label_radial_switch_ime), getString(R.string.label_radial_switch_ime)) { invokeImePickerFromMenu() },
+            RadialItem(R.drawable.ic_move, getString(R.string.label_radial_move), getString(R.string.label_radial_move)) { enableMoveModeFromMenu() },
+            RadialItem(
+                if (try { prefs.postProcessEnabled } catch (_: Throwable) { false }) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+                getString(R.string.label_radial_postproc),
+                getString(R.string.label_radial_postproc)
+            ) { togglePostprocFromMenu() }
+        )
+        val angles = floatArrayOf(-60f, -20f, 20f, 60f)
+        val centerX = p.x + (ballView?.width ?: p.width) / 2
+        val centerY = p.y + (ballView?.height ?: p.height) / 2
+        val base = if (isLeft) 0f else 180f
+        val dm = resources.displayMetrics
+        val screenW = dm.widthPixels
+        items.forEachIndexed { index, it ->
+            val a = Math.toRadians((base + angles[index]).toDouble())
+            val cx = (centerX + radius * Math.cos(a)).toInt()
+            val cy = (centerY + radius * Math.sin(a)).toInt()
+            val iv = buildCircleButton(it.iconRes, it.contentDescription) {
+                hideRadialMenu()
+                it.onClick()
+            }
+            val sizePx = dp(btnSize)
+            val lpBtn = android.widget.FrameLayout.LayoutParams(sizePx, sizePx)
+            lpBtn.leftMargin = cx - sizePx / 2
+            lpBtn.topMargin = cy - sizePx / 2
+            root.addView(iv, lpBtn)
+
+            // 文字说明
+            val tv = android.widget.TextView(this).apply {
+                text = it.label
+                setTextColor(0xFF222222.toInt())
+                textSize = 12f
+                setOnClickListener { _ ->
+                    hideRadialMenu()
+                    it.onClick()
+                }
+            }
+            val spacing = dp(6)
+            val lpText: android.widget.FrameLayout.LayoutParams
+            if (isLeft) {
+                lpText = android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT)
+                lpText.leftMargin = cx + sizePx / 2 + spacing
+                lpText.topMargin = cy - dp(8)
+            } else {
+                lpText = android.widget.FrameLayout.LayoutParams(android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, android.widget.FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.END)
+                lpText.rightMargin = (screenW - (cx - sizePx / 2 - spacing)).coerceAtLeast(0)
+                lpText.topMargin = cy - dp(8)
+            }
+            root.addView(tv, lpText)
+        }
+
+        val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            type,
+            0,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.TOP or Gravity.START
+        try {
+            windowManager.addView(root, params)
+            radialMenuView = root
+            updateVisibilityByPref()
+        } catch (_: Throwable) { }
+    }
+
+    private fun hideRadialMenu() {
+        radialMenuView?.let { try { windowManager.removeView(it) } catch (_: Throwable) { } }
+        radialMenuView = null
+        updateVisibilityByPref()
+    }
+
+    private data class RadialItem(
+        val iconRes: Int,
+        val contentDescription: String,
+        val label: String,
+        val onClick: () -> Unit
+    )
+
+    private fun buildCircleButton(iconRes: Int, cd: String, onClick: () -> Unit): View {
+        val iv = ImageView(this)
+        iv.setImageResource(iconRes)
+        iv.background = ContextCompat.getDrawable(this, R.drawable.bg_floating_ball)
+        val pad = dp(6)
+        iv.setPadding(pad, pad, pad, pad)
+        iv.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        iv.contentDescription = cd
+        try { iv.setColorFilter(0xFF111111.toInt()) } catch (_: Throwable) { }
+        iv.setOnClickListener { onClick() }
+        return iv
+    }
+
+    private fun isBallOnLeft(): Boolean {
+        val p = lp ?: return true
+        val dm = resources.displayMetrics
+        val w = dm.widthPixels
+        val root = ballView
+        val vw = root?.width ?: p.width
+        val centerX = p.x + vw / 2
+        return centerX < w / 2
+    }
+
+    private fun invokeImePickerFromMenu() {
+        hideVendorMenu()
+        invokeImePicker()
+    }
+
+    private fun enableMoveModeFromMenu() {
+        moveModeEnabled = true
+        hideVendorMenu()
+        try { android.widget.Toast.makeText(this, getString(R.string.toast_move_mode_on), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
+    }
+
+    private fun togglePostprocFromMenu() {
+        try {
+            val newVal = !prefs.postProcessEnabled
+            prefs.postProcessEnabled = newVal
+            val msg = getString(R.string.status_postproc, if (newVal) getString(R.string.toggle_on) else getString(R.string.toggle_off))
+            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
+        } catch (_: Throwable) { }
+    }
+
+    private fun onPickAsrVendor() {
+        hideVendorMenu()
+        val root = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            isClickable = true
+            setOnClickListener { hideVendorMenu() }
+        }
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            background = ContextCompat.getDrawable(this@FloatingAsrService, R.drawable.bg_panel_round)
+            val pad = dp(12)
+            setPadding(pad, pad, pad, pad)
+        }
+        val title = android.widget.TextView(this).apply {
+            text = getString(R.string.label_choose_asr_vendor)
+            setTextColor(0xFF111111.toInt())
+            textSize = 16f
+            setPadding(0, 0, 0, dp(4))
+        }
+        container.addView(title, android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT))
+
+        val entries = listOf(
+            AsrVendor.Volc to getString(R.string.vendor_volc),
+            AsrVendor.SiliconFlow to getString(R.string.vendor_sf),
+            AsrVendor.ElevenLabs to getString(R.string.vendor_eleven),
+            AsrVendor.OpenAI to getString(R.string.vendor_openai),
+            AsrVendor.DashScope to getString(R.string.vendor_dashscope),
+            AsrVendor.Gemini to getString(R.string.vendor_gemini),
+            AsrVendor.Soniox to getString(R.string.vendor_soniox)
+        )
+        val cur = try { prefs.asrVendor } catch (_: Throwable) { AsrVendor.Volc }
+        entries.forEach { (v, name) ->
+            val tv = android.widget.TextView(this).apply {
+                text = if (v == cur) "✓  $name" else name
+                setTextColor(0xFF222222.toInt())
+                textSize = 14f
+                setPadding(dp(6), dp(8), dp(6), dp(8))
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    try {
+                        prefs.asrVendor = v
+                        android.widget.Toast.makeText(this@FloatingAsrService, name, android.widget.Toast.LENGTH_SHORT).show()
+                    } catch (_: Throwable) { }
+                    hideVendorMenu()
+                }
+            }
+            container.addView(tv, android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
+
+        val paramsContainer = android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+        )
+        // 先添加，待测量后根据悬浮球位置与面板尺寸进行智能定位，防止遮挡与越界
+        root.addView(container, paramsContainer)
+        val p = lp ?: return
+        val isLeft = isBallOnLeft()
+        container.post {
+            try {
+                val dm = resources.displayMetrics
+                val screenW = dm.widthPixels
+                val screenH = dm.heightPixels
+                val cx = p.x + (ballView?.width ?: p.width) / 2
+                val cy = p.y + (ballView?.height ?: p.height) / 2
+                val offset = dp(16)
+                val w = container.width
+                val h = container.height
+                val lpC = container.layoutParams as android.widget.FrameLayout.LayoutParams
+                val left = if (isLeft) (cx + offset) else (cx - offset - w)
+                val top = cy - h / 2
+                lpC.leftMargin = left.coerceIn(0, (screenW - w).coerceAtLeast(0))
+                lpC.topMargin = top.coerceIn(0, (screenH - h).coerceAtLeast(0))
+                container.layoutParams = lpC
+            } catch (_: Throwable) { }
+        }
+
+        val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            type,
+            0,
+            PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.TOP or Gravity.START
+        try {
+            windowManager.addView(root, params)
+            vendorMenuView = root
+            updateVisibilityByPref()
+        } catch (_: Throwable) { }
+    }
+
+    private fun hideVendorMenu() {
+        vendorMenuView?.let { try { windowManager.removeView(it) } catch (_: Throwable) { } }
+        vendorMenuView = null
+        updateVisibilityByPref()
     }
 
     private fun snapToEdge(v: View) {

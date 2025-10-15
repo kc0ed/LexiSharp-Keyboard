@@ -163,6 +163,14 @@
     <string name="toast_llm_profile_deleted">Profile deleted</string>
     <string name="untitled_profile">Untitled profile</string>
 
+    <!-- Floating radial menu -->
+    <string name="label_radial_switch_asr">Switch ASR provider</string>
+    <string name="label_radial_switch_ime">Switch input method</string>
+    <string name="label_radial_move">Move floating ball</string>
+    <string name="label_radial_postproc">Toggle AI post-processing</string>
+    <string name="label_choose_asr_vendor">Choose ASR provider</string>
+    <string name="toast_move_mode_on">Move mode enabled. Tap the ball to exit.</string>
+
     <!-- Custom punctuation settings -->
     <string name="custom_punct_section_title">Custom Punctuation Buttons</string>
     <string name="label_custom_punct_1">Button 1 (char or punctuation)</string>
