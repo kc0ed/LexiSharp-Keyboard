@@ -273,8 +273,6 @@ class AsrAccessibilityService : AccessibilityService() {
                 if (setOk) {
                     @Suppress("DEPRECATION")
                     target.recycle()
-                    Log.d(TAG, "ACTION_SET_TEXT success")
-                    Toast.makeText(this, getString(com.brycewg.asrkb.R.string.floating_asr_inserted), Toast.LENGTH_SHORT).show()
                     return true
                 }
 
@@ -283,8 +281,6 @@ class AsrAccessibilityService : AccessibilityService() {
                 @Suppress("DEPRECATION")
                 target.recycle()
                 if (pasteOk) {
-                    Log.d(TAG, "Paste fallback success")
-                    Toast.makeText(this, getString(com.brycewg.asrkb.R.string.floating_asr_inserted), Toast.LENGTH_SHORT).show()
                     return true
                 }
             } else {
