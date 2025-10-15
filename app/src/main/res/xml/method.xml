@@ -5,6 +5,6 @@
     <subtype
         android:label="@string/app_name"
         android:imeSubtypeLocale="zh_CN"
-        android:imeSubtypeMode="keyboard" />
+        android:imeSubtypeMode="voice" />
 
 </input-method>
