@@ -49,8 +49,6 @@ English | [简体中文](README.md)
 
 ### 📝 Smart Input
 
-- **Pinyin Input** - Full Pinyin + Xiaohe Shuangpin
-- **LLM Conversion** - AI smart Pinyin to Chinese conversion
 - **AI Editing** - Voice commands for text editing
 - **Custom Keys** - Personalized punctuation keys
 
