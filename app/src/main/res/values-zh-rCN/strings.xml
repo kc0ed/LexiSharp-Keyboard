@@ -111,7 +111,7 @@
     <string name="soniox_lang_ms">马来语 (ms)</string>
     <string name="soniox_lang_fil">菲律宾语 (fil)</string>
     <string name="status_last_request_ms">上次识别耗时：%1$d ms</string>
-    <string name="btn_save">保存</string>
+    
     <string name="btn_close">关闭</string>
     <string name="title_quick_guide">快速上手教程</string>
     <string name="label_trim_trailing_punct">完成后去除句末标点</string>
@@ -172,7 +172,7 @@
     <string name="lang_follow_system">跟随系统</string>
     <string name="lang_zh_cn">简体中文</string>
     <string name="lang_en">English</string>
-    <string name="toast_saved">已保存</string>
+    
     <string name="toast_preset_added">已新增预设</string>
     <string name="toast_preset_deleted">已删除预设</string>
     <string name="untitled_preset">未命名预设</string>

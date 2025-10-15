@@ -416,7 +416,7 @@ class AsrSettingsActivity : AppCompatActivity() {
             checked[0] = false
           }
         }
-        .setPositiveButton(R.string.btn_save) { _, _ ->
+        .setPositiveButton(android.R.string.ok) { _, _ ->
           // 收集选择
           val codes = mutableListOf<String>()
           for (i in checked.indices) {

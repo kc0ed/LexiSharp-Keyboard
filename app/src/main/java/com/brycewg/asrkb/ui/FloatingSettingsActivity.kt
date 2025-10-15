@@ -71,6 +71,12 @@ class FloatingSettingsActivity : AppCompatActivity() {
           switchFloatingAsr.isChecked = false
           prefs.floatingAsrEnabled = false
           suppressSwitchChange = false
+          // 同步隐藏语音识别悬浮球
+          try {
+            val i = Intent(this, FloatingAsrService::class.java).apply { action = FloatingAsrService.ACTION_HIDE }
+            startService(i)
+            stopService(Intent(this, FloatingAsrService::class.java))
+          } catch (_: Throwable) { }
         }
         // 显示输入法切换悬浮球
         try {
@@ -82,6 +88,7 @@ class FloatingSettingsActivity : AppCompatActivity() {
         try {
           val intent = Intent(this, FloatingImeSwitcherService::class.java).apply { action = FloatingImeSwitcherService.ACTION_HIDE }
           startService(intent)
+          stopService(Intent(this, FloatingImeSwitcherService::class.java))
         } catch (_: Throwable) { }
       }
     }
@@ -93,18 +100,33 @@ class FloatingSettingsActivity : AppCompatActivity() {
         Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
         try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) } catch (_: Throwable) {}
       }
+      // 悬浮球服务按最新偏好刷新显示/隐藏（两种都刷新）
+      try {
+        if (prefs.floatingSwitcherEnabled) {
+          val i1 = Intent(this, FloatingImeSwitcherService::class.java).apply { action = FloatingImeSwitcherService.ACTION_SHOW }
+          startService(i1)
+        }
+        if (prefs.floatingAsrEnabled) {
+          val i2 = Intent(this, FloatingAsrService::class.java).apply { action = FloatingAsrService.ACTION_SHOW }
+          startService(i2)
+        }
+      } catch (_: Throwable) { }
     }
 
     // 悬浮窗透明度
     sliderFloatingAlpha.addOnChangeListener { _, value, fromUser ->
       if (fromUser) {
         prefs.floatingSwitcherAlpha = (value / 100f).coerceIn(0.2f, 1.0f)
-        if (prefs.floatingSwitcherEnabled) {
-          try {
-            val intent = Intent(this, FloatingImeSwitcherService::class.java).apply { action = FloatingImeSwitcherService.ACTION_SHOW }
-            startService(intent)
-          } catch (_: Throwable) { }
-        }
+        try {
+          if (prefs.floatingSwitcherEnabled) {
+            val i1 = Intent(this, FloatingImeSwitcherService::class.java).apply { action = FloatingImeSwitcherService.ACTION_SHOW }
+            startService(i1)
+          }
+          if (prefs.floatingAsrEnabled) {
+            val i2 = Intent(this, FloatingAsrService::class.java).apply { action = FloatingAsrService.ACTION_SHOW }
+            startService(i2)
+          }
+        } catch (_: Throwable) { }
       }
     }
 
@@ -145,6 +167,12 @@ class FloatingSettingsActivity : AppCompatActivity() {
           switchFloating.isChecked = false
           prefs.floatingSwitcherEnabled = false
           suppressSwitchChange = false
+          // 同步隐藏输入法切换悬浮球
+          try {
+            val i = Intent(this, FloatingImeSwitcherService::class.java).apply { action = FloatingImeSwitcherService.ACTION_HIDE }
+            startService(i)
+            stopService(Intent(this, FloatingImeSwitcherService::class.java))
+          } catch (_: Throwable) { }
         }
         try {
           val intent = Intent(this, FloatingAsrService::class.java).apply { action = FloatingAsrService.ACTION_SHOW }
