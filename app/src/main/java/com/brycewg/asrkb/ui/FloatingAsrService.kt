@@ -402,6 +402,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                         }
                         Log.d(TAG, "Fallback inserted=$wrote text='$toWrite'")
                         showToast(getString(R.string.floating_asr_completed))
+                        if (wrote) {
+                            try { prefs.addAsrChars(textOut.length) } catch (_: Throwable) { }
+                        }
                         hasCommittedResult = true
                     } else {
                         Log.w(TAG, "Fallback has no candidate text; only clear state")
@@ -524,6 +527,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                     wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
                 }
                 showToast(getString(R.string.floating_asr_completed))
+                if (wrote) {
+                    try { prefs.addAsrChars(finalText.length) } catch (_: Throwable) { }
+                }
             } else {
                 Log.w(TAG, "Final text is empty")
             }

@@ -252,8 +252,12 @@ class SettingsActivity : AppCompatActivity() {
         // 每天首次进入设置页时，静默检查一次更新（仅在有新版本时弹窗提示）
         maybeAutoCheckUpdatesDaily()
 
-        // 提前标记即可，实际弹出放到 onWindowFocusChanged，避免过早调用被系统忽略
-        // 如果没有该标记，不做任何处理
+
+        try {
+            val tvAsrTotalChars = findViewById<TextView>(R.id.tvAsrTotalChars)
+            val prefs = Prefs(this)
+            tvAsrTotalChars?.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
+        } catch (_: Throwable) { }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
