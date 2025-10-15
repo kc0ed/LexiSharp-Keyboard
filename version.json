@@ -1,8 +1,8 @@
 {
-  "version": "2.9.4",
-  "version_code": 60,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.9.4",
-  "release_notes": "本次更新包含 5 个提交:\n- feat(ui): 更新输入法配置以支持语音模式并添加查询权限\n- feat(ui): 实验性为悬浮球引入轮盘菜单和供应商选择面板\n- feat(ui): 在录音时强制显示悬浮球\n- feat(ui): 设置自动保存\n- feat(ui): 实时刷新 IME 键盘布局以响应设置更改",
+  "version": "2.9.5",
+  "version_code": 61,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.9.5",
+  "release_notes": "本次更新包含 9 个提交:\n- chore(config): 更新应用版本\n- feat(floating_ball): 悬浮球托盘功能\n- chore: auto-update version.json to 2.9.4 [skip ci]\n- feat(ui): 更新输入法配置以支持语音模式并添加查询权限\n- feat(ui): 实验性为悬浮球引入轮盘菜单和供应商选择面板\n- feat(ui): 在录音时强制显示悬浮球\n- feat(ui): 设置自动保存\n- feat(ui): 实时刷新 IME 键盘布局以响应设置更改",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-15T14:41:54Z"
+  "update_time": "2025-10-15T15:42:13Z"
 }
