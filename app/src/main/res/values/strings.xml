@@ -276,4 +276,7 @@
     <string name="keyboard_height_small">小</string>
     <string name="keyboard_height_medium">中</string>
     <string name="keyboard_height_large">大</string>
+
+    <!-- Keyboard layout option -->
+    <string name="label_swap_ai_edit_switcher">交换 AI 编辑与输入法切换键位置</string>
 </resources>

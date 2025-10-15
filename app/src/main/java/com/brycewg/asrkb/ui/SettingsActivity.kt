@@ -108,6 +108,7 @@ class SettingsActivity : AppCompatActivity() {
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
         val switchMicTapToggle = findViewById<MaterialSwitch>(R.id.switchMicTapToggle)
+        val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
         val spKeyboardHeight = findViewById<Spinner>(R.id.spKeyboardHeight)
 
 
@@ -116,6 +117,7 @@ class SettingsActivity : AppCompatActivity() {
             switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
             switchMicHaptic.isChecked = prefs.micHapticEnabled
             switchMicTapToggle.isChecked = prefs.micTapToggleEnabled
+            switchSwapAiEditWithSwitcher.isChecked = prefs.swapAiEditWithImeSwitcher
             try {
                 tvAsrTotalChars.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
             } catch (_: Throwable) { }
@@ -174,6 +176,7 @@ class SettingsActivity : AppCompatActivity() {
             prefs.autoSwitchOnPassword = switchAutoSwitchPassword.isChecked
             prefs.micHapticEnabled = switchMicHaptic.isChecked
             prefs.micTapToggleEnabled = switchMicTapToggle.isChecked
+            prefs.swapAiEditWithImeSwitcher = switchSwapAiEditWithSwitcher.isChecked
             prefs.keyboardHeightTier = (spKeyboardHeight.selectedItemPosition + 1).coerceIn(1, 3)
             Toast.makeText(this, getString(R.string.toast_saved), Toast.LENGTH_SHORT).show()
         }

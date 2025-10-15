@@ -223,6 +223,51 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         btnPunct4 = view.findViewById(R.id.btnPunct4)
         txtStatus = view.findViewById(R.id.txtStatus)
 
+        // 根据偏好精确交换 AI 编辑 与 输入法切换 按钮的“位置语义”（复制对方在 XML 中的约束与边距）
+        try {
+            if (prefs.swapAiEditWithImeSwitcher) {
+                val ai = btnAiEdit
+                val ime = btnImeSwitcher
+                if (ai != null && ime != null) {
+                    val lpAi = ai.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+                    val lpIme = ime.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+                    if (lpAi != null && lpIme != null) {
+                        // 记录原始边距（XML 中定义）
+                        val aiMarginStart = lpAi.marginStart
+                        val aiMarginEnd = lpAi.marginEnd
+                        val imeMarginStart = lpIme.marginStart
+                        val imeMarginEnd = lpIme.marginEnd
+
+                        // 1) 让 AI 编辑复制“原输入法切换键”的定位：位于 设置 右侧，仅设置 startToEnd
+                        lpAi.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                        lpAi.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                        lpAi.endToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                        lpAi.startToEnd = R.id.btnSettings
+                        // 边距也复制：使用 ime 的 start 边距（通常为 6dp），清空 end 边距
+                        lpAi.marginStart = imeMarginStart
+                        lpAi.marginEnd = 0
+                        // 该位置无需 bias；设置为默认值
+                        lpAi.horizontalBias = 0.5f
+                        ai.layoutParams = lpAi
+
+                        // 2) 让 输入法切换键 复制“原 AI 编辑键”的定位：位于 AI 与 回车之间，左右皆有约束
+                        lpIme.startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                        lpIme.endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+                        lpIme.startToEnd = R.id.btnAiEdit
+                        lpIme.endToStart = R.id.btnEnter
+                        // 边距复制：使用 ai 的 end 边距作为自身 end 边距（通常为 6dp），清空 start 边距
+                        lpIme.marginStart = 0
+                        lpIme.marginEnd = aiMarginEnd
+                        // 复制原 AI 的偏好：靠近右侧
+                        lpIme.horizontalBias = 1.0f
+                        ime.layoutParams = lpIme
+
+                        (rootView ?: view).requestLayout()
+                    }
+                }
+            }
+        } catch (_: Throwable) { }
+
         // 统一绑定：根据偏好在事件时分支，免去重开键盘
         btnMic?.setOnClickListener { v ->
             if (!prefs.micTapToggleEnabled) return@setOnClickListener

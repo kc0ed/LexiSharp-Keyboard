@@ -72,6 +72,11 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_KEYBOARD_HEIGHT_TIER, 1).coerceIn(1, 3)
         set(value) = sp.edit { putInt(KEY_KEYBOARD_HEIGHT_TIER, value.coerceIn(1, 3)) }
 
+    // 是否交换 AI 编辑与输入法切换按钮位置
+    var swapAiEditWithImeSwitcher: Boolean
+        get() = sp.getBoolean(KEY_SWAP_AI_EDIT_IME_SWITCHER, false)
+        set(value) = sp.edit { putBoolean(KEY_SWAP_AI_EDIT_IME_SWITCHER, value) }
+
     // 应用内语言（空字符串表示跟随系统；如："zh-Hans"、"en"）
     var appLanguageTag: String
         get() = sp.getString(KEY_APP_LANGUAGE_TAG, "") ?: ""
@@ -523,6 +528,7 @@ class Prefs(context: Context) {
         private const val KEY_FLOATING_BALL_SIZE_DP = "floating_ball_size_dp"
         private const val KEY_FLOATING_POS_X = "floating_ball_pos_x"
         private const val KEY_FLOATING_POS_Y = "floating_ball_pos_y"
+        private const val KEY_SWAP_AI_EDIT_IME_SWITCHER = "swap_ai_edit_ime_switcher"
         private const val KEY_FLOATING_WRITE_COMPAT_ENABLED = "floating_write_compat_enabled"
         private const val KEY_FLOATING_ASR_ENABLED = "floating_asr_enabled"
         private const val KEY_FLOATING_ONLY_WHEN_IME_VISIBLE = "floating_only_when_ime_visible"
@@ -666,6 +672,7 @@ class Prefs(context: Context) {
         o.put(KEY_AUTO_STOP_SILENCE_WINDOW_MS, autoStopSilenceWindowMs)
         o.put(KEY_AUTO_STOP_SILENCE_SENSITIVITY, autoStopSilenceSensitivity)
         o.put(KEY_KEYBOARD_HEIGHT_TIER, keyboardHeightTier)
+        o.put(KEY_SWAP_AI_EDIT_IME_SWITCHER, swapAiEditWithImeSwitcher)
         o.put(KEY_APP_LANGUAGE_TAG, appLanguageTag)
         o.put(KEY_FLOATING_SWITCHER_ENABLED, floatingSwitcherEnabled)
         o.put(KEY_FLOATING_SWITCHER_ALPHA, floatingSwitcherAlpha)
@@ -739,6 +746,7 @@ class Prefs(context: Context) {
             optInt(KEY_AUTO_STOP_SILENCE_WINDOW_MS)?.let { autoStopSilenceWindowMs = it }
             optInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY)?.let { autoStopSilenceSensitivity = it }
             optInt(KEY_KEYBOARD_HEIGHT_TIER)?.let { keyboardHeightTier = it }
+            optBool(KEY_SWAP_AI_EDIT_IME_SWITCHER)?.let { swapAiEditWithImeSwitcher = it }
             optString(KEY_APP_LANGUAGE_TAG)?.let { appLanguageTag = it }
             optBool(KEY_POSTPROC_ENABLED)?.let { postProcessEnabled = it }
             optBool(KEY_FLOATING_SWITCHER_ENABLED)?.let { floatingSwitcherEnabled = it }
