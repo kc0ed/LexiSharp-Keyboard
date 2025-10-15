@@ -28,6 +28,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
+import java.util.ArrayDeque
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.GZIPInputStream
@@ -54,6 +55,8 @@ class VolcStreamAsrEngine(
     private val wsReady = AtomicBoolean(false)
     private var ws: WebSocket? = null
     private var audioJob: Job? = null
+    private val prebuffer = ArrayDeque<ByteArray>()
+    private val prebufferLock = Any()
 
     private val sampleRate = 16000
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
@@ -74,6 +77,7 @@ class VolcStreamAsrEngine(
             return
         }
         running.set(true)
+        synchronized(prebufferLock) { prebuffer.clear() }
         openWebSocketAndStartAudio()
     }
 
@@ -91,10 +95,12 @@ class VolcStreamAsrEngine(
         }
         audioJob?.cancel()
         audioJob = null
+        synchronized(prebufferLock) { prebuffer.clear() }
     }
 
     private fun openWebSocketAndStartAudio() {
         val connectId = UUID.randomUUID().toString()
+        startAudioStreaming()
         val req = Request.Builder()
             .url(DEFAULT_WS_ENDPOINT)
             .headers(
@@ -110,7 +116,6 @@ class VolcStreamAsrEngine(
 
         ws = http.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                wsReady.set(true)
                 // 发送 full client request
                 try {
                     val full = buildFullClientRequestJson()
@@ -123,13 +128,12 @@ class VolcStreamAsrEngine(
                         payload = payload
                     )
                     webSocket.send(ByteString.of(*frame))
+                    wsReady.set(true)
                 } catch (t: Throwable) {
                     listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
                     stop()
                     return
                 }
-                // 启动录音并流式发送
-                startAudioStreaming()
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
@@ -196,20 +200,7 @@ class VolcStreamAsrEngine(
             }
 
             try {
-                // 等待 WS 就绪
-                var tries = 0
-                while (isActive && !wsReady.get() && tries < 50) {
-                    delay(10)
-                    tries++
-                }
-                if (!wsReady.get()) {
-                    listener.onError(context.getString(R.string.error_recognize_failed_with_reason, "WebSocket not ready"))
-                    running.set(false)
-                    return@launch
-                }
-                try {
-                    recorder.startRecording()
-                } catch (se: SecurityException) {
+                try { recorder.startRecording() } catch (se: SecurityException) {
                     listener.onError(context.getString(R.string.error_record_permission_denied))
                     running.set(false)
                     return@launch
@@ -218,6 +209,8 @@ class VolcStreamAsrEngine(
                 val silence = if (prefs.autoStopOnSilenceEnabled)
                     SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
                 else null
+                try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
+                val maxFrames = (2000 / chunkMillis).coerceAtLeast(1) // 预缓冲上限≈2s
                 while (isActive && running.get()) {
                     val read = recorder.read(buf, 0, buf.size)
                     if (read > 0) {
@@ -227,7 +220,25 @@ class VolcStreamAsrEngine(
                             stop()
                             break
                         }
-                        sendAudioFrame(buf.copyOf(read), last = false)
+                        val chunk = buf.copyOf(read)
+                        if (!wsReady.get()) {
+                            // WS 未就绪：写入预缓冲（滑窗上限）；保留最近 2s 的音频
+                            synchronized(prebufferLock) {
+                                prebuffer.addLast(chunk)
+                                while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                            }
+                        } else {
+                            // WS 就绪：先冲刷预缓冲，再发送当前块
+                            var flushed: Array<ByteArray>? = null
+                            synchronized(prebufferLock) {
+                                if (prebuffer.isNotEmpty()) {
+                                    flushed = prebuffer.toTypedArray()
+                                    prebuffer.clear()
+                                }
+                            }
+                            flushed?.forEach { b -> sendAudioFrame(b, last = false) }
+                            sendAudioFrame(chunk, last = false)
+                        }
                     } else if (read < 0) {
                         throw IOException("AudioRecord read error: $read")
                     }

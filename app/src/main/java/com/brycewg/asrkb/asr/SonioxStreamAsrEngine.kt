@@ -23,6 +23,7 @@ import okio.ByteString
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.ArrayDeque
 
 /**
  * Soniox WebSocket 实时 ASR 引擎实现。
@@ -42,8 +43,11 @@ class SonioxStreamAsrEngine(
         .build()
 
     private val running = AtomicBoolean(false)
+    private val wsReady = AtomicBoolean(false)
     private var ws: WebSocket? = null
     private var audioJob: Job? = null
+    private val prebuffer = ArrayDeque<ByteArray>()
+    private val prebufferLock = Any()
 
     private val sampleRate = 16000
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
@@ -70,12 +74,16 @@ class SonioxStreamAsrEngine(
             return
         }
         running.set(true)
+        wsReady.set(false)
+        synchronized(prebufferLock) { prebuffer.clear() }
         openWebSocketAndStartAudio()
     }
 
     override fun stop() {
         if (!running.get()) return
         running.set(false)
+        wsReady.set(false)
+        synchronized(prebufferLock) { prebuffer.clear() }
         try { ws?.send("") } catch (_: Throwable) { }
         scope.launch(Dispatchers.IO) {
             delay(150)
@@ -88,6 +96,8 @@ class SonioxStreamAsrEngine(
 
     private fun openWebSocketAndStartAudio() {
         finalTextBuffer.setLength(0)
+        // 并行：先启动录音进行预采集，后建立 WS 连接
+        startCaptureAndSendAudio()
         val req = Request.Builder()
             .url(Prefs.SONIOX_WS_URL)
             .build()
@@ -97,8 +107,8 @@ class SonioxStreamAsrEngine(
                     // 发送配置
                     val config = buildConfigJson()
                     webSocket.send(config)
-                    // 启动录音并发送音频
-                    startCaptureAndSendAudio(webSocket)
+                    // 标记 WS 已就绪，录音线程将冲刷预缓冲并进入实时发送
+                    wsReady.set(true)
                 } catch (t: Throwable) {
                     listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
                     stop()
@@ -124,7 +134,7 @@ class SonioxStreamAsrEngine(
         })
     }
 
-    private fun startCaptureAndSendAudio(webSocket: WebSocket) {
+    private fun startCaptureAndSendAudio() {
         audioJob?.cancel()
         audioJob = scope.launch(Dispatchers.IO) {
             val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
@@ -151,6 +161,9 @@ class SonioxStreamAsrEngine(
                 val silence = if (prefs.autoStopOnSilenceEnabled)
                     SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
                 else null
+                // 轻量预热：丢弃首个读取块，避免部分设备首帧接近全零
+                try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
+                val maxFrames = (2000 / 200).coerceAtLeast(1) // 预缓冲≈2s（readSize~200ms）
                 while (running.get()) {
                     val n = recorder.read(buf, 0, buf.size)
                     if (n > 0) {
@@ -159,7 +172,29 @@ class SonioxStreamAsrEngine(
                             stop()
                             break
                         }
-                        webSocket.send(ByteString.of(*buf.copyOfRange(0, n)))
+                        val chunk = buf.copyOfRange(0, n)
+                        if (!wsReady.get()) {
+                            synchronized(prebufferLock) {
+                                prebuffer.addLast(chunk)
+                                while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                            }
+                        } else {
+                            // 冲刷预缓冲后继续实时发送
+                            var flushed: Array<ByteArray>? = null
+                            synchronized(prebufferLock) {
+                                if (prebuffer.isNotEmpty()) {
+                                    flushed = prebuffer.toTypedArray()
+                                    prebuffer.clear()
+                                }
+                            }
+                            val socket = ws
+                            if (socket != null) {
+                                flushed?.forEach { b ->
+                                    try { socket.send(ByteString.of(*b)) } catch (_: Throwable) { }
+                                }
+                                try { socket.send(ByteString.of(*chunk)) } catch (_: Throwable) { }
+                            }
+                        }
                     }
                 }
             } catch (t: Throwable) {
