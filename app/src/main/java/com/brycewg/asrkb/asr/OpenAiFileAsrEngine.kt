@@ -141,10 +141,6 @@ class OpenAiFileAsrEngine(
         val apiKey = prefs.oaAsrApiKey
         val endpoint = prefs.oaAsrEndpoint.ifBlank { Prefs.DEFAULT_OA_ASR_ENDPOINT }
         val model = prefs.oaAsrModel.ifBlank { Prefs.DEFAULT_OA_ASR_MODEL }
-        if (apiKey.isBlank()) {
-          listener.onError(context.getString(R.string.error_missing_openai_key))
-          return@launch
-        }
 
         val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
           .addFormDataPart("model", model)
@@ -157,11 +153,14 @@ class OpenAiFileAsrEngine(
           .addFormDataPart("response_format", "json")
           .build()
 
-        val request = Request.Builder()
+        val reqBuilder = Request.Builder()
           .url(endpoint)
-          .addHeader("Authorization", "Bearer $apiKey")
           .post(multipart)
-          .build()
+          
+        if (apiKey.isNotBlank()) {
+          reqBuilder.addHeader("Authorization", "Bearer $apiKey")
+        }
+        val request = reqBuilder.build()
 
         val t0 = System.nanoTime()
         val resp = http.newCall(request).execute()

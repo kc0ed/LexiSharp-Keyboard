@@ -434,7 +434,7 @@ class Prefs(context: Context) {
         ),
         AsrVendor.OpenAI to listOf(
             VendorField(KEY_OA_ASR_ENDPOINT, required = true, default = DEFAULT_OA_ASR_ENDPOINT),
-            VendorField(KEY_OA_ASR_API_KEY, required = true),
+            VendorField(KEY_OA_ASR_API_KEY, required = false),
             VendorField(KEY_OA_ASR_MODEL, required = true, default = DEFAULT_OA_ASR_MODEL)
         ),
         AsrVendor.DashScope to listOf(
