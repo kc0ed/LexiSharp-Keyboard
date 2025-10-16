@@ -80,6 +80,15 @@ abstract class BaseFileAsrEngine(
     }
 
     private fun recordAudio(): ByteArray? {
+        // 额外的就地权限检查，便于 Lint 数据流分析识别到保护分支
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            listener.onError(context.getString(R.string.error_record_permission_denied))
+            return null
+        }
         val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
         val chunkBytes = ((sampleRate * chunkMillis) / 1000) * bytesPerSample
         val bufferSize = maxOf(minBuffer, chunkBytes)
@@ -122,7 +131,7 @@ abstract class BaseFileAsrEngine(
         try {
             try {
                 activeRecorder.startRecording()
-            } catch (se: SecurityException) {
+            } catch (_: SecurityException) {
                 listener.onError(context.getString(R.string.error_record_permission_denied))
                 return null
             } catch (t: Throwable) {
@@ -179,9 +188,21 @@ abstract class BaseFileAsrEngine(
         bufferSize: Int,
         pcmBuffer: ByteArrayOutputStream
     ): AudioRecord? {
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            listener.onError(context.getString(R.string.error_record_permission_denied))
+            return null
+        }
+
         var recorder = current
-        val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-        val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
+        val preRead = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+        var hasSignal = false
+        if (preRead > 0) {
+            hasSignal = hasNonZeroAmplitude(buf, preRead)
+        }
         if (!hasSignal) {
             try { recorder.stop() } catch (_: Throwable) {}
             try { recorder.release() } catch (_: Throwable) {}
@@ -199,7 +220,11 @@ abstract class BaseFileAsrEngine(
                 return null
             }
             recorder = newRecorder
-            try { recorder.startRecording() } catch (t: Throwable) {
+            try { recorder.startRecording() } catch (_: SecurityException) {
+                listener.onError(context.getString(R.string.error_record_permission_denied))
+                try { recorder.release() } catch (_: Throwable) {}
+                return null
+            } catch (t: Throwable) {
                 listener.onError(
                     context.getString(R.string.error_audio_error, t.message ?: "")
                 )
@@ -208,8 +233,8 @@ abstract class BaseFileAsrEngine(
             }
             val pre2 = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
             if (pre2 > 0) pcmBuffer.write(buf, 0, pre2)
-        } else if (pre > 0) {
-            pcmBuffer.write(buf, 0, pre)
+        } else if (preRead > 0) {
+            pcmBuffer.write(buf, 0, preRead)
         }
         return recorder
     }
