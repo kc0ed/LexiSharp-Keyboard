@@ -40,7 +40,9 @@ class OpenAiFileAsrEngine(
             val endpoint = prefs.oaAsrEndpoint.ifBlank { Prefs.DEFAULT_OA_ASR_ENDPOINT }
             val model = prefs.oaAsrModel.ifBlank { Prefs.DEFAULT_OA_ASR_MODEL }
 
-            val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
+            val usePrompt = prefs.oaAsrUsePrompt
+            val prompt = prefs.oaAsrPrompt.trim()
+            val multipartBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("model", model)
                 .addFormDataPart(
                     "file",
@@ -48,7 +50,14 @@ class OpenAiFileAsrEngine(
                     tmp.asRequestBody("audio/wav".toMediaType())
                 )
                 .addFormDataPart("response_format", "json")
-                .build()
+            if (usePrompt && prompt.isNotEmpty()) {
+                multipartBuilder.addFormDataPart("prompt", prompt)
+            }
+            val lang = prefs.oaAsrLanguage.trim()
+            if (lang.isNotEmpty()) {
+                multipartBuilder.addFormDataPart("language", lang)
+            }
+            val multipart = multipartBuilder.build()
 
             val reqBuilder = Request.Builder()
                 .url(endpoint)

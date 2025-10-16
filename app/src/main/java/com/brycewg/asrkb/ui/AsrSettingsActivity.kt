@@ -44,6 +44,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     val groupSoniox = findViewById<View>(R.id.groupSoniox)
     val switchSfUseOmni = findViewById<MaterialSwitch>(R.id.switchSfUseOmni)
     val tilSfOmniPrompt = findViewById<View>(R.id.tilSfOmniPrompt)
+    val switchOpenAiUsePrompt = findViewById<MaterialSwitch>(R.id.switchOpenAiUsePrompt)
+    val tilOpenAiPrompt = findViewById<View>(R.id.tilOpenAiPrompt)
 
     val titleVolc = findViewById<View>(R.id.titleVolc)
     val titleSf = findViewById<View>(R.id.titleSf)
@@ -67,9 +69,12 @@ class AsrSettingsActivity : AppCompatActivity() {
     val etDashPrompt = findViewById<EditText>(R.id.etDashPrompt)
     val spDashLanguage = findViewById<Spinner>(R.id.spDashLanguage)
     val tvDashLanguageLabel = findViewById<View>(R.id.tvDashLanguageLabel)
+    val tvOpenAiLanguageLabel = findViewById<View>(R.id.tvOpenAiLanguageLabel)
+    val spOpenAiLanguage = findViewById<Spinner>(R.id.spOpenAiLanguage)
     val etOpenAiAsrEndpoint = findViewById<EditText>(R.id.etOpenAiAsrEndpoint)
     val etOpenAiApiKey = findViewById<EditText>(R.id.etOpenAiApiKey)
     val etOpenAiModel = findViewById<EditText>(R.id.etOpenAiModel)
+    val etOpenAiPrompt = findViewById<EditText>(R.id.etOpenAiPrompt)
     val etGeminiApiKey = findViewById<EditText>(R.id.etGeminiApiKey)
     val etGeminiModel = findViewById<EditText>(R.id.etGeminiModel)
     val etGeminiPrompt = findViewById<EditText>(R.id.etGeminiPrompt)
@@ -157,6 +162,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     etOpenAiAsrEndpoint.setText(prefs.oaAsrEndpoint)
     etOpenAiApiKey.setText(prefs.oaAsrApiKey)
     etOpenAiModel.setText(prefs.oaAsrModel)
+    switchOpenAiUsePrompt.isChecked = prefs.oaAsrUsePrompt
+    etOpenAiPrompt.setText(prefs.oaAsrPrompt)
     etGeminiApiKey.setText(prefs.gemApiKey)
     etGeminiModel.setText(prefs.gemModel)
     etGeminiPrompt.setText(prefs.gemPrompt)
@@ -234,11 +241,21 @@ class AsrSettingsActivity : AppCompatActivity() {
     fun updateSfOmniVisibility(enabled: Boolean) {
       tilSfOmniPrompt.visibility = if (enabled) View.VISIBLE else View.GONE
     }
+    fun updateOpenAiPromptVisibility(enabled: Boolean) {
+      tilOpenAiPrompt.visibility = if (enabled) View.VISIBLE else View.GONE
+    }
     // 初始可见性
     updateSfOmniVisibility(prefs.sfUseOmni)
-    switchSfUseOmni.setOnCheckedChangeListener { _, isChecked ->
+    updateOpenAiPromptVisibility(prefs.oaAsrUsePrompt)
+    switchSfUseOmni.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.sfUseOmni = isChecked
       updateSfOmniVisibility(isChecked)
+    }
+    switchOpenAiUsePrompt.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
+      prefs.oaAsrUsePrompt = isChecked
+      updateOpenAiPromptVisibility(isChecked)
     }
     etElevenApiKey.bindString { prefs.elevenApiKey = it }
     etElevenModel.bindString { prefs.elevenModelId = it }
@@ -286,6 +303,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     etOpenAiAsrEndpoint.bindString { prefs.oaAsrEndpoint = it }
     etOpenAiApiKey.bindString { prefs.oaAsrApiKey = it }
     etOpenAiModel.bindString { prefs.oaAsrModel = it }
+    etOpenAiPrompt.bindString { prefs.oaAsrPrompt = it }
     etGeminiApiKey.bindString { prefs.gemApiKey = it }
     etGeminiModel.bindString { prefs.gemModel = it }
     etGeminiPrompt.bindString { prefs.gemPrompt = it }
@@ -450,6 +468,46 @@ class AsrSettingsActivity : AppCompatActivity() {
     }
 
     // DashScope 语言：单选（language），空值为自动
+    // OpenAI 语言：单选（language），空值为自动
+    run {
+      val oaLangLabels = listOf(
+        getString(R.string.dash_lang_auto),
+        getString(R.string.dash_lang_zh),
+        getString(R.string.dash_lang_en),
+        getString(R.string.dash_lang_ja),
+        getString(R.string.dash_lang_de),
+        getString(R.string.dash_lang_ko),
+        getString(R.string.dash_lang_ru),
+        getString(R.string.dash_lang_fr),
+        getString(R.string.dash_lang_pt),
+        getString(R.string.dash_lang_ar),
+        getString(R.string.dash_lang_it),
+        getString(R.string.dash_lang_es)
+      )
+      val oaLangCodes = listOf(
+        "",
+        "zh",
+        "en",
+        "ja",
+        "de",
+        "ko",
+        "ru",
+        "fr",
+        "pt",
+        "ar",
+        "it",
+        "es"
+      )
+      spOpenAiLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, oaLangLabels)
+      spOpenAiLanguage.setSelection(oaLangCodes.indexOf(prefs.oaAsrLanguage).coerceAtLeast(0))
+      spOpenAiLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+          val code = oaLangCodes.getOrNull(position) ?: ""
+          if (code != prefs.oaAsrLanguage) prefs.oaAsrLanguage = code
+        }
+        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+      }
+    }
     val dashLangLabels = listOf(
       getString(R.string.dash_lang_auto),
       getString(R.string.dash_lang_zh),
@@ -489,10 +547,10 @@ class AsrSettingsActivity : AppCompatActivity() {
       override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
     }
   }
-}
 
   private fun hapticTapIfEnabled(view: View?) {
     try {
       if (Prefs(this).micHapticEnabled) view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     } catch (_: Throwable) { }
+  }
 }

@@ -334,6 +334,19 @@ class Prefs(context: Context) {
 
     var oaAsrModel: String by stringPref(KEY_OA_ASR_MODEL, DEFAULT_OA_ASR_MODEL)
 
+    // OpenAI：是否启用自定义 Prompt（部分模型不支持）
+    var oaAsrUsePrompt: Boolean
+        get() = sp.getBoolean(KEY_OA_ASR_USE_PROMPT, false)
+        set(value) = sp.edit { putBoolean(KEY_OA_ASR_USE_PROMPT, value) }
+
+    // OpenAI：自定义识别 Prompt（可选）
+    var oaAsrPrompt: String by stringPref(KEY_OA_ASR_PROMPT, "")
+
+    // OpenAI：识别语言（空字符串表示不指定）
+    var oaAsrLanguage: String
+        get() = sp.getString(KEY_OA_ASR_LANGUAGE, "") ?: ""
+        set(value) = sp.edit { putString(KEY_OA_ASR_LANGUAGE, value.trim()) }
+
     // Google Gemini 语音理解（通过提示词转写）
     var gemApiKey: String by stringPref(KEY_GEM_API_KEY, "")
 
@@ -445,7 +458,11 @@ class Prefs(context: Context) {
         AsrVendor.OpenAI to listOf(
             VendorField(KEY_OA_ASR_ENDPOINT, required = true, default = DEFAULT_OA_ASR_ENDPOINT),
             VendorField(KEY_OA_ASR_API_KEY, required = false),
-            VendorField(KEY_OA_ASR_MODEL, required = true, default = DEFAULT_OA_ASR_MODEL)
+            VendorField(KEY_OA_ASR_MODEL, required = true, default = DEFAULT_OA_ASR_MODEL),
+            // 可选 Prompt 字段（字符串）；开关为布尔，单独在导入/导出处理
+            VendorField(KEY_OA_ASR_PROMPT, required = false, default = ""),
+            // 可选语言字段（字符串）
+            VendorField(KEY_OA_ASR_LANGUAGE, required = false, default = "")
         ),
         AsrVendor.DashScope to listOf(
             VendorField(KEY_DASH_API_KEY, required = true),
@@ -562,6 +579,9 @@ class Prefs(context: Context) {
         private const val KEY_OA_ASR_ENDPOINT = "oa_asr_endpoint"
         private const val KEY_OA_ASR_API_KEY = "oa_asr_api_key"
         private const val KEY_OA_ASR_MODEL = "oa_asr_model"
+        private const val KEY_OA_ASR_USE_PROMPT = "oa_asr_use_prompt"
+        private const val KEY_OA_ASR_PROMPT = "oa_asr_prompt"
+        private const val KEY_OA_ASR_LANGUAGE = "oa_asr_language"
         private const val KEY_GEM_API_KEY = "gem_api_key"
         private const val KEY_GEM_MODEL = "gem_model"
         private const val KEY_GEM_PROMPT = "gem_prompt"
@@ -693,6 +713,8 @@ class Prefs(context: Context) {
         o.put(KEY_LLM_API_KEY, llmApiKey)
         o.put(KEY_LLM_MODEL, llmModel)
         o.put(KEY_LLM_TEMPERATURE, llmTemperature.toDouble())
+        // OpenAI ASR：Prompt 开关（布尔）
+        o.put(KEY_OA_ASR_USE_PROMPT, oaAsrUsePrompt)
         // Volcano streaming toggle
         o.put(KEY_VOLC_STREAMING_ENABLED, volcStreamingEnabled)
         // Volcano extras
@@ -771,6 +793,8 @@ class Prefs(context: Context) {
             optString(KEY_LLM_API_KEY)?.let { llmApiKey = it }
             optString(KEY_LLM_MODEL)?.let { llmModel = it.ifBlank { DEFAULT_LLM_MODEL } }
             optFloat(KEY_LLM_TEMPERATURE)?.let { llmTemperature = it.coerceIn(0f, 2f) }
+            // OpenAI ASR：Prompt 开关
+            optBool(KEY_OA_ASR_USE_PROMPT)?.let { oaAsrUsePrompt = it }
             optBool(KEY_VOLC_STREAMING_ENABLED)?.let { volcStreamingEnabled = it }
             optBool(KEY_VOLC_DDC_ENABLED)?.let { volcDdcEnabled = it }
             optBool(KEY_VOLC_VAD_ENABLED)?.let { volcVadEnabled = it }
