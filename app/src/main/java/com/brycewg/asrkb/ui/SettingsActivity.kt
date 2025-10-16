@@ -110,6 +110,7 @@ class SettingsActivity : AppCompatActivity() {
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
         val switchMicTapToggle = findViewById<MaterialSwitch>(R.id.switchMicTapToggle)
         val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
+        val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
         val spKeyboardHeight = findViewById<Spinner>(R.id.spKeyboardHeight)
 
 
@@ -119,6 +120,7 @@ class SettingsActivity : AppCompatActivity() {
             switchMicHaptic.isChecked = prefs.micHapticEnabled
             switchMicTapToggle.isChecked = prefs.micTapToggleEnabled
             switchSwapAiEditWithSwitcher.isChecked = prefs.swapAiEditWithImeSwitcher
+            switchHideRecentTasks.isChecked = prefs.hideRecentTaskCard
             try {
                 tvAsrTotalChars.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
             } catch (_: Throwable) { }
@@ -202,6 +204,15 @@ class SettingsActivity : AppCompatActivity() {
         switchMicTapToggle.setOnCheckedChangeListener { _, isChecked ->
             prefs.micTapToggleEnabled = isChecked
         }
+
+        // 后台隐藏任务卡片（从最近任务中排除）
+        switchHideRecentTasks.setOnCheckedChangeListener { _, isChecked ->
+            prefs.hideRecentTaskCard = isChecked
+            applyExcludeFromRecents(isChecked)
+        }
+
+        // 初始时根据设置应用一次
+        applyExcludeFromRecents(prefs.hideRecentTaskCard)
 
 
         // 设置导入/导出
@@ -654,5 +665,12 @@ class SettingsActivity : AppCompatActivity() {
     private fun convertToMirrorUrl(originalUrl: String, mirrorPrefix: String): String {
         // 只对 GitHub 链接加镜像前缀；既支持 release 页面也支持 releases/download 直链
         return if (originalUrl.startsWith("https://github.com/")) mirrorPrefix + originalUrl else originalUrl
+    }
+
+    private fun applyExcludeFromRecents(enabled: Boolean) {
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+            am.appTasks?.forEach { it.setExcludeFromRecents(enabled) }
+        } catch (_: Throwable) { }
     }
 }

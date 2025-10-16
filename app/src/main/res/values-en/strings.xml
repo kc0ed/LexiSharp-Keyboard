@@ -294,6 +294,7 @@
 
     <!-- Keyboard layout option -->
     <string name="label_swap_ai_edit_switcher">Swap positions of AI Edit and IME switcher</string>
+    <string name="label_hide_recent_task_card">Hide recent task preview</string>
 
     <!-- Silence auto-stop (ASR) -->
     <string name="section_silence_autostop">Auto-stop on Silence</string>

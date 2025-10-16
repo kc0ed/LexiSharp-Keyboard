@@ -1,6 +1,9 @@
 package com.brycewg.asrkb
 
 import android.app.Application
+import android.app.Activity
+import android.app.ActivityManager
+import android.os.Bundle
 import android.content.Intent
 import android.provider.Settings
 import com.google.android.material.color.DynamicColors
@@ -49,6 +52,31 @@ class App : Application() {
                 }
                 startService(intent)
             }
+        } catch (_: Throwable) { }
+
+        // 根据设置将任务从最近任务中排除/恢复
+        try {
+            registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+                override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                    applyExcludeFromRecents(activity)
+                }
+                override fun onActivityResumed(activity: Activity) {
+                    applyExcludeFromRecents(activity)
+                }
+                override fun onActivityStarted(activity: Activity) {}
+                override fun onActivityPaused(activity: Activity) {}
+                override fun onActivityStopped(activity: Activity) {}
+                override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+                override fun onActivityDestroyed(activity: Activity) {}
+            })
+        } catch (_: Throwable) { }
+    }
+
+    private fun applyExcludeFromRecents(activity: Activity) {
+        try {
+            val enabled = Prefs(activity).hideRecentTaskCard
+            val am = activity.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
+            am.appTasks?.forEach { it.setExcludeFromRecents(enabled) }
         } catch (_: Throwable) { }
     }
 }
