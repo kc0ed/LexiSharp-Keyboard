@@ -139,7 +139,7 @@ class SonioxStreamAsrEngine(
         audioJob = scope.launch(Dispatchers.IO) {
             val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
             val readSize = maxOf(minBuffer, (sampleRate / 5) * 2) // ~200ms
-            val recorder = try {
+            var recorder = try {
                 AudioRecord(
                     MediaRecorder.AudioSource.VOICE_RECOGNITION,
                     sampleRate,
@@ -152,8 +152,21 @@ class SonioxStreamAsrEngine(
                 stop(); return@launch
             }
             if (recorder.state != AudioRecord.STATE_INITIALIZED) {
-                listener.onError(context.getString(R.string.error_audio_init_failed))
-                stop(); return@launch
+                try { recorder.release() } catch (_: Throwable) {}
+                val alt = try {
+                    AudioRecord(
+                        MediaRecorder.AudioSource.MIC,
+                        sampleRate,
+                        channelConfig,
+                        audioFormat,
+                        readSize
+                    )
+                } catch (_: Throwable) { null }
+                if (alt == null || alt.state != AudioRecord.STATE_INITIALIZED) {
+                    listener.onError(context.getString(R.string.error_audio_init_failed))
+                    stop(); return@launch
+                }
+                recorder = alt
             }
             try {
                 recorder.startRecording()
@@ -161,8 +174,32 @@ class SonioxStreamAsrEngine(
                 val silence = if (prefs.autoStopOnSilenceEnabled)
                     SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
                 else null
-                // 轻量预热：丢弃首个读取块，避免部分设备首帧接近全零
-                try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
+                // 预热 + 探测：若无有效音频，回退到 MIC
+                run {
+                    val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+                    val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
+                    if (!hasSignal) {
+                        try { recorder.stop() } catch (_: Throwable) {}
+                        try { recorder.release() } catch (_: Throwable) {}
+                        val alt = try {
+                            AudioRecord(
+                                MediaRecorder.AudioSource.MIC,
+                                sampleRate,
+                                channelConfig,
+                                audioFormat,
+                                readSize
+                            )
+                        } catch (_: Throwable) { null }
+                        if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
+                            recorder = alt
+                            try { recorder.startRecording() } catch (_: Throwable) { }
+                            try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
+                        } else {
+                            listener.onError(context.getString(R.string.error_audio_init_failed))
+                            stop(); return@launch
+                        }
+                    }
+                }
                 val maxFrames = (2000 / 200).coerceAtLeast(1) // 预缓冲≈2s（readSize~200ms）
                 while (running.get()) {
                     val n = recorder.read(buf, 0, buf.size)
@@ -314,5 +351,18 @@ class SonioxStreamAsrEngine(
     private fun stripEndMarker(s: String): String {
         if (s.isEmpty()) return s
         return s.replace("<end>", "").trimEnd()
+    }
+
+    private fun hasNonZeroAmplitude(buf: ByteArray, len: Int): Boolean {
+        var i = 0
+        while (i + 1 < len) {
+            val lo = buf[i].toInt() and 0xFF
+            val hi = buf[i + 1].toInt() and 0xFF
+            val s = (hi shl 8) or lo
+            val v = if (s < 0x8000) s else s - 0x10000
+            if (kotlin.math.abs(v) > 30) return true
+            i += 2
+        }
+        return false
     }
 }

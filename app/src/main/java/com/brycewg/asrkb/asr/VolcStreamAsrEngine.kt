@@ -176,7 +176,7 @@ class VolcStreamAsrEngine(
             val chunkMillis = if (prefs.volcFirstCharAccelEnabled) 100 else 200
             val chunkBytes = ((sampleRate * chunkMillis / 1000) * 2) // chunkMillis * 16k * 16bit mono
             val bufferSize = maxOf(minBuffer, chunkBytes)
-            val recorder = try {
+            var recorder = try {
                 AudioRecord(
                     MediaRecorder.AudioSource.VOICE_RECOGNITION,
                     sampleRate,
@@ -194,9 +194,22 @@ class VolcStreamAsrEngine(
                 return@launch
             }
             if (recorder.state != AudioRecord.STATE_INITIALIZED) {
-                listener.onError(context.getString(R.string.error_audio_init_failed))
-                running.set(false)
-                return@launch
+                try { recorder.release() } catch (_: Throwable) {}
+                val alt = try {
+                    AudioRecord(
+                        MediaRecorder.AudioSource.MIC,
+                        sampleRate,
+                        channelConfig,
+                        audioFormat,
+                        bufferSize
+                    )
+                } catch (_: Throwable) { null }
+                if (alt == null || alt.state != AudioRecord.STATE_INITIALIZED) {
+                    listener.onError(context.getString(R.string.error_audio_init_failed))
+                    running.set(false)
+                    return@launch
+                }
+                recorder = alt
             }
 
             try {
@@ -209,7 +222,33 @@ class VolcStreamAsrEngine(
                 val silence = if (prefs.autoStopOnSilenceEnabled)
                     SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
                 else null
-                try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
+                // 预热 + 探测：若无有效音频，回退 MIC
+                run {
+                    val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+                    val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
+                    if (!hasSignal) {
+                        try { recorder.stop() } catch (_: Throwable) {}
+                        try { recorder.release() } catch (_: Throwable) {}
+                        val alt = try {
+                            AudioRecord(
+                                MediaRecorder.AudioSource.MIC,
+                                sampleRate,
+                                channelConfig,
+                                audioFormat,
+                                bufferSize
+                            )
+                        } catch (_: Throwable) { null }
+                        if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
+                            recorder = alt
+                            try { recorder.startRecording() } catch (_: Throwable) { }
+                            try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
+                        } else {
+                            listener.onError(context.getString(R.string.error_audio_init_failed))
+                            running.set(false)
+                            return@launch
+                        }
+                    }
+                }
                 val maxFrames = (2000 / chunkMillis).coerceAtLeast(1) // 预缓冲上限≈2s
                 while (isActive && running.get()) {
                     val read = recorder.read(buf, 0, buf.size)
@@ -251,6 +290,19 @@ class VolcStreamAsrEngine(
                 try { recorder.release() } catch (_: Throwable) {}
             }
         }
+    }
+
+    private fun hasNonZeroAmplitude(buf: ByteArray, len: Int): Boolean {
+        var i = 0
+        while (i + 1 < len) {
+            val lo = buf[i].toInt() and 0xFF
+            val hi = buf[i + 1].toInt() and 0xFF
+            val s = (hi shl 8) or lo
+            val v = if (s < 0x8000) s else s - 0x10000
+            if (kotlin.math.abs(v) > 30) return true
+            i += 2
+        }
+        return false
     }
 
     private fun sendAudioFrame(pcm: ByteArray, last: Boolean) {

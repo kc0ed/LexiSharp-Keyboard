@@ -79,7 +79,7 @@ class ElevenLabsFileAsrEngine(
       val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
       val chunkBytes = ((sampleRate / 5) * 2)
       val bufferSize = maxOf(minBuffer, chunkBytes)
-      val recorder = try {
+      var recorder = try {
         AudioRecord(
           MediaRecorder.AudioSource.VOICE_RECOGNITION,
           sampleRate,
@@ -93,15 +93,58 @@ class ElevenLabsFileAsrEngine(
         return@launch
       }
       if (recorder.state != AudioRecord.STATE_INITIALIZED) {
-        listener.onError(context.getString(R.string.error_audio_init_failed))
-        running.set(false)
-        return@launch
+        try { recorder.release() } catch (_: Throwable) {}
+        val alt = try {
+          AudioRecord(
+            MediaRecorder.AudioSource.MIC,
+            sampleRate,
+            channelConfig,
+            audioFormat,
+            bufferSize
+          )
+        } catch (_: Throwable) { null }
+        if (alt == null || alt.state != AudioRecord.STATE_INITIALIZED) {
+          listener.onError(context.getString(R.string.error_audio_init_failed))
+          running.set(false)
+          return@launch
+        }
+        recorder = alt
       }
 
       val pcmBuffer = ByteArrayOutputStream()
       try {
         recorder.startRecording()
         val buf = ByteArray(chunkBytes)
+        // 首次探测：若无有效音频，回退 MIC
+        run {
+          val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+          val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
+          if (!hasSignal) {
+            try { recorder.stop() } catch (_: Throwable) {}
+            try { recorder.release() } catch (_: Throwable) {}
+            val alt = try {
+              AudioRecord(
+                MediaRecorder.AudioSource.MIC,
+                sampleRate,
+                channelConfig,
+                audioFormat,
+                bufferSize
+              )
+            } catch (_: Throwable) { null }
+            if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
+              recorder = alt
+              try { recorder.startRecording() } catch (_: Throwable) { }
+              val pre2 = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+              if (pre2 > 0) pcmBuffer.write(buf, 0, pre2)
+            } else {
+              listener.onError(context.getString(R.string.error_audio_init_failed))
+              running.set(false)
+              return@launch
+            }
+          } else if (pre > 0) {
+            pcmBuffer.write(buf, 0, pre)
+          }
+        }
         // 最大录音时长 30 分钟
         val maxBytes = 30 * 60 * sampleRate * 2
         val silence = if (prefs.autoStopOnSilenceEnabled)
@@ -197,6 +240,19 @@ class ElevenLabsFileAsrEngine(
         )
       }
     }
+  }
+
+  private fun hasNonZeroAmplitude(buf: ByteArray, len: Int): Boolean {
+    var i = 0
+    while (i + 1 < len) {
+      val lo = buf[i].toInt() and 0xFF
+      val hi = buf[i + 1].toInt() and 0xFF
+      val s = (hi shl 8) or lo
+      val v = if (s < 0x8000) s else s - 0x10000
+      if (kotlin.math.abs(v) > 30) return true
+      i += 2
+    }
+    return false
   }
 
   private fun extractErrorHint(body: String): String {
