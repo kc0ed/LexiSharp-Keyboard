@@ -215,11 +215,25 @@ class AsrAccessibilityService : AccessibilityService() {
         val anyFloatingEnabled = prefs.floatingSwitcherEnabled || prefs.floatingAsrEnabled
         if (!anyFloatingEnabled) return
 
-        // 优先：是否存在输入法窗口（更接近“键盘显示”）
         val now = System.currentTimeMillis()
         val hasFocus = hasEditableFocusNow()
         if (hasFocus) lastEditableFocusAt = now
-        val active = isImeWindowVisible() || hasFocus || (now - lastEditableFocusAt <= holdAfterFocusMs)
+
+        // 兼容选项：仅当开关开启且当前前台包名命中规则时，采用“按 IME 包名检测”
+        val prefsCompat = try { Prefs(this).floatingImeVisibilityCompatEnabled } catch (_: Throwable) { false }
+        val compatPkgs = try { Prefs(this).getFloatingImeVisibilityCompatPackageRules() } catch (_: Throwable) { emptyList() }
+
+        // 默认检测：是否存在输入法窗口（更接近“键盘显示”）
+        val mWindow = isImeWindowVisible()
+        // 兼容检测：是否能检测到 IME 窗口的包名
+        val mPkg = isImePackageDetected()
+        val hold = (now - lastEditableFocusAt <= holdAfterFocusMs)
+
+        val activePkg = getActiveWindowPackage()
+        val isCompatTarget = prefsCompat && !activePkg.isNullOrEmpty() && compatPkgs.any { it == activePkg }
+        val compatVisible = if (isCompatTarget) mPkg else mWindow
+        val active = if (isCompatTarget) compatVisible else (compatVisible || hold)
+
         val prev = lastImeSceneActive
         if (prev == null || prev != active) {
             lastImeSceneActive = active
@@ -513,6 +527,21 @@ class AsrAccessibilityService : AccessibilityService() {
                 } catch (_: Throwable) { }
             }
             visible
+        } catch (_: Throwable) { false }
+    }
+
+    private fun isImePackageDetected(): Boolean {
+        return try {
+            val ws = windows ?: return false
+            for (w in ws) {
+                try {
+                    if (w?.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+                        val pkg = w.root?.packageName?.toString()
+                        if (!pkg.isNullOrEmpty()) return true
+                    }
+                } catch (_: Throwable) { }
+            }
+            false
         } catch (_: Throwable) { false }
     }
 }

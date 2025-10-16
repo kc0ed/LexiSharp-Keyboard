@@ -459,6 +459,7 @@ The settings page supports configuration switching by vendor, showing only corre
 
 - **Voice Recognition Ball**: Transparency, size adjustment, compatibility mode
 - **IME Switching Ball**: Quick switching function
+ - **IME Visibility Compatibility (per‑app)**: Applies only to listed packages; in these apps use IME package detection as compatibility fallback. Includes com.tencent.mm by default
 
 </details>
 

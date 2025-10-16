@@ -124,6 +124,22 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_FLOATING_ASR_ENABLED, true)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_ASR_ENABLED, value) }
 
+    // 键盘可见性兼容模式（按应用包名生效）
+    var floatingImeVisibilityCompatEnabled: Boolean
+        get() = sp.getBoolean(KEY_FLOATING_IME_VISIBILITY_COMPAT_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_FLOATING_IME_VISIBILITY_COMPAT_ENABLED, value) }
+
+    // 可见性兼容目标包名列表（每行一个）
+    var floatingImeVisibilityCompatPackages: String
+        get() = sp.getString(
+            KEY_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES,
+            DEFAULT_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES
+        ) ?: DEFAULT_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES
+        set(value) = sp.edit { putString(KEY_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES, value) }
+
+    fun getFloatingImeVisibilityCompatPackageRules(): List<String> =
+        floatingImeVisibilityCompatPackages.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+
     // 悬浮球：写入文字兼容性模式（统一控制使用“全选+粘贴”等策略），默认开启
     var floatingWriteTextCompatEnabled: Boolean
         get() = sp.getBoolean(KEY_FLOATING_WRITE_COMPAT_ENABLED, true)
@@ -555,6 +571,8 @@ class Prefs(context: Context) {
         private const val KEY_FLOATING_WRITE_COMPAT_ENABLED = "floating_write_compat_enabled"
         private const val KEY_FLOATING_ASR_ENABLED = "floating_asr_enabled"
         private const val KEY_FLOATING_ONLY_WHEN_IME_VISIBLE = "floating_only_when_ime_visible"
+        private const val KEY_FLOATING_IME_VISIBILITY_COMPAT_ENABLED = "floating_ime_visibility_compat_enabled"
+        private const val KEY_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES = "floating_ime_visibility_compat_packages"
         private const val KEY_FLOATING_WRITE_COMPAT_PACKAGES = "floating_write_compat_packages"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_APP_LANGUAGE_TAG = "app_language_tag"
@@ -642,6 +660,8 @@ class Prefs(context: Context) {
         const val DEFAULT_FLOATING_BALL_SIZE_DP = 44
         // 悬浮写入兼容：默认目标包名（精准匹配，每行一个）
         const val DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES = "org.telegram.messenger\nnu.gpu.nagram\ncom.ss.android.ugc.aweme"
+        // 键盘可见性兼容：默认目标包名（精准匹配，每行一个）
+        const val DEFAULT_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES = "com.tencent.mm"
 
         // Soniox 默认端点
         const val SONIOX_API_BASE_URL = "https://api.soniox.com"
@@ -708,6 +728,8 @@ class Prefs(context: Context) {
         o.put(KEY_FLOATING_POS_Y, floatingBallPosY)
         o.put(KEY_FLOATING_ASR_ENABLED, floatingAsrEnabled)
         o.put(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE, floatingSwitcherOnlyWhenImeVisible)
+        o.put(KEY_FLOATING_IME_VISIBILITY_COMPAT_ENABLED, floatingImeVisibilityCompatEnabled)
+        o.put(KEY_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES, floatingImeVisibilityCompatPackages)
         o.put(KEY_POSTPROC_ENABLED, postProcessEnabled)
         o.put(KEY_LLM_ENDPOINT, llmEndpoint)
         o.put(KEY_LLM_API_KEY, llmApiKey)
@@ -786,6 +808,8 @@ class Prefs(context: Context) {
             optInt(KEY_FLOATING_POS_Y)?.let { floatingBallPosY = it }
             optBool(KEY_FLOATING_ASR_ENABLED)?.let { floatingAsrEnabled = it }
             optBool(KEY_FLOATING_ONLY_WHEN_IME_VISIBLE)?.let { floatingSwitcherOnlyWhenImeVisible = it }
+            optBool(KEY_FLOATING_IME_VISIBILITY_COMPAT_ENABLED)?.let { floatingImeVisibilityCompatEnabled = it }
+            optString(KEY_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES)?.let { floatingImeVisibilityCompatPackages = it }
             optBool(KEY_FLOATING_WRITE_COMPAT_ENABLED)?.let { floatingWriteTextCompatEnabled = it }
             optString(KEY_FLOATING_WRITE_COMPAT_PACKAGES)?.let { floatingWriteCompatPackages = it }
 

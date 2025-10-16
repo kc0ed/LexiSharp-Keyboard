@@ -128,6 +128,10 @@
     <string name="cd_floating_switcher">Quick switch to LexiSharp keyboard</string>
     <string name="label_floating_asr">Use floating ball for voice recognition</string>
     <string name="label_floating_write_compat">Floating write-text compatibility mode</string>
+    <string name="label_floating_ime_visibility_compat">IME visibility compatibility mode</string>
+    <string name="desc_floating_ime_visibility_compat">Applies only to the packages below: in these apps, use IME package detection as the compatibility fallback. Includes com.tencent.mm by default.</string>
+    <string name="label_ime_visibility_compat_pkgs">Target packages (one per line)</string>
+    <string name="hint_ime_visibility_compat_pkgs">Enter full package names (exact match, e.g., com.tencent.mm). com.tencent.mm is included by default.</string>
     <string name="desc_floating_write_compat">Some apps expose background placeholder text to Accessibility, which contaminates final insertion. When enabled, in target apps the floating ball switches to Select-All + Paste with an invisible marker to avoid placeholder issues. The clipboard may be used temporarily (best-effort restore). Works for Telegram, Douyin, etc.</string>
     <string name="label_floating_write_compat_pkgs">Target package names (one per line)</string>
     <string name="hint_floating_write_compat_pkgs">Enter full package or prefix (e.g., org.telegram or com.ss.android.ugc.aweme). A trailing * means prefix match (e.g., org.telegram.*).</string>

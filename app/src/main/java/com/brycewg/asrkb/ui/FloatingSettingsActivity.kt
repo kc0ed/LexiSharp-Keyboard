@@ -35,6 +35,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     val switchFloatingAsr = findViewById<MaterialSwitch>(R.id.switchFloatingAsr)
     val switchFloatingWriteCompat = findViewById<MaterialSwitch>(R.id.switchFloatingWriteCompat)
     val etFloatingWriteCompatPkgs = findViewById<TextInputEditText>(R.id.etFloatingWriteCompatPkgs)
+    val switchImeVisibilityCompat = findViewById<MaterialSwitch>(R.id.switchImeVisibilityCompat)
+    val etImeVisibilityCompatPkgs = findViewById<TextInputEditText>(R.id.etImeVisibilityCompatPkgs)
 
     // 初始状态
     switchFloating.isChecked = prefs.floatingSwitcherEnabled
@@ -44,6 +46,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     switchFloatingAsr.isChecked = prefs.floatingAsrEnabled
     switchFloatingWriteCompat.isChecked = prefs.floatingWriteTextCompatEnabled
     etFloatingWriteCompatPkgs.setText(prefs.floatingWriteCompatPackages)
+    switchImeVisibilityCompat.isChecked = prefs.floatingImeVisibilityCompatEnabled
+    etImeVisibilityCompatPkgs.setText(prefs.floatingImeVisibilityCompatPackages)
 
     // 若两者同开，兜底优先语音识别
     if (switchFloating.isChecked && switchFloatingAsr.isChecked) {
@@ -115,6 +119,16 @@ class FloatingSettingsActivity : AppCompatActivity() {
           startService(i2)
         }
       } catch (_: Throwable) { }
+    }
+
+    // 键盘可见性兼容模式（按应用包名）
+    switchImeVisibilityCompat.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
+      prefs.floatingImeVisibilityCompatEnabled = isChecked
+      if (prefs.floatingSwitcherOnlyWhenImeVisible && isChecked && !isAccessibilityServiceEnabled()) {
+        Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
+        try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) } catch (_: Throwable) {}
+      }
     }
 
     // 悬浮窗透明度
@@ -212,6 +226,15 @@ class FloatingSettingsActivity : AppCompatActivity() {
       override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
       override fun afterTextChanged(s: Editable?) {
         prefs.floatingWriteCompatPackages = s?.toString() ?: ""
+      }
+    })
+
+    // 兼容目标包名（每行一个）— 键盘可见性兼容
+    etImeVisibilityCompatPkgs.addTextChangedListener(object : TextWatcher {
+      override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+      override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+      override fun afterTextChanged(s: Editable?) {
+        prefs.floatingImeVisibilityCompatPackages = s?.toString() ?: ""
       }
     })
   }
