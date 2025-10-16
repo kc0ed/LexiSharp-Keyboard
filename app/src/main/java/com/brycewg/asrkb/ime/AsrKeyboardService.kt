@@ -115,7 +115,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
     private data class AiEditState(
         val targetIsSelection: Boolean,
         val beforeLen: Int,
-        val afterLen: Int
+        val afterLen: Int,
+        val selected: String
     )
     private var currentSessionKind: SessionKind? = null
     private var aiEditState: AiEditState? = null
@@ -392,7 +393,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     return@setOnClickListener
                 }
             }
-            aiEditState = AiEditState(targetIsSelection, beforeLen, afterLen)
+            aiEditState = AiEditState(targetIsSelection, beforeLen, afterLen,selected.toString())
             currentSessionKind = SessionKind.AiEdit
             asrEngine = ensureEngineMatchesMode(asrEngine)
             updateUiListening()
@@ -999,7 +1000,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 // Build original text: selection or last ASR commit (no selection)
                 val original = try {
                     if (state.targetIsSelection) {
-                        ic.getSelectedText(0)?.toString() ?: ""
+                        state.selected
                     } else {
                         lastAsrCommitText ?: ""
                     }
