@@ -1,8 +1,8 @@
 {
-  "version": "2.9.5",
-  "version_code": 61,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.9.5",
-  "release_notes": "本次更新包含 9 个提交:\n- chore(config): 更新应用版本\n- feat(floating_ball): 悬浮球托盘功能\n- chore: auto-update version.json to 2.9.4 [skip ci]\n- feat(ui): 更新输入法配置以支持语音模式并添加查询权限\n- feat(ui): 实验性为悬浮球引入轮盘菜单和供应商选择面板\n- feat(ui): 在录音时强制显示悬浮球\n- feat(ui): 设置自动保存\n- feat(ui): 实时刷新 IME 键盘布局以响应设置更改",
+  "version": "2.9.6",
+  "version_code": 62,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.9.6",
+  "release_notes": "本次更新包含 6 个提交:\n- chore: 更新版本号至2.9.6\n- refactor(asr): 提取文件ASR引擎通用录音和处理逻辑到基类\n- fix: 更新系统要求为Android 10.0及以上，移除LLM拼音输入功能相关内容\n- feat(app): 增加隐藏最近任务卡片功能\n- feat(asr): 增加ASR音频录制方法失败的回退机制",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-15T15:42:13Z"
+  "update_time": "2025-10-16T03:20:21Z"
 }
