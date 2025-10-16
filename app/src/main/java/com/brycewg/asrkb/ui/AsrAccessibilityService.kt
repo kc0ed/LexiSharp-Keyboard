@@ -184,7 +184,7 @@ class AsrAccessibilityService : AccessibilityService() {
     private var pendingCheck = false
     private var lastImeSceneActive: Boolean? = null
     private var lastEditableFocusAt: Long = 0L
-    private val holdAfterFocusMs: Long = 1200L
+    private val holdAfterFocusMs: Long = 600L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // 现用于辅助判断“仅在输入法面板显示时显示悬浮球”的场景
@@ -205,7 +205,7 @@ class AsrAccessibilityService : AccessibilityService() {
             handler.postDelayed({
                 pendingCheck = false
                 tryDispatchImeVisibilityHint()
-            }, 120)
+            }, 70)
         }
     }
 
