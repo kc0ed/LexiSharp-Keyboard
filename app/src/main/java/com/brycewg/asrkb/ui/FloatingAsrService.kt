@@ -26,6 +26,7 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
 import android.view.inputmethod.InputMethodManager
+import android.view.HapticFeedbackConstants
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.StreamingAsrEngine
@@ -188,7 +189,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         ballIcon = view.findViewById(R.id.ballIcon)
         ballProgress = view.findViewById(R.id.ballProgress)
         
-        ballIcon?.setOnClickListener { onBallClick() }
+        ballIcon?.setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            onBallClick()
+        }
         // 在根视图与图标上都绑定拖动监听；内部统一更新根视图位置，避免对子视图误设 WindowManager.LayoutParams
         attachDrag(view)
         ballIcon?.let { attachDrag(it) }
@@ -803,12 +807,14 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                     } else if (isDragging) {
                         // 移动模式下：若未移动则视为点击（用于退出移动模式）；若已移动则吸附
                         if (!moved) {
+                            hapticTapIfEnabled(ballView ?: v)
                             onBallClick()
                         } else {
                             try { animateSnapToEdge(v) } catch (_: Throwable) { snapToEdge(v) }
                         }
                     } else if (!moved) {
                         // 非移动模式的点按
+                        hapticTapIfEnabled(ballView ?: v)
                         onBallClick()
                     }
                     moved = false
@@ -935,7 +941,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         iv.scaleType = ImageView.ScaleType.CENTER_INSIDE
         iv.contentDescription = cd
         try { iv.setColorFilter(0xFF111111.toInt()) } catch (_: Throwable) { }
-        iv.setOnClickListener { onClick() }
+        iv.setOnClickListener { hapticTapIfEnabled(iv); onClick() }
         return iv
     }
 
@@ -948,7 +954,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             isClickable = true
             isFocusable = true
             contentDescription = cd
-            setOnClickListener { onClick() }
+            setOnClickListener { hapticTapIfEnabled(this); onClick() }
         }
         val iv = ImageView(this).apply {
             setImageResource(iconRes)
@@ -978,6 +984,12 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private fun invokeImePickerFromMenu() {
         hideVendorMenu()
         invokeImePicker()
+    }
+
+    private fun hapticTapIfEnabled(view: View?) {
+        try {
+            if (prefs.micHapticEnabled) view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        } catch (_: Throwable) { }
     }
 
     private fun enableMoveModeFromMenu() {

@@ -255,9 +255,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         // 统一绑定：根据偏好在事件时分支，免去重开键盘
         btnMic?.setOnClickListener { v ->
             if (!prefs.micTapToggleEnabled) return@setOnClickListener
-            if (prefs.micHapticEnabled) {
-                try { v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) } catch (_: Throwable) { }
-            }
+            performKeyHaptic(v)
             if (!hasRecordAudioPermission()) {
                 refreshPermissionUi()
                 return@setOnClickListener
@@ -290,9 +288,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             if (prefs.micTapToggleEnabled) return@setOnTouchListener false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    if (prefs.micHapticEnabled) {
-                        try { v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) } catch (_: Throwable) { }
-                    }
+                    performKeyHaptic(v)
                     if (!hasRecordAudioPermission()) {
                         refreshPermissionUi()
                         v.performClick()
@@ -337,9 +333,16 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 else -> false
             }
         }
-        btnSettings?.setOnClickListener { openSettings() }
-        btnEnter?.setOnClickListener { sendEnter() }
-        btnAiEdit?.setOnClickListener {
+        btnSettings?.setOnClickListener { v ->
+            performKeyHaptic(v)
+            openSettings()
+        }
+        btnEnter?.setOnClickListener { v ->
+            performKeyHaptic(v)
+            sendEnter()
+        }
+        btnAiEdit?.setOnClickListener { v ->
+            performKeyHaptic(v)
             // Tap-to-toggle: start/stop instruction capture for AI edit
             if (!hasRecordAudioPermission()) {
                 refreshPermissionUi()
@@ -397,13 +400,19 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             asrEngine?.start()
         }
         // Backspace: tap to delete one; swipe up/left to clear all; swipe down to undo within gesture; long-press to repeat delete
-        btnBackspace?.setOnClickListener { sendBackspace() }
+        btnBackspace?.setOnClickListener { v ->
+            // 对于单击退格，提供一次轻触反馈
+            performKeyHaptic(v)
+            sendBackspace()
+        }
         btnBackspace?.setOnTouchListener { v, event ->
             val ic = currentInputConnection
             if (ic == null) return@setOnTouchListener false
             val slop = ViewConfiguration.get(v.context).scaledTouchSlop
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    // 手势开始即震动一次
+                    performKeyHaptic(v)
                     backspaceStartX = event.x
                     backspaceStartY = event.y
                     backspaceClearedInGesture = false
@@ -502,20 +511,22 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 else -> false
             }
         }
-        btnHide?.setOnClickListener { hideKeyboardPanel() }
-        btnImeSwitcher?.setOnClickListener { showImePicker() }
+        btnHide?.setOnClickListener { v -> performKeyHaptic(v); hideKeyboardPanel() }
+        btnImeSwitcher?.setOnClickListener { v -> performKeyHaptic(v); showImePicker() }
         btnPromptPicker?.setOnClickListener { v ->
+            performKeyHaptic(v)
             showPromptPicker(v)
         }
         // Punctuation clicks
-        btnPunct1?.setOnClickListener { commitText(prefs.punct1) }
-        btnPunct2?.setOnClickListener { commitText(prefs.punct2) }
-        btnPunct3?.setOnClickListener { commitText(prefs.punct3) }
-        btnPunct4?.setOnClickListener { commitText(prefs.punct4) }
+        btnPunct1?.setOnClickListener { v -> performKeyHaptic(v); commitText(prefs.punct1) }
+        btnPunct2?.setOnClickListener { v -> performKeyHaptic(v); commitText(prefs.punct2) }
+        btnPunct3?.setOnClickListener { v -> performKeyHaptic(v); commitText(prefs.punct3) }
+        btnPunct4?.setOnClickListener { v -> performKeyHaptic(v); commitText(prefs.punct4) }
         btnPostproc?.apply {
             isSelected = prefs.postProcessEnabled
             alpha = if (prefs.postProcessEnabled) 1f else 0.45f
-            setOnClickListener {
+            setOnClickListener { v ->
+                performKeyHaptic(v)
                 val enabled = !prefs.postProcessEnabled
                 prefs.postProcessEnabled = enabled
                 isSelected = enabled
@@ -931,16 +942,22 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             // 记录撤回快照（若尚未存在）
             currentInputConnection?.let { saveUndoSnapshot(it) }
             currentInputConnection?.commitText(s, 1)
-            vibrateTick()
         } catch (_: Throwable) { }
     }
 
     private fun vibrateTick() {
+        // 将原“麦克风振动”偏好作为全局开关
+        if (!prefs.micHapticEnabled) return
         try {
             val v = getSystemService(Vibrator::class.java)
             v.vibrate(android.os.VibrationEffect.createOneShot(20, 50))
         } catch (_: Exception) {
         }
+    }
+
+    private fun performKeyHaptic(view: View?) {
+        if (!prefs.micHapticEnabled) return
+        try { view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) } catch (_: Throwable) { }
     }
 
     private fun showPromptPicker(anchor: View) {

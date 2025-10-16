@@ -22,6 +22,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import android.view.LayoutInflater
 import com.brycewg.asrkb.store.Prefs
 import android.view.View
+import android.view.HapticFeedbackConstants
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
@@ -174,7 +175,8 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // AI编辑与切换键位置交换
-        switchSwapAiEditWithSwitcher.setOnCheckedChangeListener { _, isChecked ->
+        switchSwapAiEditWithSwitcher.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
             prefs.swapAiEditWithImeSwitcher = isChecked
             try { sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
         }
@@ -192,21 +194,27 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // 基础开关即时写入
-        switchTrimTrailingPunct.setOnCheckedChangeListener { _, isChecked ->
+        switchTrimTrailingPunct.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
             prefs.trimFinalTrailingPunct = isChecked
         }
-        switchAutoSwitchPassword.setOnCheckedChangeListener { _, isChecked ->
+        switchAutoSwitchPassword.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
             prefs.autoSwitchOnPassword = isChecked
         }
-        switchMicHaptic.setOnCheckedChangeListener { _, isChecked ->
+        switchMicHaptic.setOnCheckedChangeListener { btn, isChecked ->
+            // 更新为全局触觉开关，并对本次切换给出即时反馈
             prefs.micHapticEnabled = isChecked
+            try { btn.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) } catch (_: Throwable) { }
         }
-        switchMicTapToggle.setOnCheckedChangeListener { _, isChecked ->
+        switchMicTapToggle.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
             prefs.micTapToggleEnabled = isChecked
         }
 
         // 后台隐藏任务卡片（从最近任务中排除）
-        switchHideRecentTasks.setOnCheckedChangeListener { _, isChecked ->
+        switchHideRecentTasks.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
             prefs.hideRecentTaskCard = isChecked
             applyExcludeFromRecents(isChecked)
         }
@@ -266,6 +274,12 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnImportSettings).setOnClickListener {
             importLauncher.launch(arrayOf("application/json", "text/plain"))
         }
+    }
+
+    private fun hapticTapIfEnabled(view: View?) {
+        try {
+            if (Prefs(this).micHapticEnabled) view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        } catch (_: Throwable) { }
     }
 
 

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.view.HapticFeedbackConstants
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Spinner
@@ -300,7 +301,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     // Initial visibility per switch
     updateSilenceOptionsVisibility(prefs.autoStopOnSilenceEnabled)
 
-    switchAutoStopSilence.setOnCheckedChangeListener { _, isChecked ->
+    switchAutoStopSilence.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.autoStopOnSilenceEnabled = isChecked
       updateSilenceOptionsVisibility(isChecked)
     }
@@ -310,26 +312,39 @@ class AsrSettingsActivity : AppCompatActivity() {
         prefs.autoStopSilenceWindowMs = value.toInt().coerceIn(300, 5000)
       }
     }
+    sliderSilenceWindow.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+      override fun onStartTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+      override fun onStopTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+    })
 
     sliderSilenceSensitivity.addOnChangeListener { _, value, fromUser ->
       if (fromUser) {
         prefs.autoStopSilenceSensitivity = value.toInt().coerceIn(1, 10)
       }
     }
+    sliderSilenceSensitivity.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+      override fun onStartTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+      override fun onStopTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+    })
 
-    switchVolcStreaming.setOnCheckedChangeListener { _, isChecked ->
+    switchVolcStreaming.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.volcStreamingEnabled = isChecked
     }
-    switchVolcDdc.setOnCheckedChangeListener { _, isChecked ->
+    switchVolcDdc.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.volcDdcEnabled = isChecked
     }
-    switchVolcVad.setOnCheckedChangeListener { _, isChecked ->
+    switchVolcVad.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.volcVadEnabled = isChecked
     }
-    switchVolcNonstream.setOnCheckedChangeListener { _, isChecked ->
+    switchVolcNonstream.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.volcNonstreamEnabled = isChecked
     }
-    switchVolcFirstCharAccel.setOnCheckedChangeListener { _, isChecked ->
+    switchVolcFirstCharAccel.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.volcFirstCharAccelEnabled = isChecked
     }
 
@@ -389,12 +404,14 @@ class AsrSettingsActivity : AppCompatActivity() {
     // 初次进入根据当前值处理可见性
     updateVolcStreamOptionsVisibility(prefs.volcStreamingEnabled)
     // 切换时动态展示/隐藏实验性选项
-    switchVolcStreaming.setOnCheckedChangeListener { _, isChecked ->
+    switchVolcStreaming.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.volcStreamingEnabled = isChecked
       updateVolcStreamOptionsVisibility(isChecked)
     }
     etSonioxApiKey.bindString { prefs.sonioxApiKey = it }
-    switchSonioxStreaming.setOnCheckedChangeListener { _, isChecked ->
+    switchSonioxStreaming.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.sonioxStreamingEnabled = isChecked
     }
     tvSonioxLanguageValue.setOnClickListener {
@@ -472,4 +489,10 @@ class AsrSettingsActivity : AppCompatActivity() {
       override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
     }
   }
+}
+
+  private fun hapticTapIfEnabled(view: View?) {
+    try {
+      if (Prefs(this).micHapticEnabled) view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    } catch (_: Throwable) { }
 }

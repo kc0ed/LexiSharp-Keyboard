@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.HapticFeedbackConstants
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
@@ -176,7 +177,10 @@ class FloatingImeSwitcherService : Service() {
         val pad = dp(6)
         iv.setPadding(pad, pad, pad, pad)
         iv.contentDescription = getString(R.string.cd_floating_switcher)
-        iv.setOnClickListener { onBallClick() }
+        iv.setOnClickListener {
+            hapticTap(iv)
+            onBallClick()
+        }
         attachDrag(iv)
 
         val type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -513,7 +517,7 @@ class FloatingImeSwitcherService : Service() {
         iv.scaleType = ImageView.ScaleType.CENTER_INSIDE
         iv.contentDescription = cd
         try { iv.setColorFilter(0xFF111111.toInt()) } catch (_: Throwable) { }
-        iv.setOnClickListener { onClick() }
+        iv.setOnClickListener { hapticTap(iv); onClick() }
         return iv
     }
 
@@ -526,7 +530,7 @@ class FloatingImeSwitcherService : Service() {
             isClickable = true
             isFocusable = true
             contentDescription = cd
-            setOnClickListener { onClick() }
+            setOnClickListener { hapticTap(this); onClick() }
         }
         val iv = ImageView(this).apply {
             setImageResource(iconRes)
@@ -789,5 +793,11 @@ class FloatingImeSwitcherService : Service() {
     private fun dp(v: Int): Int {
         val d = resources.displayMetrics.density
         return (v * d + 0.5f).toInt()
+    }
+
+    private fun hapticTap(view: View?) {
+        try {
+            if (Prefs(this).micHapticEnabled) view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        } catch (_: Throwable) { }
     }
 }

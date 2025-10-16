@@ -14,6 +14,8 @@ import com.google.android.material.slider.Slider
 import com.google.android.material.textfield.TextInputEditText
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.HapticFeedbackConstants
+import android.view.View
 
 class FloatingSettingsActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,7 +54,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     var suppressSwitchChange = false
 
     // 输入法悬浮球
-    switchFloating.setOnCheckedChangeListener { _, isChecked ->
+    switchFloating.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       if (suppressSwitchChange) return@setOnCheckedChangeListener
       prefs.floatingSwitcherEnabled = isChecked
       if (isChecked) {
@@ -94,7 +97,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     }
 
     // 仅在键盘显示时显示悬浮球
-    switchFloatingOnlyWhenImeVisible.setOnCheckedChangeListener { _, isChecked ->
+    switchFloatingOnlyWhenImeVisible.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.floatingSwitcherOnlyWhenImeVisible = isChecked
       if (isChecked && !isAccessibilityServiceEnabled()) {
         Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
@@ -129,6 +133,10 @@ class FloatingSettingsActivity : AppCompatActivity() {
         } catch (_: Throwable) { }
       }
     }
+    sliderFloatingAlpha.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+      override fun onStartTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+      override fun onStopTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+    })
 
     // 悬浮球大小
     sliderFloatingSize.addOnChangeListener { _, value, fromUser ->
@@ -142,9 +150,14 @@ class FloatingSettingsActivity : AppCompatActivity() {
         }
       }
     }
+    sliderFloatingSize.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+      override fun onStartTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+      override fun onStopTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+    })
 
     // 语音识别悬浮球
-    switchFloatingAsr.setOnCheckedChangeListener { _, isChecked ->
+    switchFloatingAsr.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       if (suppressSwitchChange) return@setOnCheckedChangeListener
       prefs.floatingAsrEnabled = isChecked
       if (isChecked) {
@@ -188,7 +201,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     }
 
     // 悬浮球写入文字兼容性模式（默认开）
-    switchFloatingWriteCompat.setOnCheckedChangeListener { _, isChecked ->
+    switchFloatingWriteCompat.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
       prefs.floatingWriteTextCompatEnabled = isChecked
     }
 
@@ -200,6 +214,12 @@ class FloatingSettingsActivity : AppCompatActivity() {
         prefs.floatingWriteCompatPackages = s?.toString() ?: ""
       }
     })
+  }
+
+  private fun hapticTapIfEnabled(view: View?) {
+    try {
+      if (Prefs(this).micHapticEnabled) view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+    } catch (_: Throwable) { }
   }
 
   private fun isAccessibilityServiceEnabled(): Boolean {
