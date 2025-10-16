@@ -2,7 +2,7 @@
   "version": "2.9.6",
   "version_code": 62,
   "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v2.9.6",
-  "release_notes": "本次更新包含 6 个提交:\n- chore: 更新版本号至2.9.6\n- refactor(asr): 提取文件ASR引擎通用录音和处理逻辑到基类\n- fix: 更新系统要求为Android 10.0及以上，移除LLM拼音输入功能相关内容\n- feat(app): 增加隐藏最近任务卡片功能\n- feat(asr): 增加ASR音频录制方法失败的回退机制",
+  "release_notes": "本次更新包含重要重构，如非尝鲜需要可以等待下个版本再更新\n本次更新包含 6 个提交:\n- chore: 更新版本号至2.9.6\n- refactor(asr): 提取文件ASR引擎通用录音和处理逻辑到基类\n- fix: 更新系统要求为Android 10.0及以上，移除LLM拼音输入功能相关内容\n- feat(app): 增加隐藏最近任务卡片功能\n- feat(asr): 增加ASR音频录制方法失败的回退机制",
   "min_supported_version": "2.6.5",
   "update_time": "2025-10-16T03:20:21Z"
 }
