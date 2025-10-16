@@ -114,7 +114,7 @@ English | [简体中文](README.md)
 
 ### 📋 System Requirements
 
-- Android 7.0 (API 24) or higher
+- Android 10.0 (API 29) or higher
 - Microphone permission (for voice recognition)
 - Overlay permission (optional, for floating ball feature)
 - Accessibility permission (optional, for automatic text insertion)
@@ -175,22 +175,6 @@ English | [简体中文](README.md)
 
 </details>
 
-### 📝 LLM Pinyin Input Feature
-
-<details>
-<summary><b>Pinyin Input Mode</b></summary>
-
-- Type Pinyin normally on the keyboard (supports full Pinyin and Xiaohe Shuangpin)
-- After input is complete, the system will automatically call LLM to convert Pinyin to corresponding Chinese characters
-- You can adjust the automatic LLM conversion time interval in settings (default is 0 for manual trigger)
-
-**Examples**:
-
-- Full Pinyin: input `nihao` → LLM converts to `你好`
-- Xiaohe Shuangpin: supports double Pinyin input scheme
-
-</details>
-
 ### ⌨️ Keyboard Button Functions
 
 <details>
@@ -212,9 +196,9 @@ English | [简体中文](README.md)
 <details>
 <summary><b>Custom Keys</b></summary>
 
-- There are **5 customizable** punctuation buttons at the bottom of the keyboard
+- There are **4 customizable** punctuation buttons at the bottom of the keyboard
 - You can customize the character or punctuation displayed on each button in settings
-- Support adding common symbols: `,` `.` `?` `!` `;` etc.
+- Support adding common symbols: `,` `.` `?` `!` etc.
 
 </details>
 
@@ -354,6 +338,8 @@ The settings page supports configuration switching by vendor, showing only corre
 - `Model Name`: Model name
 
 **Endpoint**: `https://api.siliconflow.cn/v1/audio/transcriptions`
+
+**Mutilmodal**: Support Qwen3-Omni series
 
 </td>
 <td width="50%">
