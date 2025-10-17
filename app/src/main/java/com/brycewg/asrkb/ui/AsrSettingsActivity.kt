@@ -498,9 +498,9 @@ class AsrSettingsActivity : AppCompatActivity() {
       )
       val variant = prefs.svModelVariant
       val urlOfficial = if (variant == "small-full")
-        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2025-09-09.tar.bz2"
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2"
       else
-        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09.tar.bz2"
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2"
       val builder = androidx.appcompat.app.AlertDialog.Builder(this)
         .setTitle(R.string.download_source_title)
         .setItems(sources) { dlg, which ->
