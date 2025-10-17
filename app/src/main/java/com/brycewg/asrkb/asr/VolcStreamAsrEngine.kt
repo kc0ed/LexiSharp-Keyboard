@@ -222,30 +222,19 @@ class VolcStreamAsrEngine(
                 val silence = if (prefs.autoStopOnSilenceEnabled)
                     SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
                 else null
-                // 预热 + 探测：若无有效音频，回退 MIC
+                // 预热 + 探测：将首读直接纳入发送/预缓冲，避免“丢起音”
                 run {
                     val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-                    val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
-                    if (!hasSignal) {
-                        try { recorder.stop() } catch (_: Throwable) {}
-                        try { recorder.release() } catch (_: Throwable) {}
-                        val alt = try {
-                            AudioRecord(
-                                MediaRecorder.AudioSource.MIC,
-                                sampleRate,
-                                channelConfig,
-                                audioFormat,
-                                bufferSize
-                            )
-                        } catch (_: Throwable) { null }
-                        if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
-                            recorder = alt
-                            try { recorder.startRecording() } catch (_: Throwable) { }
-                            try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
+                    if (pre > 0) {
+                        val first = buf.copyOf(pre)
+                        if (!wsReady.get()) {
+                            synchronized(prebufferLock) {
+                                prebuffer.addLast(first)
+                                val maxFrames = (2000 / chunkMillis).coerceAtLeast(1)
+                                while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                            }
                         } else {
-                            listener.onError(context.getString(R.string.error_audio_init_failed))
-                            running.set(false)
-                            return@launch
+                            sendAudioFrame(first, last = false)
                         }
                     }
                 }
@@ -377,9 +366,6 @@ class VolcStreamAsrEngine(
                     // 当已调用 stop() 且收到的并非最终结果时，忽略该条以避免重复提交
                     if (!running.get() && !isFinal) return
                     if (isFinal) listener.onFinal(text) else listener.onPartial(text)
-                    if (isFinal) {
-                        running.set(false)
-                    }
                 }
             }
         } else if (msgType == MSG_TYPE_ERROR_SERVER) {

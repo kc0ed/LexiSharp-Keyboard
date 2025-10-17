@@ -366,41 +366,7 @@ abstract class BaseFileAsrEngine(
 
         var recorder = current
         val preRead = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-        var hasSignal = false
         if (preRead > 0) {
-            hasSignal = hasNonZeroAmplitude(buf, preRead)
-        }
-        if (!hasSignal) {
-            try { recorder.stop() } catch (_: Throwable) {}
-            try { recorder.release() } catch (_: Throwable) {}
-            val newRecorder = try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
-                    sampleRate,
-                    channelConfig,
-                    audioFormat,
-                    bufferSize
-                )
-            } catch (_: Throwable) { null }
-            if (newRecorder == null || newRecorder.state != AudioRecord.STATE_INITIALIZED) {
-                listener.onError(context.getString(R.string.error_audio_init_failed))
-                return null
-            }
-            recorder = newRecorder
-            try { recorder.startRecording() } catch (_: SecurityException) {
-                listener.onError(context.getString(R.string.error_record_permission_denied))
-                try { recorder.release() } catch (_: Throwable) {}
-                return null
-            } catch (t: Throwable) {
-                listener.onError(
-                    context.getString(R.string.error_audio_error, t.message ?: "")
-                )
-                try { recorder.release() } catch (_: Throwable) {}
-                return null
-            }
-            val pre2 = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-            if (pre2 > 0) pcmBuffer.write(buf, 0, pre2)
-        } else if (preRead > 0) {
             pcmBuffer.write(buf, 0, preRead)
         }
         return recorder
