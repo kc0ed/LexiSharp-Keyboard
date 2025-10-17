@@ -42,7 +42,7 @@
     <string name="settings_title">LexiSharp Keyboard Settings</string>
     <string name="title_asr_settings">ASR Settings</string>
     <string name="title_ai_settings">AI Post-processing Settings</string>
-    <string name="title_punct_settings">Custom Punctuation Settings</string>
+    <string name="title_punct_settings">Custom Input Settings</string>
     <string name="title_floating_settings">Floating Settings</string>
     <string name="volc_section_title">Volcano Engine Credentials</string>
     <string name="sf_section_title">SiliconFlow Credentials</string>

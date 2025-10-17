@@ -40,7 +40,7 @@
     <string name="settings_title">言犀键盘设置</string>
     <string name="title_asr_settings">ASR 设置</string>
     <string name="title_ai_settings">AI 后处理设置</string>
-    <string name="title_punct_settings">自定义标点设置</string>
+    <string name="title_punct_settings">自定义输入设置</string>
     <string name="title_floating_settings">悬浮球设置</string>
     <string name="volc_section_title">Volcano Engine 鉴权参数</string>
     <string name="sf_section_title">SiliconFlow 鉴权参数</string>
