@@ -1,8 +1,8 @@
 {
-  "version": "3.0.2",
-  "version_code": 65,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.0.2",
-  "release_notes": "本次更新包含 4 个提交:\n- feat(version): 更新版本号至 3.0.2\n- perf(asr): 将 SenseVoice 预加载移至后台线程\n- feat(sensevoice): 增强模型下载和加载的健壮性\n- feat(asr): 改进 SiliconFlow ASR 模型选择并放宽超时",
+  "version": "3.0.3",
+  "version_code": 66,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.0.3",
+  "release_notes": "本次更新包含 2 个提交:\n- chore(release): 更新版本号至 3.0.3\n- fix(asr): 更新 SenseVoice ASR 模型下载链接，修复无标点符号的问题",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-17T11:06:49Z"
+  "update_time": "2025-10-17T13:22:30Z"
 }
