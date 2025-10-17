@@ -641,27 +641,25 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <com.google.android.material.textfield.TextInputLayout
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          app:boxBackgroundMode="outline"
-          android:hint="@string/label_sv_threads">
-
-          <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etSvThreads"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="number"
-            android:textColor="?attr/colorOnSurface"
-            android:textColorHint="?attr/colorOnSurfaceVariant" />
-        </com.google.android.material.textfield.TextInputLayout>
-
         <com.google.android.material.materialswitch.MaterialSwitch
           android:id="@+id/switchSvUseNnapi"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           android:text="@string/label_sv_use_nnapi" />
+
+        <TextView
+          android:id="@+id/tvSvModelVariantLabel"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:textColor="?attr/colorOnSurface"
+          android:text="@string/label_sv_model_variant" />
+
+        <Spinner
+          android:id="@+id/spSvModelVariant"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content" />
 
         <TextView
           android:id="@+id/tvSvLanguageLabel"
@@ -682,6 +680,23 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           android:text="@string/label_sv_use_itn" />
+
+        <TextView
+          android:id="@+id/tvSvThreadsLabel"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:textColor="?attr/colorOnSurface"
+          android:text="@string/label_sv_threads" />
+
+        <com.google.android.material.slider.Slider
+          android:id="@+id/sliderSvThreads"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:valueFrom="1"
+          android:valueTo="8"
+          android:stepSize="1"
+          android:layout_marginTop="2dp" />
 
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnSvDownloadModel"

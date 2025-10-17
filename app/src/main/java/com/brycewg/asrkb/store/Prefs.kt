@@ -459,6 +459,11 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_SV_MODEL_DIR, "") ?: ""
         set(value) = sp.edit { putString(KEY_SV_MODEL_DIR, value.trim()) }
 
+    // SenseVoice 模型版本：small-int8 或 small-full（默认 small-int8）
+    var svModelVariant: String
+        get() = sp.getString(KEY_SV_MODEL_VARIANT, "small-int8") ?: "small-int8"
+        set(value) = sp.edit { putString(KEY_SV_MODEL_VARIANT, value.trim().ifBlank { "small-int8" }) }
+
     var svNumThreads: Int
         get() = sp.getInt(KEY_SV_NUM_THREADS, 2).coerceIn(1, 8)
         set(value) = sp.edit { putInt(KEY_SV_NUM_THREADS, value.coerceIn(1, 8)) }
@@ -650,6 +655,7 @@ class Prefs(context: Context) {
         private const val KEY_TOTAL_ASR_CHARS = "total_asr_chars"
         // SenseVoice（本地 ASR）
         private const val KEY_SV_MODEL_DIR = "sv_model_dir"
+        private const val KEY_SV_MODEL_VARIANT = "sv_model_variant"
         private const val KEY_SV_NUM_THREADS = "sv_num_threads"
         private const val KEY_SV_USE_NNAPI = "sv_use_nnapi"
         private const val KEY_SV_LANGUAGE = "sv_language"
@@ -805,6 +811,7 @@ class Prefs(context: Context) {
         o.put(KEY_FLOATING_WRITE_COMPAT_PACKAGES, floatingWriteCompatPackages)
         // SenseVoice（本地 ASR）
         o.put(KEY_SV_MODEL_DIR, svModelDir)
+        o.put(KEY_SV_MODEL_VARIANT, svModelVariant)
         o.put(KEY_SV_NUM_THREADS, svNumThreads)
         o.put(KEY_SV_USE_NNAPI, svUseNnapi)
         o.put(KEY_SV_LANGUAGE, svLanguage)
@@ -899,6 +906,7 @@ class Prefs(context: Context) {
             }
             // SenseVoice（本地 ASR）
             optString(KEY_SV_MODEL_DIR)?.let { svModelDir = it }
+            optString(KEY_SV_MODEL_VARIANT)?.let { svModelVariant = it }
             optInt(KEY_SV_NUM_THREADS)?.let { svNumThreads = it.coerceIn(1, 8) }
             optBool(KEY_SV_USE_NNAPI)?.let { svUseNnapi = it }
             optString(KEY_SV_LANGUAGE)?.let { svLanguage = it }

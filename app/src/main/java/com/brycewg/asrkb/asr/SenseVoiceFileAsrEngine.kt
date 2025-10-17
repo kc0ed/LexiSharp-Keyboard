@@ -38,7 +38,13 @@ class SenseVoiceFileAsrEngine(
             // 模型目录：固定为外部专属目录（不可配置）；外部不可用时回退内部目录
             val base = try { context.getExternalFilesDir(null) } catch (_: Throwable) { null } ?: context.filesDir
             val probeRoot = java.io.File(base, "sensevoice")
-            val auto = tryFindModelDir(probeRoot)
+            // 优先在所选版本目录下查找；若缺失则回退到根下任意含 tokens 的目录（兼容旧版）
+            val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+            val variantDir = when (variant) {
+                "small-full" -> java.io.File(probeRoot, "small-full")
+                else -> java.io.File(probeRoot, "small-int8")
+            }
+            val auto = tryFindModelDir(variantDir) ?: tryFindModelDir(probeRoot)
             if (auto == null) {
                 listener.onError(context.getString(R.string.error_sensevoice_model_missing))
                 return

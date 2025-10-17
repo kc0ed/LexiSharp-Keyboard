@@ -104,7 +104,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     val switchSonioxStreaming = findViewById<MaterialSwitch>(R.id.switchSonioxStreaming)
     val tvSonioxLanguageLabel = findViewById<View>(R.id.tvSonioxLanguageLabel)
     val tvSonioxLanguageValue = findViewById<android.widget.TextView>(R.id.tvSonioxLanguageValue)
-    val etSvThreads = findViewById<EditText>(R.id.etSvThreads)
+    val sliderSvThreads = findViewById<Slider>(R.id.sliderSvThreads)
+    val spSvModelVariant = findViewById<Spinner>(R.id.spSvModelVariant)
     val switchSvUseNnapi = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchSvUseNnapi)
     val spSvLanguage = findViewById<Spinner>(R.id.spSvLanguage)
     val switchSvUseItn = findViewById<MaterialSwitch>(R.id.switchSvUseItn)
@@ -334,15 +335,51 @@ class AsrSettingsActivity : AppCompatActivity() {
     etGeminiPrompt.bindString { prefs.gemPrompt = it }
 
     // SenseVoice（本地 ASR）设置绑定（路径固定到外部专属目录，无需任何路径输入）
-    etSvThreads.setText(prefs.svNumThreads.toString())
-    etSvThreads.addTextChangedListener(object : TextWatcher {
-      override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-      override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-      override fun afterTextChanged(s: Editable?) {
-        val v = s?.toString()?.trim()?.toIntOrNull()
-        if (v != null) prefs.svNumThreads = v
+    // 模型版本
+    fun updateSvDownloadButtonText() {
+      val variant = prefs.svModelVariant
+      val text = if (variant == "small-full") getString(R.string.btn_sv_download_model_full) else getString(R.string.btn_sv_download_model_int8)
+      btnSvDownload.text = text
+    }
+    run {
+      val variantLabels = listOf(
+        getString(R.string.sv_model_small_int8),
+        getString(R.string.sv_model_small_full)
+      )
+      val variantCodes = listOf("small-int8", "small-full")
+      spSvModelVariant.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, variantLabels)
+      val idx = variantCodes.indexOf(prefs.svModelVariant).coerceAtLeast(0)
+      spSvModelVariant.setSelection(idx)
+      spSvModelVariant.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+          val code = variantCodes.getOrNull(position) ?: "small-int8"
+          if (code != prefs.svModelVariant) {
+            prefs.svModelVariant = code
+            // 变更后刷新按钮文案与状态
+            updateSvDownloadButtonText()
+            updateSvDownloadUiVisibility()
+          } else {
+            updateSvDownloadButtonText()
+            updateSvDownloadUiVisibility()
+          }
+        }
+        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
       }
-    })
+    }
+    run {
+      val cur = prefs.svNumThreads.coerceIn(1, 8)
+      sliderSvThreads.value = cur.toFloat()
+      sliderSvThreads.addOnChangeListener { s, value, fromUser ->
+        if (fromUser) {
+          val v = value.toInt().coerceIn(1, 8)
+          if (v != prefs.svNumThreads) prefs.svNumThreads = v
+        }
+      }
+      sliderSvThreads.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+        override fun onStartTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+        override fun onStopTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+      })
+    }
     switchSvUseNnapi.isChecked = prefs.svUseNnapi
     switchSvUseNnapi.setOnCheckedChangeListener { btn, isChecked ->
       hapticTapIfEnabled(btn)
@@ -376,7 +413,9 @@ class AsrSettingsActivity : AppCompatActivity() {
       prefs.svUseItn = isChecked
     }
 
-    // SenseVoice 模型一键下载
+    updateSvDownloadButtonText()
+
+    // SenseVoice 模型一键下载（按所选版本分别存放）
     btnSvDownload.setOnClickListener { v ->
       v.isEnabled = false
       tvSvDownloadStatus.text = ""
@@ -387,7 +426,11 @@ class AsrSettingsActivity : AppCompatActivity() {
         getString(R.string.download_source_mirror_gitmirror),
         getString(R.string.download_source_mirror_gh_proxynet)
       )
-      val urlOfficial = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09.tar.bz2"
+      val variant = prefs.svModelVariant
+      val urlOfficial = if (variant == "small-full")
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2025-09-09.tar.bz2"
+      else
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09.tar.bz2"
       val builder = androidx.appcompat.app.AlertDialog.Builder(this)
         .setTitle(R.string.download_source_title)
         .setItems(sources) { dlg, which ->
@@ -401,18 +444,19 @@ class AsrSettingsActivity : AppCompatActivity() {
           lifecycleScope.launch {
             try {
               // 下载到 cacheDir
-              val tmp = File(cacheDir, "sv_int8.tar.bz2")
+              val tmp = File(cacheDir, if (variant == "small-full") "sv_small_full.tar.bz2" else "sv_small_int8.tar.bz2")
               downloadFile(url, tmp) { progress ->
                 tvSvDownloadStatus.text = getString(R.string.sv_download_status_downloading, progress)
               }
               tvSvDownloadStatus.text = getString(R.string.sv_download_status_extracting)
               // 统一下载到 App 专属外部目录（/storage/emulated/0/Android/data/<pkg>/files/）
               val base = getExternalFilesDir(null) ?: filesDir
-              val outDir = File(base, "sensevoice")
+              val outDirRoot = File(base, "sensevoice")
+              val outDir = if (variant == "small-full") File(outDirRoot, "small-full") else File(outDirRoot, "small-int8")
               if (outDir.exists()) outDir.deleteRecursively()
               outDir.mkdirs()
               extractTarBz2(tmp, outDir)
-              // 寻找包含 tokens.txt 的目录作为模型目录
+              // 寻找包含 tokens.txt 的目录作为模型目录（仅在该版本目录内）
               val modelDir = findModelDir(outDir)
               tvSvDownloadStatus.text = if (modelDir != null) {
                 getString(R.string.sv_download_status_done)
@@ -431,7 +475,7 @@ class AsrSettingsActivity : AppCompatActivity() {
       builder.show()
     }
 
-    // 清除已下载模型
+    // 清除已下载模型（仅清除当前选定版本）
     btnSvClear.setOnClickListener { v ->
       val dlg = androidx.appcompat.app.AlertDialog.Builder(this)
         .setTitle(R.string.sv_clear_confirm_title)
@@ -442,11 +486,13 @@ class AsrSettingsActivity : AppCompatActivity() {
           lifecycleScope.launch {
             try {
               val base = getExternalFilesDir(null) ?: filesDir
-              val outDir = File(base, "sensevoice")
+              val variant = prefs.svModelVariant
+              val outDirRoot = File(base, "sensevoice")
+              val outDir = if (variant == "small-full") File(outDirRoot, "small-full") else File(outDirRoot, "small-int8")
               if (outDir.exists()) {
                 withContext(Dispatchers.IO) { outDir.deleteRecursively() }
               }
-              // 卸载已加载的本地识别器，释放内存
+              // 卸载当前已加载的本地识别器（与当前版本相关）
               try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
               tvSvDownloadStatus.text = getString(R.string.sv_clear_done)
             } catch (_: Throwable) {
@@ -712,11 +758,13 @@ class AsrSettingsActivity : AppCompatActivity() {
 
   private fun updateSvDownloadUiVisibility() {
     val base = getExternalFilesDir(null) ?: filesDir
-    val outDir = File(base, "sensevoice")
-    val modelDir = findModelDir(outDir)
+    val root = File(base, "sensevoice")
+    val variant = Prefs(this).svModelVariant
+    val dir = if (variant == "small-full") File(root, "small-full") else File(root, "small-int8")
+    val modelDir = findModelDir(dir)
     val ready = modelDir != null &&
-      ((modelDir != null && File(modelDir, "model.int8.onnx").exists()) || (modelDir != null && File(modelDir, "model.onnx").exists())) &&
-      (modelDir != null && File(modelDir, "tokens.txt").exists())
+      (File(modelDir, "tokens.txt").exists()) &&
+      (File(modelDir, "model.int8.onnx").exists() || File(modelDir, "model.onnx").exists())
     val btn = findViewById<MaterialButton>(R.id.btnSvDownloadModel)
     val btnClear = findViewById<MaterialButton>(R.id.btnSvClearModel)
     val tv = findViewById<TextView>(R.id.tvSvDownloadStatus)
@@ -754,23 +802,25 @@ class AsrSettingsActivity : AppCompatActivity() {
   }
 
   private suspend fun extractTarBz2(file: File, outDir: File) = withContext(Dispatchers.IO) {
-    BZip2CompressorInputStream(file.inputStream().buffered()).use { bz ->
+    // BZip2 是单线程、CPU 密集型；使用更大的缓冲以略微降低 I/O 调用次数
+    BZip2CompressorInputStream(file.inputStream().buffered(64 * 1024)).use { bz ->
       TarArchiveInputStream(bz).use { tar ->
         var entry = tar.getNextTarEntry()
-        val buf = ByteArray(8192)
+        val buf = ByteArray(64 * 1024)
         while (entry != null) {
           val outFile = File(outDir, entry.name)
           if (entry.isDirectory) {
             outFile.mkdirs()
           } else {
             outFile.parentFile?.mkdirs()
-            FileOutputStream(outFile).use { fos ->
+            java.io.BufferedOutputStream(FileOutputStream(outFile), 64 * 1024).use { bos ->
               var n: Int
               while (true) {
                 n = tar.read(buf)
                 if (n <= 0) break
-                fos.write(buf, 0, n)
+                bos.write(buf, 0, n)
               }
+              bos.flush()
             }
           }
           entry = tar.getNextTarEntry()

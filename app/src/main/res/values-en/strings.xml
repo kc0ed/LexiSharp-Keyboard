@@ -118,7 +118,7 @@
     
     <!-- Local ASR (placeholder) -->
     <string name="error_local_asr_not_ready">Local ASR not ready. Please integrate sherpa‑onnx and model files later.</string>
-    <string name="error_sensevoice_model_missing">SenseVoice Small model is missing. Configure or download it later in Settings.</string>
+    <string name="error_sensevoice_model_missing">SenseVoice model is missing. Configure or download it later in Settings.</string>
     
     <string name="btn_close">Close</string>
     <string name="title_quick_guide">Quick Start Guide</string>
@@ -312,7 +312,9 @@
     <string name="label_silence_window_ms">Stop window (ms)</string>
     <string name="label_silence_sensitivity">Sensitivity (1-10; higher = more sensitive)</string>
     <!-- SenseVoice local settings -->
-    <string name="btn_sv_download_model">One-click download SenseVoice model (~230MB)</string>
+    <string name="btn_sv_download_model">One-click download SenseVoice model</string>
+    <string name="btn_sv_download_model_int8">One-click download SenseVoice (small int8, ~160MB)</string>
+    <string name="btn_sv_download_model_full">One-click download SenseVoice (small full, ~850MB)</string>
     <string name="btn_sv_clear_model">Clear downloaded model</string>
     <string name="sv_download_status_downloading">Downloading… %1$d%%</string>
     <string name="sv_download_status_extracting">Extracting…</string>
@@ -322,6 +324,9 @@
     <string name="sv_clear_confirm_message">This will delete downloaded model files. You can re-download later. Continue?</string>
     <string name="sv_clear_done">Model cleared</string>
     <string name="sv_clear_failed">Clear failed</string>
+    <string name="label_sv_model_variant">Model Version</string>
+    <string name="sv_model_small_int8">Small (int8, ~160MB)</string>
+    <string name="sv_model_small_full">Small (full, ~850MB)</string>
     <string name="label_sv_threads">Threads (1-8)</string>
     <string name="label_sv_use_nnapi">Enable NNAPI (experimental)</string>
     <string name="label_sv_language">Recognition language</string>

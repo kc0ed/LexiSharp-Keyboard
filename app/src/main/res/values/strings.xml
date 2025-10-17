@@ -236,7 +236,9 @@
     <string name="sv_lang_ko">韩语 (ko)</string>
     <string name="sv_lang_yue">粤语 (yue)</string>
     <string name="label_sv_use_itn">启用 ITN（数字/标点规范化）</string>
-    <string name="btn_sv_download_model">一键下载 SenseVoice 模型（约 230MB）</string>
+    <string name="btn_sv_download_model">一键下载 SenseVoice 模型</string>
+    <string name="btn_sv_download_model_int8">一键下载 SenseVoice 模型（small int8，约 160MB）</string>
+    <string name="btn_sv_download_model_full">一键下载 SenseVoice 模型（small full，约 850MB）</string>
     <string name="btn_sv_clear_model">清除已下载模型</string>
     <string name="sv_download_status_downloading">下载中… %1$d%%</string>
     <string name="sv_download_status_extracting">解压中…</string>
@@ -247,7 +249,10 @@
     <string name="sv_clear_done">已清除模型</string>
     <string name="sv_clear_failed">清除失败</string>
     <string name="error_local_asr_not_ready">本地引擎未就绪，请在后续集成 sherpa‑onnx 依赖与模型后再试</string>
-    <string name="error_sensevoice_model_missing">缺少 SenseVoice Small 模型文件，请稍后在设置中配置或下载</string>
+    <string name="error_sensevoice_model_missing">缺少 SenseVoice 模型文件，请稍后在设置中配置或下载</string>
+    <string name="label_sv_model_variant">模型版本</string>
+    <string name="sv_model_small_int8">Small（int8，约160MB）</string>
+    <string name="sv_model_small_full">Small（full，约850MB）</string>
 
     <!-- User-facing ASR error toasts (floating + keyboard) -->
     <string name="asr_error_empty_result">未识别到内容，请再说一遍</string>

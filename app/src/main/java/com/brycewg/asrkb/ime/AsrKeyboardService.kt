@@ -269,7 +269,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
             // 本地 SenseVoice
             if (prefs.asrVendor == AsrVendor.SenseVoice) {
                 val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
-                val probe = java.io.File(base, "sensevoice")
+                val root = java.io.File(base, "sensevoice")
+                val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+                val probe = if (variant == "small-full") java.io.File(root, "small-full") else java.io.File(root, "small-int8")
                 val found = tryFindModelDir(probe)
                 if (found == null) {
                     txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
@@ -313,7 +315,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     }
                     if (prefs.asrVendor == AsrVendor.SenseVoice) {
                         val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
-                        val probe = java.io.File(base, "sensevoice")
+                        val root = java.io.File(base, "sensevoice")
+                        val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+                        val probe = if (variant == "small-full") java.io.File(root, "small-full") else java.io.File(root, "small-int8")
                         val found = tryFindModelDir(probe)
                         if (found == null) {
                             txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
