@@ -1,6 +1,7 @@
 package com.brycewg.asrkb.ui
 
 import android.os.Bundle
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.inputmethod.InputMethodManager
@@ -32,7 +33,12 @@ class ImePickerActivity : ComponentActivity() {
                 // 缩短延迟时间，立即关闭透明 Activity 避免闪烁
                 handler.postDelayed({
                     finish()
-                    overridePendingTransition(0, 0)
+                    if (Build.VERSION.SDK_INT >= 34) {
+                        // 关闭过渡动画（API 34+）
+                        overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
+                    } else {
+                        overridePendingTransition(0, 0)
+                    }
                 }, 100)
             }
         }

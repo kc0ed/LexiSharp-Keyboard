@@ -525,6 +525,43 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_ELEVEN_LANGUAGE_CODE, "") ?: ""
         set(value) = sp.edit { putString(KEY_ELEVEN_LANGUAGE_CODE, value.trim()) }
 
+    // SenseVoice（本地 ASR）设置
+    var svModelDir: String
+        get() = sp.getString(KEY_SV_MODEL_DIR, "") ?: ""
+        set(value) = sp.edit { putString(KEY_SV_MODEL_DIR, value.trim()) }
+
+    // SenseVoice 模型版本：small-int8 或 small-full（默认 small-int8）
+    var svModelVariant: String
+        get() = sp.getString(KEY_SV_MODEL_VARIANT, "small-int8") ?: "small-int8"
+        set(value) = sp.edit { putString(KEY_SV_MODEL_VARIANT, value.trim().ifBlank { "small-int8" }) }
+
+    var svNumThreads: Int
+        get() = sp.getInt(KEY_SV_NUM_THREADS, 2).coerceIn(1, 8)
+        set(value) = sp.edit { putInt(KEY_SV_NUM_THREADS, value.coerceIn(1, 8)) }
+
+    var svUseNnapi: Boolean
+        get() = sp.getBoolean(KEY_SV_USE_NNAPI, false)
+        set(value) = sp.edit { putBoolean(KEY_SV_USE_NNAPI, value) }
+
+    // SenseVoice：语言（auto/zh/en/ja/ko/yue）与 ITN 开关
+    var svLanguage: String
+        get() = sp.getString(KEY_SV_LANGUAGE, "auto") ?: "auto"
+        set(value) = sp.edit { putString(KEY_SV_LANGUAGE, value.trim().ifBlank { "auto" }) }
+
+    var svUseItn: Boolean
+        get() = sp.getBoolean(KEY_SV_USE_ITN, false)
+        set(value) = sp.edit { putBoolean(KEY_SV_USE_ITN, value) }
+
+    // SenseVoice：应用启动时预加载（默认关闭）
+    var svPreloadEnabled: Boolean
+        get() = sp.getBoolean(KEY_SV_PRELOAD_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_SV_PRELOAD_ENABLED, value) }
+
+    // SenseVoice：模型保留时长（分钟）。-1=始终保持；0=识别后立即卸载。
+    var svKeepAliveMinutes: Int
+        get() = sp.getInt(KEY_SV_KEEP_ALIVE_MINUTES, -1)
+        set(value) = sp.edit { putInt(KEY_SV_KEEP_ALIVE_MINUTES, value) }
+
     // --- 供应商配置通用化 ---
     private data class VendorField(val key: String, val required: Boolean = false, val default: String = "")
 
@@ -564,7 +601,9 @@ class Prefs(context: Context) {
         ),
         AsrVendor.Soniox to listOf(
             VendorField(KEY_SONIOX_API_KEY, required = true)
-        )
+        ),
+        // 本地 SenseVoice（sherpa-onnx）无需鉴权，留空表示无必填项
+        AsrVendor.SenseVoice to emptyList()
     )
 
     fun hasVendorKeys(v: AsrVendor): Boolean {
@@ -581,6 +620,8 @@ class Prefs(context: Context) {
     fun hasOpenAiKeys(): Boolean = hasVendorKeys(AsrVendor.OpenAI)
     fun hasGeminiKeys(): Boolean = hasVendorKeys(AsrVendor.Gemini)
     fun hasSonioxKeys(): Boolean = hasVendorKeys(AsrVendor.Soniox)
+    // SenseVoice（本地）：就绪判定仅检查是否设置了模型目录
+    fun hasSenseVoiceReady(): Boolean = (sp.getString(KEY_SV_MODEL_DIR, "") ?: "").isNotBlank()
     fun hasAsrKeys(): Boolean = hasVendorKeys(asrVendor)
     fun hasLlmKeys(): Boolean {
         val p = getActiveLlmProvider()
@@ -695,6 +736,15 @@ class Prefs(context: Context) {
         private const val KEY_PUNCT_3 = "punct_3"
         private const val KEY_PUNCT_4 = "punct_4"
         private const val KEY_TOTAL_ASR_CHARS = "total_asr_chars"
+        // SenseVoice（本地 ASR）
+        private const val KEY_SV_MODEL_DIR = "sv_model_dir"
+        private const val KEY_SV_MODEL_VARIANT = "sv_model_variant"
+        private const val KEY_SV_NUM_THREADS = "sv_num_threads"
+        private const val KEY_SV_USE_NNAPI = "sv_use_nnapi"
+        private const val KEY_SV_LANGUAGE = "sv_language"
+        private const val KEY_SV_USE_ITN = "sv_use_itn"
+        private const val KEY_SV_PRELOAD_ENABLED = "sv_preload_enabled"
+        private const val KEY_SV_KEEP_ALIVE_MINUTES = "sv_keep_alive_minutes"
 
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
         const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
@@ -846,6 +896,15 @@ class Prefs(context: Context) {
         // 兼容性模式
         o.put(KEY_FLOATING_WRITE_COMPAT_ENABLED, floatingWriteTextCompatEnabled)
         o.put(KEY_FLOATING_WRITE_COMPAT_PACKAGES, floatingWriteCompatPackages)
+        // SenseVoice（本地 ASR）
+        o.put(KEY_SV_MODEL_DIR, svModelDir)
+        o.put(KEY_SV_MODEL_VARIANT, svModelVariant)
+        o.put(KEY_SV_NUM_THREADS, svNumThreads)
+        o.put(KEY_SV_USE_NNAPI, svUseNnapi)
+        o.put(KEY_SV_LANGUAGE, svLanguage)
+        o.put(KEY_SV_USE_ITN, svUseItn)
+        o.put(KEY_SV_PRELOAD_ENABLED, svPreloadEnabled)
+        o.put(KEY_SV_KEEP_ALIVE_MINUTES, svKeepAliveMinutes)
         return o.toString()
     }
 
@@ -949,6 +1008,15 @@ class Prefs(context: Context) {
                 val v = try { o.optLong(KEY_TOTAL_ASR_CHARS) } catch (_: Throwable) { 0L }
                 if (v >= 0L) totalAsrChars = v
             }
+            // SenseVoice（本地 ASR）
+            optString(KEY_SV_MODEL_DIR)?.let { svModelDir = it }
+            optString(KEY_SV_MODEL_VARIANT)?.let { svModelVariant = it }
+            optInt(KEY_SV_NUM_THREADS)?.let { svNumThreads = it.coerceIn(1, 8) }
+            optBool(KEY_SV_USE_NNAPI)?.let { svUseNnapi = it }
+            optString(KEY_SV_LANGUAGE)?.let { svLanguage = it }
+            optBool(KEY_SV_USE_ITN)?.let { svUseItn = it }
+            optBool(KEY_SV_PRELOAD_ENABLED)?.let { svPreloadEnabled = it }
+            optInt(KEY_SV_KEEP_ALIVE_MINUTES)?.let { svKeepAliveMinutes = it }
             true
         } catch (_: Throwable) {
             false

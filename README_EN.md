@@ -29,6 +29,7 @@ English | [简体中文](README.md)
 - **Smart Auto-Stop** - Automatically stops recording on silence
 - **Fast Recognition** - Release to upload, quick results
 - **Multi-Engine Support** - 7+ mainstream ASR services
+- **Local ASR Model** - Offline voice recognition, no network required, privacy-focused
 - **AI Text Optimization** - LLM smart correction of recognition results
 
 </td>
@@ -412,6 +413,26 @@ The settings page supports configuration switching by vendor, showing only corre
 </td>
 <td width="50%">
 
+#### 🏠 Local ASR (SenseVoice)
+
+**Features**: Fully offline recognition, no network required, privacy-focused
+
+**Supported Models**:
+
+- `sensevoice small-int8`: Quantized model, faster, smaller size
+- `sensevoice small-full`: Full model, higher accuracy
+
+**Configuration Parameters**:
+
+- `Model Variant`: Choose model variant
+- `Thread Count`: Adjustable from 1-8 threads
+- `Recognition Language`: auto/zh/en/ja/ko/yue
+- `Use ITN`: Inverse Text Normalization
+- `Use NNAPI`: Hardware acceleration (experimental)
+- `Model Keep-Alive Duration`: Control model memory usage
+
+> 💡 Powered by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)
+
 </td>
 </tr>
 </table>
@@ -459,7 +480,7 @@ The settings page supports configuration switching by vendor, showing only corre
 
 - **Voice Recognition Ball**: Transparency, size adjustment, compatibility mode
 - **IME Switching Ball**: Quick switching function
- - **IME Visibility Compatibility (per‑app)**: Applies only to listed packages; in these apps use IME package detection as compatibility fallback. Includes com.tencent.mm by default
+- **IME Visibility Compatibility (per‑app)**: Applies only to listed packages; in these apps use IME package detection as compatibility fallback. Includes com.tencent.mm by default
 
 </details>
 
@@ -603,6 +624,14 @@ If this project helps you, feel free to buy me a coffee ☕️
 <br/>
 <sub>Scan with WeChat to appreciate</sub>
 </div>
+
+---
+
+## 🙏 Acknowledgments
+
+Thanks to the following open-source projects for their technical support:
+
+- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) - Provides technical support for local ASR models, making offline voice recognition possible
 
 ---
 

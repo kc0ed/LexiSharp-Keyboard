@@ -44,27 +44,12 @@
         app:layout_constraintWidth_max="@dimen/settings_form_max_width">
 
         <com.google.android.material.button.MaterialButton
-          android:id="@+id/btnEnable"
+          android:id="@+id/btnOneClickSetup"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           style="@style/Widget.Material3.Button"
-          android:text="@string/btn_enable" />
-
-        <com.google.android.material.button.MaterialButton
-          android:id="@+id/btnChoose"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
-          style="@style/Widget.Material3.Button.TonalButton"
-          android:text="@string/btn_choose" />
-
-        <com.google.android.material.button.MaterialButton
-          android:id="@+id/btnAllPermissions"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
-          style="@style/Widget.Material3.Button.TonalButton"
-          android:text="@string/btn_grant_all_permissions" />
+          android:text="@string/btn_one_click_setup" />
+       
 
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnShowGuide"

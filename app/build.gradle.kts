@@ -11,8 +11,13 @@ android {
         applicationId = "com.brycewg.asrkb"
         minSdk =29
         targetSdk = 34
-        versionCode = 62
-        versionName = "2.9.6"
+        versionCode = 63
+        versionName = "3.0.0"
+
+        // 仅打包 arm64-v8a 以控制体积；可按需扩展
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     signingConfigs {
@@ -70,4 +75,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.squareup.okhttp3:okhttp:5.2.1")
+    implementation("org.apache.commons:commons-compress:1.28.0")
+
+    // AAR 本地依赖占位：将 sherpa-onnx Kotlin API AAR 放入 app/libs/ 后自动识别
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar", "*.aar"))))
 }

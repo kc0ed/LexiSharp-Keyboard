@@ -33,6 +33,7 @@
     <string name="toggle_off">OFF</string>
 
     <string name="settings_instructions">First-time setup:\n1. Tap "Enable Keyboard" and enable LexiSharp Keyboard in system settings\n2. Tap "Choose Keyboard" to switch to LexiSharp Keyboard\n3. Grant microphone permission, then long‑press the mic button on the keyboard to try</string>
+    <string name="btn_one_click_setup">One-click Setup</string>
     <string name="btn_enable">Enable Keyboard</string>
     <string name="btn_choose">Choose Keyboard</string>
     <string name="btn_show_guide">View Quick Guide</string>
@@ -52,12 +53,14 @@
     <string name="vendor_sf">SiliconFlow</string>
     <string name="vendor_dashscope">Alibaba Cloud DashScope</string>
     <string name="vendor_soniox">Soniox</string>
+    <string name="vendor_sensevoice">SenseVoice (Local)</string>
     <string name="label_sf_api_key">API Key (Bearer)</string>
     <string name="label_sf_model">Model Name (e.g., FunAudioLLM/SenseVoiceSmall)</string>
     <string name="label_sf_use_omni">Use voice multimodal model (Qwen3-Omni)</string>
     <string name="label_sf_omni_prompt">Multimodal transcription prompt (optional)</string>
     <string name="dash_section_title">Alibaba Cloud DashScope ASR Parameters</string>
     <string name="soniox_section_title">Soniox Credentials</string>
+    <string name="sensevoice_section_title">SenseVoice Local ASR</string>
     <string name="label_dash_api_key">DashScope API Key (Bearer)</string>
     <string name="label_dash_model">Model (e.g., qwen3-asr-flash)</string>
     <string name="label_dash_prompt">Custom prompt / context (optional)</string>
@@ -114,6 +117,10 @@
     <string name="soniox_lang_fil">Filipino (fil)</string>
     <string name="status_last_request_ms">Last request time: %1$d ms</string>
     
+    <!-- Local ASR (placeholder) -->
+    <string name="error_local_asr_not_ready">Local ASR not ready. Please integrate sherpa‑onnx and model files later.</string>
+    <string name="error_sensevoice_model_missing">SenseVoice model is missing. Configure or download it later in Settings.</string>
+    
     <string name="btn_close">Close</string>
     <string name="title_quick_guide">Quick Start Guide</string>
     <string name="label_trim_trailing_punct">Remove trailing punctuation on finish</string>
@@ -137,6 +144,9 @@
     <string name="hint_floating_write_compat_pkgs">Enter full package or prefix (e.g., org.telegram or com.ss.android.ugc.aweme). A trailing * means prefix match (e.g., org.telegram.*).</string>
     <string name="cd_floating_asr">Floating ball voice recognition</string>
     <string name="btn_grant_all_permissions">Grant all required permissions</string>
+    <string name="toast_setup_all_done">All set</string>
+    <string name="toast_setup_enable_keyboard_first">Enable the keyboard in system settings, then come back</string>
+    <string name="toast_setup_choose_keyboard">Please select "LexiSharp Keyboard" as the current input method</string>
 
     <!-- Floating ASR status messages -->
     <string name="floating_asr_recording">Recording…</string>
@@ -318,4 +328,39 @@
     <string name="label_auto_stop_silence">Auto stop when no speech</string>
     <string name="label_silence_window_ms">Stop window (ms)</string>
     <string name="label_silence_sensitivity">Sensitivity (1-10; higher = more sensitive)</string>
+    <!-- SenseVoice local settings -->
+    <string name="btn_sv_download_model">One-click download SenseVoice model</string>
+    <string name="btn_sv_download_model_int8">One-click download SenseVoice (small int8, ~160MB)</string>
+    <string name="btn_sv_download_model_full">One-click download SenseVoice (small full, ~850MB)</string>
+    <string name="btn_sv_clear_model">Clear downloaded model</string>
+    <string name="sv_download_status_downloading">Downloading… %1$d%%</string>
+    <string name="sv_download_status_extracting">Extracting…</string>
+    <string name="sv_download_status_done">Model ready</string>
+    <string name="sv_download_status_failed">Download or extraction failed</string>
+    <string name="sv_clear_confirm_title">Confirm clear model?</string>
+    <string name="sv_clear_confirm_message">This will delete downloaded model files. You can re-download later. Continue?</string>
+    <string name="sv_clear_done">Model cleared</string>
+    <string name="sv_clear_failed">Clear failed</string>
+    <string name="label_sv_model_variant">Model Version</string>
+    <string name="sv_model_small_int8">Small (int8, ~160MB)</string>
+    <string name="sv_model_small_full">Small (full, ~850MB)</string>
+    <string name="sv_loading_model">Loading local model…</string>
+    <string name="sv_model_ready">Local model loaded</string>
+    <string name="label_sv_preload">Preload model on app start</string>
+    <string name="label_sv_keep_alive">Model keep-alive duration</string>
+    <string name="sv_keep_alive_immediate">No keep-alive (unload after recognition)</string>
+    <string name="sv_keep_alive_5m">5 minutes</string>
+    <string name="sv_keep_alive_15m">15 minutes</string>
+    <string name="sv_keep_alive_30m">30 minutes</string>
+    <string name="sv_keep_alive_always">Always keep (until parameters change)</string>
+    <string name="label_sv_threads">Threads (1-8)</string>
+    <string name="label_sv_use_nnapi">Enable NNAPI (experimental; try with 4 threads)</string>
+    <string name="label_sv_language">Recognition language</string>
+    <string name="sv_lang_auto">Auto</string>
+    <string name="sv_lang_zh">Chinese (zh)</string>
+    <string name="sv_lang_en">English (en)</string>
+    <string name="sv_lang_ja">Japanese (ja)</string>
+    <string name="sv_lang_ko">Korean (ko)</string>
+    <string name="sv_lang_yue">Cantonese (yue)</string>
+    <string name="label_sv_use_itn">Enable ITN (inverse text normalization)</string>
 </resources>

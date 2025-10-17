@@ -33,6 +33,7 @@ import com.brycewg.asrkb.asr.ElevenLabsFileAsrEngine
 import com.brycewg.asrkb.asr.OpenAiFileAsrEngine
 import com.brycewg.asrkb.asr.DashscopeFileAsrEngine
 import com.brycewg.asrkb.asr.GeminiFileAsrEngine
+import com.brycewg.asrkb.asr.SenseVoiceFileAsrEngine
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.asr.VolcStreamAsrEngine
@@ -49,7 +50,7 @@ import kotlinx.coroutines.launch
 import com.google.android.material.color.MaterialColors
 import com.brycewg.asrkb.LocaleHelper
 
-class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
+class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, com.brycewg.asrkb.asr.SenseVoiceFileAsrEngine.LocalModelLoadUi {
     companion object {
         const val ACTION_REFRESH_IME_UI = "com.brycewg.asrkb.action.REFRESH_IME_UI"
     }
@@ -265,6 +266,21 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 refreshPermissionUi()
                 return@setOnClickListener
             }
+            // 本地 SenseVoice：若已缓存加载则跳过文件检查；否则检查模型目录
+            if (prefs.asrVendor == AsrVendor.SenseVoice) {
+                val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                if (!prepared) {
+                    val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
+                    val probeRoot = java.io.File(base, "sensevoice")
+                    val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+                    val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
+                    val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
+                    if (found == null) {
+                        txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
+                        return@setOnClickListener
+                    }
+                }
+            }
             asrEngine = ensureEngineMatchesMode(asrEngine) ?: buildEngineForCurrentMode()
             val running = asrEngine?.isRunning == true
             if (running) {
@@ -299,6 +315,21 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         refreshPermissionUi()
                         v.performClick()
                         return@setOnTouchListener true
+                    }
+                    if (prefs.asrVendor == AsrVendor.SenseVoice) {
+                        val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                        if (!prepared) {
+                            val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
+                            val probeRoot = java.io.File(base, "sensevoice")
+                            val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+                            val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
+                            val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
+                            if (found == null) {
+                                txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
+                                v.performClick()
+                                return@setOnTouchListener true
+                            }
+                        }
                     }
                     asrEngine = ensureEngineMatchesMode(asrEngine)
                     micLongPressStarted = false
@@ -765,6 +796,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     SonioxFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
                 }
             } else null
+            AsrVendor.SenseVoice -> {
+                // 本地引擎无需鉴权；占位实现会在依赖缺失时给出提示
+                SenseVoiceFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+            }
         }
     }
 
@@ -803,12 +838,17 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 else -> if (prefs.sonioxStreamingEnabled) SonioxStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
                         else SonioxFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
+            AsrVendor.SenseVoice -> when (current) {
+                is SenseVoiceFileAsrEngine -> current
+                else -> SenseVoiceFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+            }
         }
     }
 
     private fun onAsrRequestDuration(ms: Long) {
         lastRequestDurationMs = ms
     }
+
 
     private fun goIdleWithTimingHint() {
         updateUiIdle()
@@ -929,6 +969,24 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         } catch (_: Exception) {
             // no-op
         }
+    }
+
+    // 本地模型加载阶段：将提示显示到键盘状态栏，而非 Toast
+    override fun onLocalModelLoadStart() {
+        try { rootView?.post { txtStatus?.text = getString(R.string.sv_loading_model) } } catch (_: Throwable) { }
+    }
+    override fun onLocalModelLoadDone() {
+        try {
+            rootView?.post {
+                txtStatus?.text = getString(R.string.sv_model_ready)
+                // 短暂展示后恢复为“正在聆听”状态，避免长期占据状态栏
+                rootView?.postDelayed({
+                    if (asrEngine?.isRunning == true) {
+                        txtStatus?.text = getString(R.string.status_listening)
+                    }
+                }, 1200)
+            }
+        } catch (_: Throwable) { }
     }
 
     private fun applyPunctuationLabels() {

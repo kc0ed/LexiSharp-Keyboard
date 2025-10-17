@@ -357,6 +357,22 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             return
         }
 
+        // 本地 SenseVoice：若已缓存加载则跳过文件检查；否则按“与键盘一致”的变体路径检查
+        if (prefs.asrVendor == AsrVendor.SenseVoice) {
+            val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+            if (!prepared) {
+                val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
+                val probeRoot = java.io.File(base, "sensevoice")
+                val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+                val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
+                val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
+                if (found == null) {
+                    showToast(getString(R.string.error_sensevoice_model_missing))
+                    return
+                }
+            }
+        }
+
         isRecording = true
         updateBallState()
         // 录音开始后，若当前键盘未显示，也应强制展示悬浮球
@@ -453,7 +469,17 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             }
         } else {
             updateBallState()
-            showToast(getString(R.string.floating_asr_recognizing))
+            // 若使用本地 SenseVoice 且当前未预加载/未缓存，则先让引擎触发“加载中…”，再稍后提示“识别中…”
+            if (prefs.asrVendor == AsrVendor.SenseVoice) {
+                val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                if (!prepared) {
+                    handler.postDelayed({ showToast(getString(R.string.floating_asr_recognizing)) }, 700)
+                } else {
+                    showToast(getString(R.string.floating_asr_recognizing))
+                }
+            } else {
+                showToast(getString(R.string.floating_asr_recognizing))
+            }
         }
         // 录音结束后根据偏好与当前场景重新评估显隐
         updateVisibilityByPref()
@@ -593,7 +619,16 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             } else {
                 isProcessing = false
                 updateBallState()
-                showToast(getString(R.string.floating_asr_recognizing))
+                if (prefs.asrVendor == AsrVendor.SenseVoice) {
+                    val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                    if (!prepared) {
+                        handler.postDelayed({ showToast(getString(R.string.floating_asr_recognizing)) }, 700)
+                    } else {
+                        showToast(getString(R.string.floating_asr_recognizing))
+                    }
+                } else {
+                    showToast(getString(R.string.floating_asr_recognizing))
+                }
             }
             // 非录音阶段恢复“仅在键盘显示时显示悬浮球”的约束
             updateVisibilityByPref()
@@ -715,6 +750,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                     SonioxFileAsrEngine(this, serviceScope, prefs, this) { }
                 }
             } else null
+            AsrVendor.SenseVoice -> {
+                // 本地引擎无需鉴权；占位实现会在依赖缺失时提示
+                com.brycewg.asrkb.asr.SenseVoiceFileAsrEngine(this, serviceScope, prefs, this) { }
+            }
         }
     }
 
@@ -728,6 +767,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
     }
+
 
     private var edgeAnimator: ValueAnimator? = null
     private fun currentUiAlpha(): Float = try { prefs.floatingSwitcherAlpha } catch (_: Throwable) { 1f }
@@ -1036,7 +1076,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             AsrVendor.OpenAI to getString(R.string.vendor_openai),
             AsrVendor.DashScope to getString(R.string.vendor_dashscope),
             AsrVendor.Gemini to getString(R.string.vendor_gemini),
-            AsrVendor.Soniox to getString(R.string.vendor_soniox)
+            AsrVendor.Soniox to getString(R.string.vendor_soniox),
+            AsrVendor.SenseVoice to getString(R.string.vendor_sensevoice)
         )
         val cur = try { prefs.asrVendor } catch (_: Throwable) { AsrVendor.Volc }
         entries.forEach { (v, name) ->
@@ -1049,7 +1090,16 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 isFocusable = true
                 setOnClickListener {
                     try {
-                        prefs.asrVendor = v
+                        val old = try { prefs.asrVendor } catch (_: Throwable) { AsrVendor.Volc }
+                        if (v != old) {
+                            prefs.asrVendor = v
+                            // 离开 SenseVoice 时卸载；切回 SenseVoice 且开启预加载时预热
+                            if (old == AsrVendor.SenseVoice && v != AsrVendor.SenseVoice) {
+                                try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+                            } else if (v == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
+                                try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@FloatingAsrService, prefs) } catch (_: Throwable) { }
+                            }
+                        }
                         android.widget.Toast.makeText(this@FloatingAsrService, name, android.widget.Toast.LENGTH_SHORT).show()
                     } catch (_: Throwable) { }
                     hideVendorMenu()

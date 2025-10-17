@@ -8,6 +8,7 @@ import android.view.HapticFeedbackConstants
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Spinner
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.AsrVendor
@@ -15,6 +16,18 @@ import com.brycewg.asrkb.store.Prefs
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
+import com.google.android.material.button.MaterialButton
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 
 class AsrSettingsActivity : AppCompatActivity() {
 
@@ -42,6 +55,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val groupDash = findViewById<View>(R.id.groupDashScope)
     val groupGemini = findViewById<View>(R.id.groupGemini)
     val groupSoniox = findViewById<View>(R.id.groupSoniox)
+    val groupSenseVoice = findViewById<View>(R.id.groupSenseVoice)
     val switchSfUseOmni = findViewById<MaterialSwitch>(R.id.switchSfUseOmni)
     val tilSfOmniPrompt = findViewById<View>(R.id.tilSfOmniPrompt)
     val switchOpenAiUsePrompt = findViewById<MaterialSwitch>(R.id.switchOpenAiUsePrompt)
@@ -54,6 +68,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val titleDash = findViewById<View>(R.id.titleDash)
     val titleGemini = findViewById<View>(R.id.titleGemini)
     val titleSoniox = findViewById<View>(R.id.titleSoniox)
+    val titleSenseVoice = findViewById<View>(R.id.titleSenseVoice)
 
     val etAppKey = findViewById<EditText>(R.id.etAppKey)
     val etAccessKey = findViewById<EditText>(R.id.etAccessKey)
@@ -89,6 +104,16 @@ class AsrSettingsActivity : AppCompatActivity() {
     val switchSonioxStreaming = findViewById<MaterialSwitch>(R.id.switchSonioxStreaming)
     val tvSonioxLanguageLabel = findViewById<View>(R.id.tvSonioxLanguageLabel)
     val tvSonioxLanguageValue = findViewById<android.widget.TextView>(R.id.tvSonioxLanguageValue)
+    val sliderSvThreads = findViewById<Slider>(R.id.sliderSvThreads)
+    val spSvModelVariant = findViewById<Spinner>(R.id.spSvModelVariant)
+    val switchSvUseNnapi = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchSvUseNnapi)
+    val spSvLanguage = findViewById<Spinner>(R.id.spSvLanguage)
+    val switchSvUseItn = findViewById<MaterialSwitch>(R.id.switchSvUseItn)
+    val switchSvPreload = findViewById<MaterialSwitch>(R.id.switchSvPreload)
+    val spSvKeepAlive = findViewById<Spinner>(R.id.spSvKeepAlive)
+    val btnSvDownload = findViewById<MaterialButton>(R.id.btnSvDownloadModel)
+    val btnSvClear = findViewById<MaterialButton>(R.id.btnSvClearModel)
+    val tvSvDownloadStatus = findViewById<TextView>(R.id.tvSvDownloadStatus)
 
     fun applyVendorVisibility(v: AsrVendor) {
       val visMap = mapOf(
@@ -98,7 +123,8 @@ class AsrSettingsActivity : AppCompatActivity() {
         AsrVendor.OpenAI to listOf(titleOpenAi, groupOpenAi),
         AsrVendor.DashScope to listOf(titleDash, groupDash),
         AsrVendor.Gemini to listOf(titleGemini, groupGemini),
-        AsrVendor.Soniox to listOf(titleSoniox, groupSoniox)
+        AsrVendor.Soniox to listOf(titleSoniox, groupSoniox),
+        AsrVendor.SenseVoice to listOf(titleSenseVoice, groupSenseVoice)
       )
       visMap.forEach { (vendor, views) ->
         val vis = if (vendor == v) View.VISIBLE else View.GONE
@@ -113,7 +139,8 @@ class AsrSettingsActivity : AppCompatActivity() {
       AsrVendor.OpenAI,
       AsrVendor.DashScope,
       AsrVendor.Gemini,
-      AsrVendor.Soniox
+      AsrVendor.Soniox,
+      AsrVendor.SenseVoice
     )
     val vendorItems = listOf(
       getString(R.string.vendor_volc),
@@ -122,7 +149,8 @@ class AsrSettingsActivity : AppCompatActivity() {
       getString(R.string.vendor_openai),
       getString(R.string.vendor_dashscope),
       getString(R.string.vendor_gemini),
-      getString(R.string.vendor_soniox)
+      getString(R.string.vendor_soniox),
+      getString(R.string.vendor_sensevoice)
     )
     spAsrVendor.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, vendorItems)
     spAsrVendor.setSelection(vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0))
@@ -131,7 +159,19 @@ class AsrSettingsActivity : AppCompatActivity() {
       spAsrVendor.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
           override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
               val vendor = vendorOrder.getOrNull(position) ?: AsrVendor.Volc
-              prefs.asrVendor = vendor
+              val old = try { prefs.asrVendor } catch (_: Throwable) { AsrVendor.Volc }
+              if (vendor != old) {
+                // 更新选择
+                prefs.asrVendor = vendor
+                // 离开 SenseVoice -> 主动卸载本地模型
+                if (old == AsrVendor.SenseVoice && vendor != AsrVendor.SenseVoice) {
+                  try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+                }
+                // 切回 SenseVoice -> 如开启预加载则立即预热
+                if (vendor == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
+                  try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@AsrSettingsActivity, prefs) } catch (_: Throwable) { }
+                }
+              }
               applyVendorVisibility(vendor)
           }
 
@@ -307,6 +347,233 @@ class AsrSettingsActivity : AppCompatActivity() {
     etGeminiApiKey.bindString { prefs.gemApiKey = it }
     etGeminiModel.bindString { prefs.gemModel = it }
     etGeminiPrompt.bindString { prefs.gemPrompt = it }
+
+    // SenseVoice（本地 ASR）设置绑定（路径固定到外部专属目录，无需任何路径输入）
+    // 模型版本
+    fun updateSvDownloadButtonText() {
+      val variant = prefs.svModelVariant
+      val text = if (variant == "small-full") getString(R.string.btn_sv_download_model_full) else getString(R.string.btn_sv_download_model_int8)
+      btnSvDownload.text = text
+    }
+    run {
+      val variantLabels = listOf(
+        getString(R.string.sv_model_small_int8),
+        getString(R.string.sv_model_small_full)
+      )
+      val variantCodes = listOf("small-int8", "small-full")
+      spSvModelVariant.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, variantLabels)
+      val idx = variantCodes.indexOf(prefs.svModelVariant).coerceAtLeast(0)
+      spSvModelVariant.setSelection(idx)
+      spSvModelVariant.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+          val code = variantCodes.getOrNull(position) ?: "small-int8"
+          if (code != prefs.svModelVariant) {
+            prefs.svModelVariant = code
+            // 参数变更即预卸载
+            try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+            // 变更后刷新按钮文案与状态
+            updateSvDownloadButtonText()
+            updateSvDownloadUiVisibility()
+          } else {
+            updateSvDownloadButtonText()
+            updateSvDownloadUiVisibility()
+          }
+        }
+        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+      }
+    }
+    run {
+      val cur = prefs.svNumThreads.coerceIn(1, 8)
+      sliderSvThreads.value = cur.toFloat()
+      sliderSvThreads.addOnChangeListener { s, value, fromUser ->
+        if (fromUser) {
+          val v = value.toInt().coerceIn(1, 8)
+          if (v != prefs.svNumThreads) {
+            prefs.svNumThreads = v
+            // 参数变更即预卸载
+            try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+          }
+        }
+      }
+      sliderSvThreads.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+        override fun onStartTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+        override fun onStopTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
+      })
+    }
+    switchSvUseNnapi.isChecked = prefs.svUseNnapi
+    switchSvUseNnapi.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
+      if (prefs.svUseNnapi != isChecked) {
+        prefs.svUseNnapi = isChecked
+        // 参数变更即预卸载
+        try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+      }
+    }
+
+    // SenseVoice 语言与 ITN
+    run {
+      val labels = listOf(
+        getString(R.string.sv_lang_auto),
+        getString(R.string.sv_lang_zh),
+        getString(R.string.sv_lang_en),
+        getString(R.string.sv_lang_ja),
+        getString(R.string.sv_lang_ko),
+        getString(R.string.sv_lang_yue)
+      )
+      val codes = listOf("auto", "zh", "en", "ja", "ko", "yue")
+      spSvLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+      spSvLanguage.setSelection(codes.indexOf(prefs.svLanguage).coerceAtLeast(0))
+      spSvLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+          val code = codes.getOrNull(position) ?: "auto"
+          if (code != prefs.svLanguage) {
+            prefs.svLanguage = code
+            // 参数变更即预卸载
+            try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+          }
+        }
+        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+      }
+    }
+    switchSvUseItn.isChecked = prefs.svUseItn
+    switchSvUseItn.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
+      if (prefs.svUseItn != isChecked) {
+        prefs.svUseItn = isChecked
+        // 参数变更即预卸载
+        try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+      }
+    }
+
+    // 预加载开关（应用启动时预加载）；开启时若当前渠道为 SenseVoice 则立即预热
+    switchSvPreload.isChecked = prefs.svPreloadEnabled
+    switchSvPreload.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
+      prefs.svPreloadEnabled = isChecked
+      if (isChecked && prefs.asrVendor == AsrVendor.SenseVoice) {
+        try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this, prefs) } catch (_: Throwable) { }
+      }
+    }
+
+    // 模型保留时长
+    run {
+      val labels = listOf(
+        getString(R.string.sv_keep_alive_immediate),
+        getString(R.string.sv_keep_alive_5m),
+        getString(R.string.sv_keep_alive_15m),
+        getString(R.string.sv_keep_alive_30m),
+        getString(R.string.sv_keep_alive_always)
+      )
+      val values = listOf(0, 5, 15, 30, -1)
+      spSvKeepAlive.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+      val idx = values.indexOf(prefs.svKeepAliveMinutes).let { if (it >= 0) it else values.size - 1 }
+      spSvKeepAlive.setSelection(idx)
+      spSvKeepAlive.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+          val v = values.getOrNull(position) ?: -1
+          if (v != prefs.svKeepAliveMinutes) prefs.svKeepAliveMinutes = v
+        }
+        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+      }
+    }
+
+    updateSvDownloadButtonText()
+
+    // SenseVoice 模型一键下载（按所选版本分别存放）
+    btnSvDownload.setOnClickListener { v ->
+      v.isEnabled = false
+      tvSvDownloadStatus.text = ""
+      // 选择下载源（默认 GitHub 官方）
+      val sources = arrayOf(
+        getString(R.string.download_source_github_official),
+        getString(R.string.download_source_mirror_ghproxy),
+        getString(R.string.download_source_mirror_gitmirror),
+        getString(R.string.download_source_mirror_gh_proxynet)
+      )
+      val variant = prefs.svModelVariant
+      val urlOfficial = if (variant == "small-full")
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2025-09-09.tar.bz2"
+      else
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09.tar.bz2"
+      val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        .setTitle(R.string.download_source_title)
+        .setItems(sources) { dlg, which ->
+          dlg.dismiss()
+          val url = when (which) {
+            1 -> "https://ghproxy.net/" + urlOfficial
+            2 -> "https://hub.gitmirror.com/" + urlOfficial
+            3 -> "https://gh-proxy.net/" + urlOfficial
+            else -> urlOfficial
+          }
+          lifecycleScope.launch {
+            try {
+              // 下载到 cacheDir
+              val tmp = File(cacheDir, if (variant == "small-full") "sv_small_full.tar.bz2" else "sv_small_int8.tar.bz2")
+              downloadFile(url, tmp) { progress ->
+                tvSvDownloadStatus.text = getString(R.string.sv_download_status_downloading, progress)
+              }
+              tvSvDownloadStatus.text = getString(R.string.sv_download_status_extracting)
+              // 统一下载到 App 专属外部目录（/storage/emulated/0/Android/data/<pkg>/files/）
+              val base = getExternalFilesDir(null) ?: filesDir
+              val outDirRoot = File(base, "sensevoice")
+              val outDir = if (variant == "small-full") File(outDirRoot, "small-full") else File(outDirRoot, "small-int8")
+              if (outDir.exists()) outDir.deleteRecursively()
+              outDir.mkdirs()
+              extractTarBz2(tmp, outDir)
+              // 寻找包含 tokens.txt 的目录作为模型目录（仅在该版本目录内）
+              val modelDir = findModelDir(outDir)
+              tvSvDownloadStatus.text = if (modelDir != null) {
+                getString(R.string.sv_download_status_done)
+              } else {
+                getString(R.string.sv_download_status_failed)
+              }
+              updateSvDownloadUiVisibility()
+            } catch (t: Throwable) {
+              tvSvDownloadStatus.text = getString(R.string.sv_download_status_failed)
+            } finally {
+              v.isEnabled = true
+            }
+          }
+        }
+        .setOnDismissListener { v.isEnabled = true }
+      builder.show()
+    }
+
+    // 清除已下载模型（仅清除当前选定版本）
+    btnSvClear.setOnClickListener { v ->
+      val dlg = androidx.appcompat.app.AlertDialog.Builder(this)
+        .setTitle(R.string.sv_clear_confirm_title)
+        .setMessage(R.string.sv_clear_confirm_message)
+        .setPositiveButton(android.R.string.ok) { d, _ ->
+          d.dismiss()
+          v.isEnabled = false
+          lifecycleScope.launch {
+            try {
+              val base = getExternalFilesDir(null) ?: filesDir
+              val variant = prefs.svModelVariant
+              val outDirRoot = File(base, "sensevoice")
+              val outDir = if (variant == "small-full") File(outDirRoot, "small-full") else File(outDirRoot, "small-int8")
+              if (outDir.exists()) {
+                withContext(Dispatchers.IO) { outDir.deleteRecursively() }
+              }
+              // 卸载当前已加载的本地识别器（与当前版本相关）
+              try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+              tvSvDownloadStatus.text = getString(R.string.sv_clear_done)
+            } catch (_: Throwable) {
+              tvSvDownloadStatus.text = getString(R.string.sv_clear_failed)
+            } finally {
+              v.isEnabled = true
+              updateSvDownloadUiVisibility()
+            }
+          }
+        }
+        .setNegativeButton(R.string.btn_cancel, null)
+        .create()
+      dlg.show()
+    }
+
+    // 根据本地是否已有模型，更新下载按钮可见性
+    updateSvDownloadUiVisibility()
 
     fun updateSilenceOptionsVisibility(enabled: Boolean) {
       val vis = if (enabled) View.VISIBLE else View.GONE
@@ -546,6 +813,100 @@ class AsrSettingsActivity : AppCompatActivity() {
       }
       override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
     }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    updateSvDownloadUiVisibility()
+  }
+
+  private fun updateSvDownloadUiVisibility() {
+    val base = getExternalFilesDir(null) ?: filesDir
+    val root = File(base, "sensevoice")
+    val variant = Prefs(this).svModelVariant
+    val dir = if (variant == "small-full") File(root, "small-full") else File(root, "small-int8")
+    val modelDir = findModelDir(dir)
+    val ready = modelDir != null &&
+      (File(modelDir, "tokens.txt").exists()) &&
+      (File(modelDir, "model.int8.onnx").exists() || File(modelDir, "model.onnx").exists())
+    val btn = findViewById<MaterialButton>(R.id.btnSvDownloadModel)
+    val btnClear = findViewById<MaterialButton>(R.id.btnSvClearModel)
+    val tv = findViewById<TextView>(R.id.tvSvDownloadStatus)
+    btn.visibility = if (ready) View.GONE else View.VISIBLE
+    btnClear.visibility = if (ready) View.VISIBLE else View.GONE
+    if (ready && tv.text.isNullOrBlank()) {
+      tv.text = getString(R.string.sv_download_status_done)
+    }
+  }
+
+  private suspend fun downloadFile(url: String, dest: File, onProgress: (Int) -> Unit) = withContext(Dispatchers.IO) {
+    val client = OkHttpClient()
+    val req = Request.Builder().url(url).build()
+    client.newCall(req).execute().use { resp ->
+      if (!resp.isSuccessful) throw IllegalStateException("HTTP ${'$'}{resp.code}")
+      val body = resp.body ?: throw IllegalStateException("empty body")
+      val total = body.contentLength()
+      dest.outputStream().use { out ->
+        var readSum = 0L
+        val buf = ByteArray(8192)
+        body.byteStream().use { ins ->
+          while (true) {
+            val n = ins.read(buf)
+            if (n <= 0) break
+            out.write(buf, 0, n)
+            readSum += n
+            if (total > 0L) {
+              val p = ((readSum * 100) / total).toInt().coerceIn(0, 100)
+              withContext(Dispatchers.Main) { onProgress(p) }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private suspend fun extractTarBz2(file: File, outDir: File) = withContext(Dispatchers.IO) {
+    // BZip2 是单线程、CPU 密集型；使用更大的缓冲以略微降低 I/O 调用次数
+    BZip2CompressorInputStream(file.inputStream().buffered(64 * 1024)).use { bz ->
+      TarArchiveInputStream(bz).use { tar ->
+        var entry = tar.getNextTarEntry()
+        val buf = ByteArray(64 * 1024)
+        while (entry != null) {
+          val outFile = File(outDir, entry.name)
+          if (entry.isDirectory) {
+            outFile.mkdirs()
+          } else {
+            outFile.parentFile?.mkdirs()
+            java.io.BufferedOutputStream(FileOutputStream(outFile), 64 * 1024).use { bos ->
+              var n: Int
+              while (true) {
+                n = tar.read(buf)
+                if (n <= 0) break
+                bos.write(buf, 0, n)
+              }
+              bos.flush()
+            }
+          }
+          entry = tar.getNextTarEntry()
+        }
+      }
+    }
+  }
+
+  private fun findModelDir(root: File): File? {
+    if (!root.exists()) return null
+    // 1) 直接包含 tokens.txt
+    val direct = File(root, "tokens.txt")
+    if (direct.exists()) return root
+    // 2) 子目录搜索一层
+    val subs = root.listFiles() ?: return null
+    subs.forEach { f ->
+      if (f.isDirectory) {
+        val t = File(f, "tokens.txt")
+        if (t.exists()) return f
+      }
+    }
+    return null
   }
 
   private fun hapticTapIfEnabled(view: View?) {

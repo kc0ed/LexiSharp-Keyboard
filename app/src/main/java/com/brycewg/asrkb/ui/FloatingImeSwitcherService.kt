@@ -628,7 +628,8 @@ class FloatingImeSwitcherService : Service() {
             com.brycewg.asrkb.asr.AsrVendor.OpenAI to getString(R.string.vendor_openai),
             com.brycewg.asrkb.asr.AsrVendor.DashScope to getString(R.string.vendor_dashscope),
             com.brycewg.asrkb.asr.AsrVendor.Gemini to getString(R.string.vendor_gemini),
-            com.brycewg.asrkb.asr.AsrVendor.Soniox to getString(R.string.vendor_soniox)
+            com.brycewg.asrkb.asr.AsrVendor.Soniox to getString(R.string.vendor_soniox),
+            com.brycewg.asrkb.asr.AsrVendor.SenseVoice to getString(R.string.vendor_sensevoice)
         )
         val cur = try { Prefs(this).asrVendor } catch (_: Throwable) { com.brycewg.asrkb.asr.AsrVendor.Volc }
         entries.forEach { (v, name) ->
@@ -642,7 +643,16 @@ class FloatingImeSwitcherService : Service() {
                 setOnClickListener {
                     try {
                         val prefs = Prefs(this@FloatingImeSwitcherService)
-                        prefs.asrVendor = v
+                        val old = try { prefs.asrVendor } catch (_: Throwable) { com.brycewg.asrkb.asr.AsrVendor.Volc }
+                        if (v != old) {
+                            prefs.asrVendor = v
+                            // 离开 SenseVoice -> 卸载；切回 SenseVoice -> 若开启预加载则预热
+                            if (old == com.brycewg.asrkb.asr.AsrVendor.SenseVoice && v != com.brycewg.asrkb.asr.AsrVendor.SenseVoice) {
+                                try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+                            } else if (v == com.brycewg.asrkb.asr.AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
+                                try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@FloatingImeSwitcherService, prefs) } catch (_: Throwable) { }
+                            }
+                        }
                         android.widget.Toast.makeText(this@FloatingImeSwitcherService, name, android.widget.Toast.LENGTH_SHORT).show()
                     } catch (_: Throwable) { }
                     hideVendorMenu()

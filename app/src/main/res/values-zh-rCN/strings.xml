@@ -32,6 +32,7 @@
     <string name="toggle_off">关闭</string>
 
     <string name="settings_instructions">首次使用步骤：\n1. 点击"启用键盘"，在系统设置中启用 言犀键盘\n2. 点击"选择键盘"，切换到 言犀键盘\n3. 授予麦克风权限后，回到任意输入框，长按键盘上的麦克风按钮即可体验</string>
+    <string name="btn_one_click_setup">一键设置</string>
     <string name="btn_enable">启用键盘</string>
     <string name="btn_choose">选择键盘</string>
     <string name="btn_show_guide">查看使用指南</string>
@@ -50,12 +51,14 @@
     <string name="vendor_sf">SiliconFlow</string>
     <string name="vendor_dashscope">阿里云百炼（DashScope）</string>
     <string name="vendor_soniox">Soniox</string>
+    <string name="vendor_sensevoice">SenseVoice（本地）</string>
     <string name="label_sf_api_key">API Key（Bearer）</string>
     <string name="label_sf_model">模型名称（如：FunAudioLLM/SenseVoiceSmall）</string>
     <string name="label_sf_use_omni">使用语音多模态模型（Qwen3-Omni）</string>
     <string name="label_sf_omni_prompt">多模态识别提示词（可选）</string>
     <string name="dash_section_title">阿里云百炼 ASR 参数</string>
     <string name="soniox_section_title">Soniox 鉴权参数</string>
+    <string name="sensevoice_section_title">SenseVoice 本地 ASR</string>
     <string name="label_dash_api_key">DashScope API Key（Bearer）</string>
     <string name="label_dash_model">模型（如：qwen3-asr-flash）</string>
     <string name="label_dash_prompt">自定义提示词/识别上下文（可选）</string>
@@ -112,6 +115,10 @@
     <string name="soniox_lang_fil">菲律宾语 (fil)</string>
     <string name="status_last_request_ms">上次识别耗时：%1$d ms</string>
     
+    <!-- 本地 ASR（占位） -->
+    <string name="error_local_asr_not_ready">本地引擎未就绪，请在后续集成 sherpa‑onnx 依赖与模型后再试</string>
+    <string name="error_sensevoice_model_missing">缺少 SenseVoice 模型文件，请稍后在设置中配置或下载</string>
+    
     <string name="btn_close">关闭</string>
     <string name="title_quick_guide">快速上手教程</string>
     <string name="label_trim_trailing_punct">完成后去除句末标点</string>
@@ -135,6 +142,9 @@
     <string name="toast_need_accessibility_perm">请在系统设置中授予"无障碍服务"权限以支持此功能</string>
     <string name="cd_floating_asr">悬浮球语音识别</string>
     <string name="btn_grant_all_permissions">授予所有需要的权限</string>
+    <string name="toast_setup_all_done">已完成所有设置</string>
+    <string name="toast_setup_enable_keyboard_first">请在系统设置中启用键盘后返回</string>
+    <string name="toast_setup_choose_keyboard">请选择“言犀键盘”为当前输入法</string>
 
     <!-- Floating ASR status messages -->
     <string name="floating_asr_recording">正在录音…</string>
@@ -306,4 +316,30 @@
     <string name="label_swap_ai_edit_switcher">交换 AI 编辑与输入法切换键位置</string>
     <string name="label_hide_recent_task_card">后台隐藏任务卡片</string>
 
+    <!-- SenseVoice 本地设置 -->
+    <string name="label_sv_threads">线程数（1-8）</string>
+    <string name="label_sv_use_nnapi">启用 NNAPI（实验性，可尝试配合4线程数）</string>
+    <string name="label_sv_language">识别语言</string>
+    <string name="sv_lang_auto">自动</string>
+    <string name="sv_lang_zh">中文 (zh)</string>
+    <string name="sv_lang_en">英语 (en)</string>
+    <string name="sv_lang_ja">日语 (ja)</string>
+    <string name="sv_lang_ko">韩语 (ko)</string>
+    <string name="sv_lang_yue">粤语 (yue)</string>
+    <string name="label_sv_use_itn">启用 ITN（数字/标点规范化）</string>
+    <string name="btn_sv_download_model">一键下载 SenseVoice 模型</string>
+    <string name="btn_sv_download_model_int8">一键下载 SenseVoice 模型（small int8，约 160MB）</string>
+    <string name="btn_sv_download_model_full">一键下载 SenseVoice 模型（small full，约 850MB）</string>
+    <string name="btn_sv_clear_model">清除已下载模型</string>
+    <string name="sv_download_status_downloading">下载中… %1$d%%</string>
+    <string name="sv_download_status_extracting">解压中…</string>
+    <string name="sv_download_status_done">模型已就绪</string>
+    <string name="sv_download_status_failed">下载或解压失败</string>
+    <string name="sv_clear_confirm_title">确认清除模型？</string>
+    <string name="sv_clear_confirm_message">将删除已下载的模型文件，可稍后重新下载。是否继续？</string>
+    <string name="sv_clear_done">已清除模型</string>
+    <string name="sv_clear_failed">清除失败</string>
+    <string name="label_sv_model_variant">模型版本</string>
+    <string name="sv_model_small_int8">Small（int8，约160MB）</string>
+    <string name="sv_model_small_full">Small（full，约850MB）</string>
 </resources>
