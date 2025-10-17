@@ -25,6 +25,9 @@ class VolcFileAsrEngine(
     onRequestDuration: ((Long) -> Unit)? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
 
+    // 火山引擎非流式：服务端上限 2h，本地稳妥限制为 1h
+    override val maxRecordDurationMillis: Int = 60 * 60 * 1000
+
     private val http: OkHttpClient = OkHttpClient.Builder()
         .callTimeout(60, TimeUnit.SECONDS)
         .build()

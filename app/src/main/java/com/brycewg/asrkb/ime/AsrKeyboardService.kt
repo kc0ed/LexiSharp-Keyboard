@@ -1147,7 +1147,40 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
                 aiEditState = null
                 committedStableLen = 0
                 lastPostprocCommit = null
-                goIdleWithTimingHint()
+                if (asrEngine?.isRunning == true) {
+                    // 连续分段期间保持“正在聆听”，不打断录音观感
+                    updateUiListening()
+                } else {
+                    goIdleWithTimingHint()
+                }
+            } else if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
+                // Keep recognized text as composing while we post-process
+                currentInputConnection?.setComposingText(text, 1)
+                txtStatus?.text = getString(R.string.status_ai_processing)
+                val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+                val processed = try {
+                    postproc.process(raw, prefs).ifBlank { raw }
+                } catch (_: Throwable) {
+                    raw
+                }
+                // 如果开启去除句尾标点，对LLM后处理结果也执行一次修剪，避免模型重新补回标点导致设置失效
+                val finalProcessed = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(processed) else processed
+                val ic = currentInputConnection
+                ic?.setComposingText(finalProcessed, 1)
+                ic?.finishComposingText()
+                // Record this commit so user can swipe-down on backspace to revert to raw
+                lastPostprocCommit = if (finalProcessed.isNotEmpty() && finalProcessed != raw) PostprocCommit(finalProcessed, raw) else null
+                vibrateTick()
+                committedStableLen = 0
+                // Track last ASR commit as what we actually inserted
+                lastAsrCommitText = finalProcessed
+                // 统计：累加本次识别最终提交的字数（AI编辑不计入，上面分支已排除）
+                try { prefs.addAsrChars(finalProcessed.length) } catch (_: Throwable) { }
+                if (asrEngine?.isRunning == true) {
+                    updateUiListening()
+                } else {
+                    goIdleWithTimingHint()
+                }
             } else {
                 val trimmedFinal = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
                 val presetReplacement = try {
@@ -1223,10 +1256,14 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
                     // Track last ASR commit as the full final text (not just remainder)
                     lastAsrCommitText = finalText
                     lastPartialText = null
-                    // ͳ�ƣ��ۼӱ���ʶ�������ύ������
+                    // 统计：累加本次识别最终提交的字数
                     try { prefs.addAsrChars(finalText.length) } catch (_: Throwable) { }
-                    // Always return to idle after finalizing one utterance
-                    goIdleWithTimingHint()
+                    // 分段期间保持“正在聆听”，否则回到空闲并显示耗时提示
+                    if (asrEngine?.isRunning == true) {
+                        updateUiListening()
+                    } else {
+                        goIdleWithTimingHint()
+                    }
                     // Clear any previous postproc commit context
                     lastPostprocCommit = null
                 }
