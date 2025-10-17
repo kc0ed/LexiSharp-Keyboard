@@ -1,6 +1,9 @@
 package com.brycewg.asrkb.asr
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +20,14 @@ class SenseVoiceFileAsrEngine(
     listener: StreamingAsrEngine.Listener,
     onRequestDuration: ((Long) -> Unit)? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
+
+    private fun showToast(resId: Int) {
+        try {
+            Handler(Looper.getMainLooper()).post {
+                try { Toast.makeText(context, context.getString(resId), Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
+            }
+        } catch (_: Throwable) { }
+    }
 
     protected override fun ensureReady(): Boolean {
         if (!super.ensureReady()) return false
@@ -75,6 +86,11 @@ class SenseVoiceFileAsrEngine(
             // 反射调用 sherpa-onnx Kotlin API
             // 注意：当从绝对路径加载模型/词表时，必须将 assetManager 设为 null
             // 参考 sherpa-onnx 提示 https://github.com/k2-fsa/sherpa-onnx/issues/2562
+            // 在需要创建新识别器时，向用户提示“加载中/完成”
+            val keepMinutes = try { prefs.svKeepAliveMinutes } catch (_: Throwable) { -1 }
+            val keepMs = if (keepMinutes <= 0) 0L else keepMinutes.toLong() * 60_000L
+            val alwaysKeep = keepMinutes < 0
+
             val text = SenseVoiceOnnxBridge.decodeOffline(
                 assetManager = null,
                 tokens = tokensPath,
@@ -84,7 +100,11 @@ class SenseVoiceFileAsrEngine(
                 provider = try { if (prefs.svUseNnapi) "nnapi" else "cpu" } catch (_: Throwable) { "cpu" },
                 numThreads = try { prefs.svNumThreads } catch (_: Throwable) { 2 },
                 samples = samples,
-                sampleRate = sampleRate
+                sampleRate = sampleRate,
+                keepAliveMs = keepMs,
+                alwaysKeep = alwaysKeep,
+                onLoadStart = { showToast(R.string.sv_loading_model) },
+                onLoadDone = { showToast(R.string.sv_model_ready) }
             )
 
             if (text.isNullOrBlank()) {
@@ -137,10 +157,71 @@ fun unloadSenseVoiceRecognizer() {
     try { SenseVoiceOnnxBridge.unload() } catch (_: Throwable) { }
 }
 
+// 预加载：根据当前配置尝试构建本地识别器，便于降低首次点击等待
+fun preloadSenseVoiceIfConfigured(context: Context, prefs: Prefs) {
+    try {
+        if (!SenseVoiceOnnxBridge.isOnnxAvailable()) return
+        // 保护：若“保留时长=不保留(0)”，则跳过预加载，避免立刻卸载造成空转
+        val keepMinutesGuard = try { prefs.svKeepAliveMinutes } catch (_: Throwable) { -1 }
+        if (keepMinutesGuard == 0) return
+        val base = try { context.getExternalFilesDir(null) } catch (_: Throwable) { null } ?: context.filesDir
+        val probeRoot = java.io.File(base, "sensevoice")
+        val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+        val variantDir = when (variant) {
+            "small-full" -> java.io.File(probeRoot, "small-full")
+            else -> java.io.File(probeRoot, "small-int8")
+        }
+        val auto = findSvModelDir(variantDir) ?: findSvModelDir(probeRoot) ?: return
+        val dir = auto.absolutePath
+        val tokensPath = java.io.File(dir, "tokens.txt").absolutePath
+        val int8Path = java.io.File(dir, "model.int8.onnx").absolutePath
+        val f32Path = java.io.File(dir, "model.onnx").absolutePath
+        val modelPath = when {
+            java.io.File(int8Path).exists() -> int8Path
+            java.io.File(f32Path).exists() -> f32Path
+            else -> return
+        }
+        if (!java.io.File(tokensPath).exists()) return
+        val keepMinutes = try { prefs.svKeepAliveMinutes } catch (_: Throwable) { -1 }
+        val keepMs = if (keepMinutes <= 0) 0L else keepMinutes.toLong() * 60_000L
+        val alwaysKeep = keepMinutes < 0
+        SenseVoiceOnnxBridge.prepare(
+            assetManager = null,
+            tokens = tokensPath,
+            model = modelPath,
+            language = try { prefs.svLanguage } catch (_: Throwable) { "auto" },
+            useItn = try { prefs.svUseItn } catch (_: Throwable) { false },
+            provider = try { if (prefs.svUseNnapi) "nnapi" else "cpu" } catch (_: Throwable) { "cpu" },
+            numThreads = try { prefs.svNumThreads } catch (_: Throwable) { 2 },
+            keepAliveMs = keepMs,
+            alwaysKeep = alwaysKeep,
+            onLoadStart = { try { android.widget.Toast.makeText(context, context.getString(R.string.sv_loading_model), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { } },
+            onLoadDone = { try { android.widget.Toast.makeText(context, context.getString(R.string.sv_model_ready), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { } }
+        )
+    } catch (_: Throwable) { }
+}
+
+// 顶层工具：在指定根目录下寻找包含 tokens.txt 的模型目录（最多一层）
+fun findSvModelDir(root: java.io.File?): java.io.File? {
+    if (root == null || !root.exists()) return null
+    val direct = java.io.File(root, "tokens.txt")
+    if (direct.exists()) return root
+    val subs = root.listFiles() ?: return null
+    for (f in subs) {
+        if (f.isDirectory) {
+            val t = java.io.File(f, "tokens.txt")
+            if (t.exists()) return f
+        }
+    }
+    return null
+}
+
 /**
  * 通过反射探测 sherpa-onnx 是否可用；未引入依赖时不产生编译时引用。
  */
 private object SenseVoiceOnnxBridge {
+    private val mainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
+    @Volatile private var pendingUnload: Runnable? = null
     @Volatile private var cachedKey: String? = null
     @Volatile private var cachedRecognizer: Any? = null
     @Volatile private var cachedStreamClass: Class<*>? = null
@@ -186,7 +267,11 @@ private object SenseVoiceOnnxBridge {
         provider: String,
         numThreads: Int,
         samples: FloatArray,
-        sampleRate: Int
+        sampleRate: Int,
+        keepAliveMs: Long,
+        alwaysKeep: Boolean,
+        onLoadStart: (() -> Unit)? = null,
+        onLoadDone: (() -> Unit)? = null
     ): String? {
         try {
             if (clsOfflineRecognizer == null) {
@@ -231,6 +316,7 @@ private object SenseVoiceOnnxBridge {
             val key = listOf(tokens, model, language, useItn.toString(), provider, numThreads.toString()).joinToString("|")
             var recognizer = cachedRecognizer
             if (cachedKey != key || recognizer == null) {
+                try { onLoadStart?.invoke() } catch (_: Throwable) { }
                 // 创建新的 recognizer，并缓存；不主动 release 以避免部分版本 double-free 问题
                 // 当 assetManager 为空（从绝对路径加载）时，优先尝试无 assetManager 的构造函数
                 val ctor = if (assetManager == null) {
@@ -252,6 +338,7 @@ private object SenseVoiceOnnxBridge {
                 cachedRecognizer = recognizer
                 cachedKey = key
                 cachedStreamClass = null
+                try { onLoadDone?.invoke() } catch (_: Throwable) { }
             }
 
             // createStream -> acceptWaveform -> decode -> getResult
@@ -271,10 +358,94 @@ private object SenseVoiceOnnxBridge {
             try { clsStream.getMethod("release").invoke(stream) } catch (_: Throwable) { }
             // recognizer 长驻进程缓存，不主动 release
 
+            scheduleAutoUnload(keepAliveMs, alwaysKeep)
             return text
         } catch (_: Throwable) {
             return null
         }
+    }
+
+    @Synchronized
+    private fun scheduleAutoUnload(keepAliveMs: Long, alwaysKeep: Boolean) {
+        // 取消上一次计划
+        val old = pendingUnload
+        if (old != null) {
+            try { mainHandler.removeCallbacks(old) } catch (_: Throwable) { }
+            pendingUnload = null
+        }
+        if (alwaysKeep) return
+        if (keepAliveMs <= 0L) {
+            unload(); return
+        }
+        val r = Runnable { try { unload() } catch (_: Throwable) { } }
+        pendingUnload = r
+        try { mainHandler.postDelayed(r, keepAliveMs) } catch (_: Throwable) { }
+    }
+
+    /**
+     * 仅预加载（不解码），用于打开键盘等场景的预热。
+     */
+    fun prepare(
+        assetManager: android.content.res.AssetManager?,
+        tokens: String,
+        model: String,
+        language: String,
+        useItn: Boolean,
+        provider: String,
+        numThreads: Int,
+        keepAliveMs: Long,
+        alwaysKeep: Boolean,
+        onLoadStart: (() -> Unit)? = null,
+        onLoadDone: (() -> Unit)? = null
+    ): Boolean {
+        return try {
+            if (clsOfflineRecognizer == null) {
+                clsOfflineRecognizer = Class.forName("com.k2fsa.sherpa.onnx.OfflineRecognizer")
+                clsOfflineRecognizerConfig = Class.forName("com.k2fsa.sherpa.onnx.OfflineRecognizerConfig")
+                clsOfflineModelConfig = Class.forName("com.k2fsa.sherpa.onnx.OfflineModelConfig")
+                clsOfflineSenseVoiceModelConfig = Class.forName("com.k2fsa.sherpa.onnx.OfflineSenseVoiceModelConfig")
+            }
+            val senseVoice = try {
+                clsOfflineSenseVoiceModelConfig!!.getDeclaredConstructor(String::class.java, String::class.java, Boolean::class.javaPrimitiveType)
+                    .newInstance(model, language, useItn)
+            } catch (_: Throwable) {
+                val inst = clsOfflineSenseVoiceModelConfig!!.getDeclaredConstructor(String::class.java).newInstance(model)
+                trySetField(inst, "language", language)
+                trySetField(inst, "useItn", useItn)
+                inst
+            }
+            val modelConfig = clsOfflineModelConfig!!.getDeclaredConstructor().newInstance()
+            trySetField(modelConfig, "tokens", tokens)
+            trySetField(modelConfig, "numThreads", numThreads)
+            trySetField(modelConfig, "provider", provider)
+            trySetField(modelConfig, "debug", false)
+            if (!trySetField(modelConfig, "senseVoice", senseVoice)) {
+                trySetField(modelConfig, "sense_voice", senseVoice)
+            }
+            val recConfig = clsOfflineRecognizerConfig!!.getDeclaredConstructor().newInstance()
+            if (!trySetField(recConfig, "modelConfig", modelConfig)) {
+                trySetField(recConfig, "model_config", modelConfig)
+            }
+            val key = listOf(tokens, model, language, useItn.toString(), provider, numThreads.toString()).joinToString("|")
+            var recognizer = cachedRecognizer
+            if (cachedKey != key || recognizer == null) {
+                try { onLoadStart?.invoke() } catch (_: Throwable) { }
+                val ctor = if (assetManager == null) {
+                    try { clsOfflineRecognizer!!.getDeclaredConstructor(clsOfflineRecognizerConfig) }
+                    catch (_: Throwable) { clsOfflineRecognizer!!.getDeclaredConstructor(android.content.res.AssetManager::class.java, clsOfflineRecognizerConfig) }
+                } else {
+                    try { clsOfflineRecognizer!!.getDeclaredConstructor(android.content.res.AssetManager::class.java, clsOfflineRecognizerConfig) }
+                    catch (_: Throwable) { clsOfflineRecognizer!!.getDeclaredConstructor(clsOfflineRecognizerConfig) }
+                }
+                recognizer = if (ctor.parameterCount == 2) ctor.newInstance(assetManager, recConfig) else ctor.newInstance(recConfig)
+                cachedRecognizer = recognizer
+                cachedKey = key
+                cachedStreamClass = null
+                try { onLoadDone?.invoke() } catch (_: Throwable) { }
+            }
+            scheduleAutoUnload(keepAliveMs, alwaysKeep)
+            true
+        } catch (_: Throwable) { false }
     }
 
     private fun trySetField(target: Any, name: String, value: Any?): Boolean {

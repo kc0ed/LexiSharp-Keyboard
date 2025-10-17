@@ -301,7 +301,7 @@
 
     <!-- SenseVoice 本地设置 -->
     <string name="label_sv_threads">线程数（1-8）</string>
-    <string name="label_sv_use_nnapi">启用 NNAPI（实验性）</string>
+    <string name="label_sv_use_nnapi">启用 NNAPI（实验性，可尝试配合4线程数）</string>
     <string name="label_sv_language">识别语言</string>
     <string name="sv_lang_auto">自动</string>
     <string name="sv_lang_zh">中文 (zh)</string>

@@ -641,20 +641,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-          android:id="@+id/switchSvUseNnapi"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
-          android:text="@string/label_sv_use_nnapi" />
-
-        <TextView
-          android:id="@+id/tvSvModelVariantLabel"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
-          android:textColor="?attr/colorOnSurface"
-          android:text="@string/label_sv_model_variant" />
 
         <Spinner
           android:id="@+id/spSvModelVariant"
@@ -675,11 +661,46 @@
           android:layout_height="wrap_content" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchSvUseNnapi"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_sv_use_nnapi" />
+
+        <TextView
+          android:id="@+id/tvSvModelVariantLabel"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:textColor="?attr/colorOnSurface"
+          android:text="@string/label_sv_model_variant" />
+          
+        <com.google.android.material.materialswitch.MaterialSwitch
           android:id="@+id/switchSvUseItn"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           android:text="@string/label_sv_use_itn" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchSvPreload"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_sv_preload" />
+
+        <TextView
+          android:id="@+id/tvSvKeepAliveLabel"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:textColor="?attr/colorOnSurface"
+          android:text="@string/label_sv_keep_alive" />
+
+        <Spinner
+          android:id="@+id/spSvKeepAlive"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content" />
 
         <TextView
           android:id="@+id/tvSvThreadsLabel"

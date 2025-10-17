@@ -12,6 +12,8 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.brycewg.asrkb.ui.FloatingImeSwitcherService
 import com.brycewg.asrkb.ui.FloatingAsrService
+import com.brycewg.asrkb.asr.AsrVendor
+import com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured
 
 class App : Application() {
     override fun onCreate() {
@@ -51,6 +53,14 @@ class App : Application() {
                     action = FloatingAsrService.ACTION_SHOW
                 }
                 startService(intent)
+            }
+        } catch (_: Throwable) { }
+
+        // 启动时预加载本地 SenseVoice（按设置）
+        try {
+            val prefs = Prefs(this)
+            if (prefs.asrVendor == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
+                preloadSenseVoiceIfConfigured(this, prefs)
             }
         } catch (_: Throwable) { }
 

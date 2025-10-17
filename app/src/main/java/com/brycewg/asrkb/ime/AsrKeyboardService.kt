@@ -266,13 +266,13 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 refreshPermissionUi()
                 return@setOnClickListener
             }
-            // 本地 SenseVoice
+            // 本地 SenseVoice：检查模型是否存在
             if (prefs.asrVendor == AsrVendor.SenseVoice) {
                 val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
-                val root = java.io.File(base, "sensevoice")
+                val probeRoot = java.io.File(base, "sensevoice")
                 val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
-                val probe = if (variant == "small-full") java.io.File(root, "small-full") else java.io.File(root, "small-int8")
-                val found = tryFindModelDir(probe)
+                val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
+                val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
                 if (found == null) {
                     txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
                     return@setOnClickListener
@@ -315,10 +315,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     }
                     if (prefs.asrVendor == AsrVendor.SenseVoice) {
                         val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
-                        val root = java.io.File(base, "sensevoice")
+                        val probeRoot = java.io.File(base, "sensevoice")
                         val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
-                        val probe = if (variant == "small-full") java.io.File(root, "small-full") else java.io.File(root, "small-int8")
-                        val found = tryFindModelDir(probe)
+                        val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
+                        val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
                         if (found == null) {
                             txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
                             v.performClick()
@@ -843,19 +843,6 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         lastRequestDurationMs = ms
     }
 
-    private fun tryFindModelDir(root: java.io.File?): java.io.File? {
-        if (root == null || !root.exists()) return null
-        val direct = java.io.File(root, "tokens.txt")
-        if (direct.exists()) return root
-        val subs = root.listFiles() ?: return null
-        for (f in subs) {
-            if (f.isDirectory) {
-                val t = java.io.File(f, "tokens.txt")
-                if (t.exists()) return f
-            }
-        }
-        return null
-    }
 
     private fun goIdleWithTimingHint() {
         updateUiIdle()

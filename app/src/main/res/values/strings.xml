@@ -227,7 +227,7 @@
     <string name="label_soniox_api_key">API Key（Bearer）</string>
     <!-- SenseVoice local settings -->
     <string name="label_sv_threads">线程数（1-8）</string>
-    <string name="label_sv_use_nnapi">启用 NNAPI（实验性）</string>
+    <string name="label_sv_use_nnapi">启用 NNAPI（实验性，可尝试配合4线程数）</string>
     <string name="label_sv_language">识别语言</string>
     <string name="sv_lang_auto">自动</string>
     <string name="sv_lang_zh">中文 (zh)</string>
@@ -253,6 +253,15 @@
     <string name="label_sv_model_variant">模型版本</string>
     <string name="sv_model_small_int8">Small（int8，约160MB）</string>
     <string name="sv_model_small_full">Small（full，约850MB）</string>
+    <string name="sv_loading_model">本地模型加载中…</string>
+    <string name="sv_model_ready">本地模型加载完成</string>
+    <string name="label_sv_preload">应用启动时预加载模型</string>
+    <string name="label_sv_keep_alive">模型内存保留时长</string>
+    <string name="sv_keep_alive_immediate">不保留（识别后立即卸载）</string>
+    <string name="sv_keep_alive_5m">5 分钟</string>
+    <string name="sv_keep_alive_15m">15 分钟</string>
+    <string name="sv_keep_alive_30m">30 分钟</string>
+    <string name="sv_keep_alive_always">始终保持（直到参数变更）</string>
 
     <!-- User-facing ASR error toasts (floating + keyboard) -->
     <string name="asr_error_empty_result">未识别到内容，请再说一遍</string>

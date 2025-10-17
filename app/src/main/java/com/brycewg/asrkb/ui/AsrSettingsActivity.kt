@@ -109,6 +109,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     val switchSvUseNnapi = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchSvUseNnapi)
     val spSvLanguage = findViewById<Spinner>(R.id.spSvLanguage)
     val switchSvUseItn = findViewById<MaterialSwitch>(R.id.switchSvUseItn)
+    val switchSvPreload = findViewById<MaterialSwitch>(R.id.switchSvPreload)
+    val spSvKeepAlive = findViewById<Spinner>(R.id.spSvKeepAlive)
     val btnSvDownload = findViewById<MaterialButton>(R.id.btnSvDownloadModel)
     val btnSvClear = findViewById<MaterialButton>(R.id.btnSvClearModel)
     val tvSvDownloadStatus = findViewById<TextView>(R.id.tvSvDownloadStatus)
@@ -157,7 +159,19 @@ class AsrSettingsActivity : AppCompatActivity() {
       spAsrVendor.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
           override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
               val vendor = vendorOrder.getOrNull(position) ?: AsrVendor.Volc
-              prefs.asrVendor = vendor
+              val old = try { prefs.asrVendor } catch (_: Throwable) { AsrVendor.Volc }
+              if (vendor != old) {
+                // 更新选择
+                prefs.asrVendor = vendor
+                // 离开 SenseVoice -> 主动卸载本地模型
+                if (old == AsrVendor.SenseVoice && vendor != AsrVendor.SenseVoice) {
+                  try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+                }
+                // 切回 SenseVoice -> 如开启预加载则立即预热
+                if (vendor == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
+                  try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@AsrSettingsActivity, prefs) } catch (_: Throwable) { }
+                }
+              }
               applyVendorVisibility(vendor)
           }
 
@@ -355,6 +369,8 @@ class AsrSettingsActivity : AppCompatActivity() {
           val code = variantCodes.getOrNull(position) ?: "small-int8"
           if (code != prefs.svModelVariant) {
             prefs.svModelVariant = code
+            // 参数变更即预卸载
+            try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
             // 变更后刷新按钮文案与状态
             updateSvDownloadButtonText()
             updateSvDownloadUiVisibility()
@@ -372,7 +388,11 @@ class AsrSettingsActivity : AppCompatActivity() {
       sliderSvThreads.addOnChangeListener { s, value, fromUser ->
         if (fromUser) {
           val v = value.toInt().coerceIn(1, 8)
-          if (v != prefs.svNumThreads) prefs.svNumThreads = v
+          if (v != prefs.svNumThreads) {
+            prefs.svNumThreads = v
+            // 参数变更即预卸载
+            try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+          }
         }
       }
       sliderSvThreads.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
@@ -383,7 +403,11 @@ class AsrSettingsActivity : AppCompatActivity() {
     switchSvUseNnapi.isChecked = prefs.svUseNnapi
     switchSvUseNnapi.setOnCheckedChangeListener { btn, isChecked ->
       hapticTapIfEnabled(btn)
-      prefs.svUseNnapi = isChecked
+      if (prefs.svUseNnapi != isChecked) {
+        prefs.svUseNnapi = isChecked
+        // 参数变更即预卸载
+        try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+      }
     }
 
     // SenseVoice 语言与 ITN
@@ -402,7 +426,11 @@ class AsrSettingsActivity : AppCompatActivity() {
       spSvLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
         override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
           val code = codes.getOrNull(position) ?: "auto"
-          if (code != prefs.svLanguage) prefs.svLanguage = code
+          if (code != prefs.svLanguage) {
+            prefs.svLanguage = code
+            // 参数变更即预卸载
+            try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+          }
         }
         override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
       }
@@ -410,7 +438,43 @@ class AsrSettingsActivity : AppCompatActivity() {
     switchSvUseItn.isChecked = prefs.svUseItn
     switchSvUseItn.setOnCheckedChangeListener { btn, isChecked ->
       hapticTapIfEnabled(btn)
-      prefs.svUseItn = isChecked
+      if (prefs.svUseItn != isChecked) {
+        prefs.svUseItn = isChecked
+        // 参数变更即预卸载
+        try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+      }
+    }
+
+    // 预加载开关（应用启动时预加载）；开启时若当前渠道为 SenseVoice 则立即预热
+    switchSvPreload.isChecked = prefs.svPreloadEnabled
+    switchSvPreload.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
+      prefs.svPreloadEnabled = isChecked
+      if (isChecked && prefs.asrVendor == AsrVendor.SenseVoice) {
+        try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this, prefs) } catch (_: Throwable) { }
+      }
+    }
+
+    // 模型保留时长
+    run {
+      val labels = listOf(
+        getString(R.string.sv_keep_alive_immediate),
+        getString(R.string.sv_keep_alive_5m),
+        getString(R.string.sv_keep_alive_15m),
+        getString(R.string.sv_keep_alive_30m),
+        getString(R.string.sv_keep_alive_always)
+      )
+      val values = listOf(0, 5, 15, 30, -1)
+      spSvKeepAlive.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+      val idx = values.indexOf(prefs.svKeepAliveMinutes).let { if (it >= 0) it else values.size - 1 }
+      spSvKeepAlive.setSelection(idx)
+      spSvKeepAlive.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+          val v = values.getOrNull(position) ?: -1
+          if (v != prefs.svKeepAliveMinutes) prefs.svKeepAliveMinutes = v
+        }
+        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+      }
     }
 
     updateSvDownloadButtonText()

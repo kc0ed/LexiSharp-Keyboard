@@ -357,11 +357,11 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             return
         }
 
-        // 本地 SenseVoice
+        // 本地 SenseVoice：检查模型是否存在
         if (prefs.asrVendor == AsrVendor.SenseVoice) {
             val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
             val probe = java.io.File(base, "sensevoice")
-            val found = tryFindModelDir(probe)
+            val found = com.brycewg.asrkb.asr.findSvModelDir(probe)
             if (found == null) {
                 showToast(getString(R.string.error_sensevoice_model_missing))
                 return
@@ -744,19 +744,6 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun tryFindModelDir(root: java.io.File?): java.io.File? {
-        if (root == null || !root.exists()) return null
-        val direct = java.io.File(root, "tokens.txt")
-        if (direct.exists()) return root
-        val subs = root.listFiles() ?: return null
-        for (f in subs) {
-            if (f.isDirectory) {
-                val t = java.io.File(f, "tokens.txt")
-                if (t.exists()) return f
-            }
-        }
-        return null
-    }
 
     private var edgeAnimator: ValueAnimator? = null
     private fun currentUiAlpha(): Float = try { prefs.floatingSwitcherAlpha } catch (_: Throwable) { 1f }
@@ -1079,7 +1066,16 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 isFocusable = true
                 setOnClickListener {
                     try {
-                        prefs.asrVendor = v
+                        val old = try { prefs.asrVendor } catch (_: Throwable) { AsrVendor.Volc }
+                        if (v != old) {
+                            prefs.asrVendor = v
+                            // 离开 SenseVoice 时卸载；切回 SenseVoice 且开启预加载时预热
+                            if (old == AsrVendor.SenseVoice && v != AsrVendor.SenseVoice) {
+                                try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+                            } else if (v == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
+                                try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@FloatingAsrService, prefs) } catch (_: Throwable) { }
+                            }
+                        }
                         android.widget.Toast.makeText(this@FloatingAsrService, name, android.widget.Toast.LENGTH_SHORT).show()
                     } catch (_: Throwable) { }
                     hideVendorMenu()

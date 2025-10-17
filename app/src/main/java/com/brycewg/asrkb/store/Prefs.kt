@@ -481,6 +481,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SV_USE_ITN, false)
         set(value) = sp.edit { putBoolean(KEY_SV_USE_ITN, value) }
 
+    // SenseVoice：应用启动时预加载（默认关闭）
+    var svPreloadEnabled: Boolean
+        get() = sp.getBoolean(KEY_SV_PRELOAD_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_SV_PRELOAD_ENABLED, value) }
+
+    // SenseVoice：模型保留时长（分钟）。-1=始终保持；0=识别后立即卸载。
+    var svKeepAliveMinutes: Int
+        get() = sp.getInt(KEY_SV_KEEP_ALIVE_MINUTES, -1)
+        set(value) = sp.edit { putInt(KEY_SV_KEEP_ALIVE_MINUTES, value) }
+
     // --- 供应商配置通用化 ---
     private data class VendorField(val key: String, val required: Boolean = false, val default: String = "")
 
@@ -660,6 +670,8 @@ class Prefs(context: Context) {
         private const val KEY_SV_USE_NNAPI = "sv_use_nnapi"
         private const val KEY_SV_LANGUAGE = "sv_language"
         private const val KEY_SV_USE_ITN = "sv_use_itn"
+        private const val KEY_SV_PRELOAD_ENABLED = "sv_preload_enabled"
+        private const val KEY_SV_KEEP_ALIVE_MINUTES = "sv_keep_alive_minutes"
 
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
         const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
@@ -816,6 +828,8 @@ class Prefs(context: Context) {
         o.put(KEY_SV_USE_NNAPI, svUseNnapi)
         o.put(KEY_SV_LANGUAGE, svLanguage)
         o.put(KEY_SV_USE_ITN, svUseItn)
+        o.put(KEY_SV_PRELOAD_ENABLED, svPreloadEnabled)
+        o.put(KEY_SV_KEEP_ALIVE_MINUTES, svKeepAliveMinutes)
         return o.toString()
     }
 
@@ -911,6 +925,8 @@ class Prefs(context: Context) {
             optBool(KEY_SV_USE_NNAPI)?.let { svUseNnapi = it }
             optString(KEY_SV_LANGUAGE)?.let { svLanguage = it }
             optBool(KEY_SV_USE_ITN)?.let { svUseItn = it }
+            optBool(KEY_SV_PRELOAD_ENABLED)?.let { svPreloadEnabled = it }
+            optInt(KEY_SV_KEEP_ALIVE_MINUTES)?.let { svKeepAliveMinutes = it }
             true
         } catch (_: Throwable) {
             false
