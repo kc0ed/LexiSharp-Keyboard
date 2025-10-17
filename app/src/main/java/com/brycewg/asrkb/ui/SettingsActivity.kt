@@ -29,6 +29,8 @@ import androidx.core.os.LocaleListCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
+import androidx.core.content.ContextCompat
+import android.Manifest
 import kotlinx.coroutines.Dispatchers
 import com.brycewg.asrkb.ime.AsrKeyboardService
 import kotlinx.coroutines.async
@@ -51,20 +53,13 @@ class SettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
 
+        // 一键设置
+        findViewById<Button>(R.id.btnOneClickSetup)?.setOnClickListener {
+            startOneClickSetupFlow()
+        }
+
         wasAccessibilityEnabled = isAccessibilityServiceEnabled()
 
-        findViewById<Button>(R.id.btnEnable).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
-        }
-
-        findViewById<Button>(R.id.btnChoose).setOnClickListener {
-            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.showInputMethodPicker()
-        }
-
-        findViewById<Button>(R.id.btnAllPermissions).setOnClickListener {
-            requestAllPermissions()
-        }
 
         findViewById<Button>(R.id.btnShowGuide).setOnClickListener {
             val view = LayoutInflater.from(this).inflate(R.layout.dialog_guide, null, false)
@@ -285,6 +280,15 @@ class SettingsActivity : AppCompatActivity() {
 
     private var autoShownImePicker = false
     private val handler = Handler(Looper.getMainLooper())
+    private var pendingOneClick = false
+    private var oneClickPickerShown = false
+    private var askedEnableImeOnce = false
+    private var askedPickerOnce = false
+    private var askedMicOnce = false
+    private var askedOverlayOnce = false
+    private var askedNotifOnce = false
+    private var askedA11yOnce = false
+    private var imeWatchRunnable: Runnable? = null
 
     override fun onResume() {
         super.onResume()
@@ -310,6 +314,11 @@ class SettingsActivity : AppCompatActivity() {
             val prefs = Prefs(this)
             tvAsrTotalChars?.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
         } catch (_: Throwable) { }
+
+        // 若处于一键设置流程中，返回后继续推进下一步
+        if (pendingOneClick) {
+            handler.post { advanceOneClickIfPossible() }
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -327,35 +336,203 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun startOneClickSetupFlow() {
+        pendingOneClick = true
+        oneClickPickerShown = false
+        askedEnableImeOnce = false
+        askedPickerOnce = false
+        askedMicOnce = false
+        askedOverlayOnce = false
+        askedNotifOnce = false
+        askedA11yOnce = false
+        stopImeWatch()
+        advanceOneClickIfPossible()
+    }
+
+    private fun advanceOneClickIfPossible() {
+        if (!pendingOneClick) return
+
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        val imeEnabled = isOurImeEnabled(imm)
+        val imeCurrent = isOurImeCurrent()
+
+        if (!imeEnabled) {
+            // 第一步：引导启用输入法（仅提示一次）
+            if (!askedEnableImeOnce) {
+                askedEnableImeOnce = true
+                Toast.makeText(this, getString(R.string.toast_setup_enable_keyboard_first), Toast.LENGTH_SHORT).show()
+                try { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) } catch (_: Throwable) { }
+            }
+            return
+        }
+
+        if (!imeCurrent) {
+            // 第二步：已启用但未选择为当前输入法 → 唤起选择器（仅一次）
+            if (!askedPickerOnce) {
+                askedPickerOnce = true
+                oneClickPickerShown = true
+                promptImeChooserAndWatch()
+            }
+            return
+        }
+
+        // 第三步：检查权限（线性队列）
+        if (!hasAllRequiredPermissions()) {
+            requestAllPermissions()
+            // 保持 pendingOneClick=true，等待回流/回调后继续
+            return
+        }
+
+        // 全部就绪
+        pendingOneClick = false
+        stopImeWatch()
+        Toast.makeText(this, getString(R.string.toast_setup_all_done), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun promptImeChooserAndWatch() {
+        // 使用与“选择键盘”按钮一致的直接唤起方式，避免额外过渡动画
+        try {
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showInputMethodPicker()
+        } catch (_: Throwable) { }
+
+        // 轮询等待用户选择完成后自动推进下一步（最长 8 秒）
+        stopImeWatch()
+        val startAt = System.currentTimeMillis()
+        val r = Runnable {
+            if (!pendingOneClick) return@Runnable
+            if (isOurImeCurrent()) {
+                stopImeWatch()
+                // 立即进入权限队列
+                requestAllPermissions()
+                return@Runnable
+            }
+            if (System.currentTimeMillis() - startAt > 8000L) {
+                stopImeWatch()
+                // 超时，不再打扰；等待用户手动处理或再次点击一键设置
+                Toast.makeText(this, getString(R.string.toast_setup_choose_keyboard), Toast.LENGTH_SHORT).show()
+                return@Runnable
+            }
+            handler.postDelayed(imeWatchRunnable!!, 300)
+        }
+        imeWatchRunnable = r
+        handler.postDelayed(r, 350)
+    }
+
+    private fun stopImeWatch() {
+        imeWatchRunnable?.let { handler.removeCallbacks(it) }
+        imeWatchRunnable = null
+    }
+
+    private fun hasAllRequiredPermissions(): Boolean {
+        val micGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        val prefs = Prefs(this)
+        val needOverlay = prefs.floatingSwitcherEnabled || prefs.floatingAsrEnabled
+        val overlayGranted = !needOverlay || Settings.canDrawOverlays(this)
+        val needA11y = prefs.floatingAsrEnabled
+        val a11yGranted = !needA11y || isAccessibilityServiceEnabled()
+
+        // Android 13+ 通知权限仅作为增强项，缺失不阻塞核心功能
+        return micGranted && overlayGranted && a11yGranted
+    }
+
+    private fun isOurImeEnabled(imm: InputMethodManager?): Boolean {
+        val list = try { imm?.enabledInputMethodList } catch (_: Throwable) { null }
+        if (list?.any { it.packageName == packageName } == true) return true
+        return try {
+            val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_INPUT_METHODS)
+            val id = "$packageName/.ime.AsrKeyboardService"
+            enabled?.contains(id) == true || (enabled?.split(':')?.any { it.startsWith(packageName) } == true)
+        } catch (_: Throwable) { false }
+    }
+
+    private fun isOurImeCurrent(): Boolean {
+        return try {
+            val current = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
+            val expectedId = "$packageName/.ime.AsrKeyboardService"
+            current == expectedId
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
     private fun requestAllPermissions() {
         val prefs = Prefs(this)
 
-        // 1. 麦克风权限
-        startActivity(Intent(this, PermissionActivity::class.java))
-
-        // 2. 悬浮窗权限
-        if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
-            try {
-                val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
-                startActivity(intent)
-            } catch (_: Throwable) { }
+        // 1) 麦克风（必要）
+        val micGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (!micGranted) {
+            if (!askedMicOnce) {
+                askedMicOnce = true
+                try { startActivity(Intent(this, PermissionActivity::class.java)) } catch (_: Throwable) { }
+                return
+            }
+            // 已提示过，跳过到下一项
         }
 
-        // 3. 通知权限 (Android 13+)
+        // 2) 悬浮窗（当启用悬浮类功能时需要）
+        val needOverlay = prefs.floatingSwitcherEnabled || prefs.floatingAsrEnabled
+        val overlayGranted = !needOverlay || Settings.canDrawOverlays(this)
+        if (!overlayGranted) {
+            if (!askedOverlayOnce) {
+                askedOverlayOnce = true
+                Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
+                try {
+                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
+                    startActivity(intent)
+                } catch (_: Throwable) { }
+                return
+            }
+            // 已提示过，跳过到下一项
+        }
+
+        // 3) 通知权限（Android 13+，增强项）
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+            val notifGranted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            if (!notifGranted) {
+                if (!askedNotifOnce) {
+                    askedNotifOnce = true
+                    requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+                    return
+                }
+                // 已提示过，跳过
             }
         }
 
-        // 4. 如果启用了悬浮球语音识别,还需要无障碍权限
-        if (prefs.floatingAsrEnabled && !isAccessibilityServiceEnabled()) {
+        // 4) 无障碍（当启用悬浮球语音识别时需要）
+        val needA11y = prefs.floatingAsrEnabled
+        val a11yGranted = !needA11y || isAccessibilityServiceEnabled()
+        if (!a11yGranted) {
+            if (!askedA11yOnce) {
+                askedA11yOnce = true
+                Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
+                try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) } catch (_: Throwable) { }
+                return
+            }
+            // 已提示过且用户返回未开启：结束本轮以避免循环跳转
+            pendingOneClick = false
+            stopImeWatch()
             Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
-            try {
-                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                startActivity(intent)
-            } catch (_: Throwable) { }
+            return
+        }
+
+        // 若到此处，无需再弹系统页/权限对话框：全部已满足或仅剩增强项用户未同意
+        if (hasAllRequiredPermissions()) {
+            pendingOneClick = false
+            stopImeWatch()
+            Toast.makeText(this, getString(R.string.toast_setup_all_done), Toast.LENGTH_SHORT).show()
+        } else {
+            // 还有未满足但已全部提示过：结束以避免循环
+            pendingOneClick = false
+            stopImeWatch()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (pendingOneClick) {
+            // 小延迟，等待系统状态稳定
+            handler.postDelayed({ advanceOneClickIfPossible() }, 200)
         }
     }
 

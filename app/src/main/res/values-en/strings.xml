@@ -33,6 +33,7 @@
     <string name="toggle_off">OFF</string>
 
     <string name="settings_instructions">First-time setup:\n1. Tap "Enable Keyboard" and enable LexiSharp Keyboard in system settings\n2. Tap "Choose Keyboard" to switch to LexiSharp Keyboard\n3. Grant microphone permission, then long‑press the mic button on the keyboard to try</string>
+    <string name="btn_one_click_setup">One-click Setup</string>
     <string name="btn_enable">Enable Keyboard</string>
     <string name="btn_choose">Choose Keyboard</string>
     <string name="btn_show_guide">View Quick Guide</string>
@@ -143,6 +144,9 @@
     <string name="hint_floating_write_compat_pkgs">Enter full package or prefix (e.g., org.telegram or com.ss.android.ugc.aweme). A trailing * means prefix match (e.g., org.telegram.*).</string>
     <string name="cd_floating_asr">Floating ball voice recognition</string>
     <string name="btn_grant_all_permissions">Grant all required permissions</string>
+    <string name="toast_setup_all_done">All set</string>
+    <string name="toast_setup_enable_keyboard_first">Enable the keyboard in system settings, then come back</string>
+    <string name="toast_setup_choose_keyboard">Please select "LexiSharp Keyboard" as the current input method</string>
 
     <!-- Floating ASR status messages -->
     <string name="floating_asr_recording">Recording…</string>

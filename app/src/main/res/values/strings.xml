@@ -34,6 +34,7 @@
     <string name="toggle_off">关闭</string>
 
   <string name="settings_instructions">首次使用步骤：\n1. 点击"启用键盘"，在系统设置中启用 言犀键盘\n2. 点击"选择键盘"，切换到 言犀键盘\n3. 授予麦克风权限后，回到任意输入框，长按键盘上的麦克风按钮即可体验</string>
+    <string name="btn_one_click_setup">一键设置</string>
     <string name="btn_enable">启用键盘</string>
     <string name="btn_choose">选择键盘</string>
   <string name="btn_show_guide">查看使用指南</string>
@@ -139,6 +140,9 @@
     <string name="toast_need_accessibility_perm">请在系统设置中授予“无障碍服务”权限以支持此功能</string>
     <string name="cd_floating_asr">悬浮球语音识别</string>
     <string name="btn_grant_all_permissions">授予所有需要的权限</string>
+    <string name="toast_setup_all_done">已完成所有设置</string>
+    <string name="toast_setup_enable_keyboard_first">请在系统设置中启用键盘后返回</string>
+    <string name="toast_setup_choose_keyboard">请选择“言犀键盘”为当前输入法</string>
 
     <!-- Floating ASR status messages -->
     <string name="floating_asr_recording">正在录音…</string>
