@@ -243,13 +243,15 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             Log.e(TAG, "Failed to add ball view", e)
         }
 
-        // 悬浮球首次出现时，按需延迟预加载本地 SenseVoice，避免应用启动期加载导致崩溃
+        // 悬浮球首次出现时，按需异步预加载本地 SenseVoice，避免主线程卡顿
         try {
             if (!svPreloadTriggered) {
                 if (prefs.asrVendor == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
                     val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
                     if (!prepared) {
-                        try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this, prefs) } catch (_: Throwable) { }
+                        serviceScope.launch(Dispatchers.Default) {
+                            try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@FloatingAsrService, prefs) } catch (_: Throwable) { }
+                        }
                     }
                 }
                 svPreloadTriggered = true

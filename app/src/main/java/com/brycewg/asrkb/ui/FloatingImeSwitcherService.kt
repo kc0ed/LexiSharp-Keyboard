@@ -19,6 +19,11 @@ import android.widget.ImageView
 import android.animation.ValueAnimator
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
@@ -55,6 +60,7 @@ class FloatingImeSwitcherService : Service() {
     private var touchActiveGuard: Boolean = false
 
     private val handler = Handler(Looper.getMainLooper())
+    private val serviceScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val settingsObserver = object : android.database.ContentObserver(handler) {
         override fun onChange(selfChange: Boolean) {
             updateBallVisibility()
@@ -107,6 +113,8 @@ class FloatingImeSwitcherService : Service() {
         hideRadialMenu()
         hideVendorMenu()
         removeBall()
+        // 取消后台任务
+        try { serviceScope.cancel() } catch (_: Throwable) { }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -650,7 +658,10 @@ class FloatingImeSwitcherService : Service() {
                             if (old == com.brycewg.asrkb.asr.AsrVendor.SenseVoice && v != com.brycewg.asrkb.asr.AsrVendor.SenseVoice) {
                                 try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
                             } else if (v == com.brycewg.asrkb.asr.AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
-                                try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@FloatingImeSwitcherService, prefs) } catch (_: Throwable) { }
+                                // 预加载放到后台，避免阻塞触控/动画线程
+                                serviceScope.launch(Dispatchers.Default) {
+                                    try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@FloatingImeSwitcherService, prefs) } catch (_: Throwable) { }
+                                }
                             }
                         }
                         android.widget.Toast.makeText(this@FloatingImeSwitcherService, name, android.widget.Toast.LENGTH_SHORT).show()

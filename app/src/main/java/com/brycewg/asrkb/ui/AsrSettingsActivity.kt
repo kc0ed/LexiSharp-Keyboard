@@ -169,7 +169,10 @@ class AsrSettingsActivity : AppCompatActivity() {
                 }
                 // 切回 SenseVoice -> 如开启预加载则立即预热
                 if (vendor == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
-                  try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@AsrSettingsActivity, prefs) } catch (_: Throwable) { }
+                  // 预加载本地模型可能较耗时，放到后台线程避免阻塞主线程
+                  lifecycleScope.launch(Dispatchers.Default) {
+                    try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@AsrSettingsActivity, prefs) } catch (_: Throwable) { }
+                  }
                 }
               }
               applyVendorVisibility(vendor)
@@ -451,7 +454,10 @@ class AsrSettingsActivity : AppCompatActivity() {
       hapticTapIfEnabled(btn)
       prefs.svPreloadEnabled = isChecked
       if (isChecked && prefs.asrVendor == AsrVendor.SenseVoice) {
-        try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this, prefs) } catch (_: Throwable) { }
+        // 后台预热，避免开关切换时卡顿
+        lifecycleScope.launch(Dispatchers.Default) {
+          try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@AsrSettingsActivity, prefs) } catch (_: Throwable) { }
+        }
       }
     }
 
@@ -548,7 +554,7 @@ class AsrSettingsActivity : AppCompatActivity() {
               } finally {
                 // 清理压缩包
                 try { tmp.delete() } catch (_: Throwable) { }
-              updateSvDownloadUiVisibility()
+                updateSvDownloadUiVisibility()
               }
             } catch (t: Throwable) {
               tvSvDownloadStatus.text = getString(R.string.sv_download_status_failed)
