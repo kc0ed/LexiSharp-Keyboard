@@ -516,18 +516,40 @@ class AsrSettingsActivity : AppCompatActivity() {
               // 统一下载到 App 专属外部目录（/storage/emulated/0/Android/data/<pkg>/files/）
               val base = getExternalFilesDir(null) ?: filesDir
               val outDirRoot = File(base, "sensevoice")
-              val outDir = if (variant == "small-full") File(outDirRoot, "small-full") else File(outDirRoot, "small-int8")
-              if (outDir.exists()) outDir.deleteRecursively()
-              outDir.mkdirs()
-              extractTarBz2(tmp, outDir)
-              // 寻找包含 tokens.txt 的目录作为模型目录（仅在该版本目录内）
-              val modelDir = findModelDir(outDir)
-              tvSvDownloadStatus.text = if (modelDir != null) {
-                getString(R.string.sv_download_status_done)
-              } else {
-                getString(R.string.sv_download_status_failed)
-              }
+              val outDirFinal = if (variant == "small-full") File(outDirRoot, "small-full") else File(outDirRoot, "small-int8")
+              // 使用临时目录解压，校验后原子替换，避免半成品导致 ORT 解析崩溃
+              val tmpDir = File(outDirRoot, ".tmp_extract_${'$'}{System.currentTimeMillis()}")
+              if (tmpDir.exists()) tmpDir.deleteRecursively()
+              tmpDir.mkdirs()
+              try {
+                extractTarBz2Strict(tmp, tmpDir)
+                // 解压成功后验证模型必要文件存在
+                val modelDir = findModelDir(tmpDir)
+                if (modelDir == null ||
+                  !File(modelDir, "tokens.txt").exists() ||
+                  !(File(modelDir, "model.int8.onnx").exists() || File(modelDir, "model.onnx").exists())) {
+                  throw IllegalStateException("model files missing after extract")
+                }
+                // 原子替换：先删除旧目录，再重命名临时目录为最终目录
+                if (outDirFinal.exists()) {
+                  withContext(Dispatchers.IO) { outDirFinal.deleteRecursively() }
+                }
+                val renamed = tmpDir.renameTo(outDirFinal)
+                if (!renamed) {
+                  // 重命名失败则回退为拷贝
+                  copyDirRecursively(tmpDir, outDirFinal)
+                  withContext(Dispatchers.IO) { tmpDir.deleteRecursively() }
+                }
+                tvSvDownloadStatus.text = getString(R.string.sv_download_status_done)
+              } catch (e: Throwable) {
+                // 失败清理临时目录，提示失败
+                withContext(Dispatchers.IO) { tmpDir.deleteRecursively() }
+                tvSvDownloadStatus.text = getString(R.string.sv_download_status_failed)
+              } finally {
+                // 清理压缩包
+                try { tmp.delete() } catch (_: Throwable) { }
               updateSvDownloadUiVisibility()
+              }
             } catch (t: Throwable) {
               tvSvDownloadStatus.text = getString(R.string.sv_download_status_failed)
             } finally {
@@ -865,8 +887,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     }
   }
 
-  private suspend fun extractTarBz2(file: File, outDir: File) = withContext(Dispatchers.IO) {
-    // BZip2 是单线程、CPU 密集型；使用更大的缓冲以略微降低 I/O 调用次数
+  // 严格解压：校验每个条目写入字节数与 Tar 头声明一致，异常则抛出错误
+  private suspend fun extractTarBz2Strict(file: File, outDir: File) = withContext(Dispatchers.IO) {
     BZip2CompressorInputStream(file.inputStream().buffered(64 * 1024)).use { bz ->
       TarArchiveInputStream(bz).use { tar ->
         var entry = tar.getNextTarEntry()
@@ -877,17 +899,68 @@ class AsrSettingsActivity : AppCompatActivity() {
             outFile.mkdirs()
           } else {
             outFile.parentFile?.mkdirs()
+            var written = 0L
             java.io.BufferedOutputStream(FileOutputStream(outFile), 64 * 1024).use { bos ->
-              var n: Int
               while (true) {
-                n = tar.read(buf)
+                val n = tar.read(buf)
+                if (n <= 0) break
+                bos.write(buf, 0, n)
+                written += n
+              }
+              bos.flush()
+            }
+            // 校验写入大小
+            if (written != entry.size) {
+              // 删除当前异常文件，抛错终止
+              try { outFile.delete() } catch (_: Throwable) { }
+              throw IllegalStateException("tar entry size mismatch: ${'$'}{entry.name}")
+            }
+          }
+          entry = tar.getNextTarEntry()
+        }
+      }
+    }
+  }
+
+  // 目录拷贝回退（仅当 rename 失败时使用）
+  private suspend fun copyDirRecursively(src: File, dst: File) {
+    withContext(Dispatchers.IO) { copyDirRecursivelyInternal(src, dst) }
+  }
+
+  private fun copyDirRecursivelyInternal(src: File, dst: File) {
+    if (!src.exists()) return
+    if (src.isDirectory) {
+      if (!dst.exists()) dst.mkdirs()
+      src.listFiles()?.forEach { child ->
+        val target = File(dst, child.name)
+        if (child.isDirectory) {
+          copyDirRecursivelyInternal(child, target)
+        } else {
+          target.parentFile?.mkdirs()
+          child.inputStream().use { ins ->
+            java.io.BufferedOutputStream(FileOutputStream(target), 64 * 1024).use { bos ->
+              val buf = ByteArray(64 * 1024)
+              while (true) {
+                val n = ins.read(buf)
                 if (n <= 0) break
                 bos.write(buf, 0, n)
               }
               bos.flush()
             }
           }
-          entry = tar.getNextTarEntry()
+        }
+      }
+    } else {
+      dst.parentFile?.mkdirs()
+      src.inputStream().use { ins ->
+        java.io.BufferedOutputStream(FileOutputStream(dst), 64 * 1024).use { bos ->
+          val buf = ByteArray(64 * 1024)
+          while (true) {
+            val n = ins.read(buf)
+            if (n <= 0) break
+            bos.write(buf, 0, n)
+          }
+          bos.flush()
         }
       }
     }

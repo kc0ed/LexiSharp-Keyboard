@@ -88,14 +88,16 @@ class SenseVoiceFileAsrEngine(
 
             // 准备模型文件（优先 int8 回退 float32）
             val tokensPath = java.io.File(dir, "tokens.txt").absolutePath
-            val int8Path = java.io.File(dir, "model.int8.onnx").absolutePath
-            val f32Path = java.io.File(dir, "model.onnx").absolutePath
-            val modelPath = when {
-                java.io.File(int8Path).exists() -> int8Path
-                java.io.File(f32Path).exists() -> f32Path
+            val int8File = java.io.File(dir, "model.int8.onnx")
+            val f32File = java.io.File(dir, "model.onnx")
+            val modelFile = when {
+                int8File.exists() -> int8File
+                f32File.exists() -> f32File
                 else -> null
             }
-            if (modelPath == null || !java.io.File(tokensPath).exists()) {
+            val modelPath = modelFile?.absolutePath
+            val minBytes = 8L * 1024L * 1024L // 粗略下限，避免明显的截断文件
+            if (modelPath == null || !java.io.File(tokensPath).exists() || (modelFile?.length() ?: 0L) < minBytes) {
                 listener.onError(context.getString(R.string.error_sensevoice_model_missing))
                 return
             }
@@ -192,14 +194,16 @@ fun preloadSenseVoiceIfConfigured(
         val auto = findSvModelDir(variantDir) ?: findSvModelDir(probeRoot) ?: return
         val dir = auto.absolutePath
         val tokensPath = java.io.File(dir, "tokens.txt").absolutePath
-        val int8Path = java.io.File(dir, "model.int8.onnx").absolutePath
-        val f32Path = java.io.File(dir, "model.onnx").absolutePath
-        val modelPath = when {
-            java.io.File(int8Path).exists() -> int8Path
-            java.io.File(f32Path).exists() -> f32Path
+        val int8File = java.io.File(dir, "model.int8.onnx")
+        val f32File = java.io.File(dir, "model.onnx")
+        val modelFile = when {
+            int8File.exists() -> int8File
+            f32File.exists() -> f32File
             else -> return
         }
-        if (!java.io.File(tokensPath).exists()) return
+        val modelPath = modelFile.absolutePath
+        val minBytes = 8L * 1024L * 1024L
+        if (!java.io.File(tokensPath).exists() || modelFile.length() < minBytes) return
         val keepMinutes = try { prefs.svKeepAliveMinutes } catch (_: Throwable) { -1 }
         val keepMs = if (keepMinutes <= 0) 0L else keepMinutes.toLong() * 60_000L
         val alwaysKeep = keepMinutes < 0
@@ -216,7 +220,13 @@ fun preloadSenseVoiceIfConfigured(
             onLoadStart = {
                 try { onLoadStart?.invoke() } catch (_: Throwable) { }
                 if (!suppressToastOnStart) {
-                    try { android.widget.Toast.makeText(context, context.getString(R.string.sv_loading_model), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
+                    // 确保在主线程弹出 Toast，避免后台线程直接触发导致异常或卡顿
+                    try {
+                        val mh = android.os.Handler(android.os.Looper.getMainLooper())
+                        mh.post {
+                            try { android.widget.Toast.makeText(context, context.getString(R.string.sv_loading_model), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
+                        }
+                    } catch (_: Throwable) { }
                 }
             },
             onLoadDone = onLoadDone,
