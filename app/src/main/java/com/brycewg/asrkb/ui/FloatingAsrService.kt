@@ -357,14 +357,19 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             return
         }
 
-        // 本地 SenseVoice：检查模型是否存在
+        // 本地 SenseVoice：若已缓存加载则跳过文件检查；否则按“与键盘一致”的变体路径检查
         if (prefs.asrVendor == AsrVendor.SenseVoice) {
-            val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
-            val probe = java.io.File(base, "sensevoice")
-            val found = com.brycewg.asrkb.asr.findSvModelDir(probe)
-            if (found == null) {
-                showToast(getString(R.string.error_sensevoice_model_missing))
-                return
+            val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+            if (!prepared) {
+                val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
+                val probeRoot = java.io.File(base, "sensevoice")
+                val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+                val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
+                val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
+                if (found == null) {
+                    showToast(getString(R.string.error_sensevoice_model_missing))
+                    return
+                }
             }
         }
 
@@ -464,7 +469,17 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             }
         } else {
             updateBallState()
-            showToast(getString(R.string.floating_asr_recognizing))
+            // 若使用本地 SenseVoice 且当前未预加载/未缓存，则先让引擎触发“加载中…”，再稍后提示“识别中…”
+            if (prefs.asrVendor == AsrVendor.SenseVoice) {
+                val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                if (!prepared) {
+                    handler.postDelayed({ showToast(getString(R.string.floating_asr_recognizing)) }, 700)
+                } else {
+                    showToast(getString(R.string.floating_asr_recognizing))
+                }
+            } else {
+                showToast(getString(R.string.floating_asr_recognizing))
+            }
         }
         // 录音结束后根据偏好与当前场景重新评估显隐
         updateVisibilityByPref()
@@ -604,7 +619,16 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             } else {
                 isProcessing = false
                 updateBallState()
-                showToast(getString(R.string.floating_asr_recognizing))
+                if (prefs.asrVendor == AsrVendor.SenseVoice) {
+                    val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                    if (!prepared) {
+                        handler.postDelayed({ showToast(getString(R.string.floating_asr_recognizing)) }, 700)
+                    } else {
+                        showToast(getString(R.string.floating_asr_recognizing))
+                    }
+                } else {
+                    showToast(getString(R.string.floating_asr_recognizing))
+                }
             }
             // 非录音阶段恢复“仅在键盘显示时显示悬浮球”的约束
             updateVisibilityByPref()

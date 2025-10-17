@@ -21,12 +21,33 @@ class SenseVoiceFileAsrEngine(
     onRequestDuration: ((Long) -> Unit)? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
 
+    interface LocalModelLoadUi {
+        fun onLocalModelLoadStart()
+        fun onLocalModelLoadDone()
+    }
+
     private fun showToast(resId: Int) {
         try {
             Handler(Looper.getMainLooper()).post {
                 try { Toast.makeText(context, context.getString(resId), Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
             }
         } catch (_: Throwable) { }
+    }
+
+    private fun notifyLoadStart() {
+        val ui = (listener as? LocalModelLoadUi)
+        if (ui != null) {
+            try { ui.onLocalModelLoadStart() } catch (_: Throwable) { }
+        } else {
+            showToast(R.string.sv_loading_model)
+        }
+    }
+
+    private fun notifyLoadDone() {
+        val ui = (listener as? LocalModelLoadUi)
+        if (ui != null) {
+            try { ui.onLocalModelLoadDone() } catch (_: Throwable) { }
+        }
     }
 
     protected override fun ensureReady(): Boolean {
@@ -55,7 +76,7 @@ class SenseVoiceFileAsrEngine(
                 "small-full" -> java.io.File(probeRoot, "small-full")
                 else -> java.io.File(probeRoot, "small-int8")
             }
-            val auto = tryFindModelDir(variantDir) ?: tryFindModelDir(probeRoot)
+            val auto = findSvModelDir(variantDir) ?: findSvModelDir(probeRoot)
             if (auto == null) {
                 listener.onError(context.getString(R.string.error_sensevoice_model_missing))
                 return
@@ -103,8 +124,8 @@ class SenseVoiceFileAsrEngine(
                 sampleRate = sampleRate,
                 keepAliveMs = keepMs,
                 alwaysKeep = alwaysKeep,
-                onLoadStart = { showToast(R.string.sv_loading_model) },
-                onLoadDone = { showToast(R.string.sv_model_ready) }
+                onLoadStart = { notifyLoadStart() },
+                onLoadDone = { notifyLoadDone() }
             )
 
             if (text.isNullOrBlank()) {
@@ -137,19 +158,7 @@ class SenseVoiceFileAsrEngine(
         return out
     }
 
-    private fun tryFindModelDir(root: java.io.File?): java.io.File? {
-        if (root == null || !root.exists()) return null
-        val direct = java.io.File(root, "tokens.txt")
-        if (direct.exists()) return root
-        val subs = root.listFiles() ?: return null
-        for (f in subs) {
-            if (f.isDirectory) {
-                val t = java.io.File(f, "tokens.txt")
-                if (t.exists()) return f
-            }
-        }
-        return null
-    }
+    // 目录探测改为统一使用顶层 findSvModelDir
 }
 
 // 公开卸载入口：供设置页在清除模型后释放本地识别器内存
@@ -196,7 +205,6 @@ fun preloadSenseVoiceIfConfigured(context: Context, prefs: Prefs) {
             keepAliveMs = keepMs,
             alwaysKeep = alwaysKeep,
             onLoadStart = { try { android.widget.Toast.makeText(context, context.getString(R.string.sv_loading_model), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { } },
-            onLoadDone = { try { android.widget.Toast.makeText(context, context.getString(R.string.sv_model_ready), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { } }
         )
     } catch (_: Throwable) { }
 }
@@ -365,6 +373,10 @@ private object SenseVoiceOnnxBridge {
         }
     }
 
+    fun isPrepared(): Boolean {
+        return cachedRecognizer != null
+    }
+
     @Synchronized
     private fun scheduleAutoUnload(keepAliveMs: Long, alwaysKeep: Boolean) {
         // 取消上一次计划
@@ -473,4 +485,9 @@ private object SenseVoiceOnnxBridge {
             (f.get(target) as? String)
         } catch (_: Throwable) { null }
     }
+}
+
+// 判断是否已有缓存的本地识别器（已加载模型）
+fun isSenseVoicePrepared(): Boolean {
+    return try { SenseVoiceOnnxBridge.isPrepared() } catch (_: Throwable) { false }
 }

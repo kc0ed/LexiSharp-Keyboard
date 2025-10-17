@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 import com.google.android.material.color.MaterialColors
 import com.brycewg.asrkb.LocaleHelper
 
-class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
+class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, com.brycewg.asrkb.asr.SenseVoiceFileAsrEngine.LocalModelLoadUi {
     companion object {
         const val ACTION_REFRESH_IME_UI = "com.brycewg.asrkb.action.REFRESH_IME_UI"
     }
@@ -266,16 +266,19 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 refreshPermissionUi()
                 return@setOnClickListener
             }
-            // 本地 SenseVoice：检查模型是否存在
+            // 本地 SenseVoice：若已缓存加载则跳过文件检查；否则检查模型目录
             if (prefs.asrVendor == AsrVendor.SenseVoice) {
-                val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
-                val probeRoot = java.io.File(base, "sensevoice")
-                val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
-                val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
-                val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
-                if (found == null) {
-                    txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
-                    return@setOnClickListener
+                val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                if (!prepared) {
+                    val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
+                    val probeRoot = java.io.File(base, "sensevoice")
+                    val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+                    val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
+                    val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
+                    if (found == null) {
+                        txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
+                        return@setOnClickListener
+                    }
                 }
             }
             asrEngine = ensureEngineMatchesMode(asrEngine) ?: buildEngineForCurrentMode()
@@ -314,15 +317,18 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         return@setOnTouchListener true
                     }
                     if (prefs.asrVendor == AsrVendor.SenseVoice) {
-                        val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
-                        val probeRoot = java.io.File(base, "sensevoice")
-                        val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
-                        val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
-                        val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
-                        if (found == null) {
-                            txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
-                            v.performClick()
-                            return@setOnTouchListener true
+                        val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                        if (!prepared) {
+                            val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
+                            val probeRoot = java.io.File(base, "sensevoice")
+                            val variant = try { prefs.svModelVariant } catch (_: Throwable) { "small-int8" }
+                            val variantDir = if (variant == "small-full") java.io.File(probeRoot, "small-full") else java.io.File(probeRoot, "small-int8")
+                            val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir) ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
+                            if (found == null) {
+                                txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
+                                v.performClick()
+                                return@setOnTouchListener true
+                            }
                         }
                     }
                     asrEngine = ensureEngineMatchesMode(asrEngine)
@@ -963,6 +969,24 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
         } catch (_: Exception) {
             // no-op
         }
+    }
+
+    // 本地模型加载阶段：将提示显示到键盘状态栏，而非 Toast
+    override fun onLocalModelLoadStart() {
+        try { rootView?.post { txtStatus?.text = getString(R.string.sv_loading_model) } } catch (_: Throwable) { }
+    }
+    override fun onLocalModelLoadDone() {
+        try {
+            rootView?.post {
+                txtStatus?.text = getString(R.string.sv_model_ready)
+                // 短暂展示后恢复为“正在聆听”状态，避免长期占据状态栏
+                rootView?.postDelayed({
+                    if (asrEngine?.isRunning == true) {
+                        txtStatus?.text = getString(R.string.status_listening)
+                    }
+                }, 1200)
+            }
+        } catch (_: Throwable) { }
     }
 
     private fun applyPunctuationLabels() {
