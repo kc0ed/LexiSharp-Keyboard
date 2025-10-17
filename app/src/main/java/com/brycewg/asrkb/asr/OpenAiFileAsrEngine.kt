@@ -26,6 +26,9 @@ class OpenAiFileAsrEngine(
     onRequestDuration: ((Long) -> Unit)? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
 
+    // OpenAI Whisper：未明确限制，本地限制为 20 分钟
+    override val maxRecordDurationMillis: Int = 20 * 60 * 1000
+
     private val http: OkHttpClient = OkHttpClient.Builder()
         .callTimeout(60, TimeUnit.SECONDS)
         .build()

@@ -23,6 +23,9 @@ class GeminiFileAsrEngine(
     onRequestDuration: ((Long) -> Unit)? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
 
+    // Gemini：官方约 9.5 小时，本地限制为 4 小时
+    override val maxRecordDurationMillis: Int = 4 * 60 * 60 * 1000
+
     private val http: OkHttpClient = OkHttpClient.Builder()
         .callTimeout(90, TimeUnit.SECONDS)
         .build()

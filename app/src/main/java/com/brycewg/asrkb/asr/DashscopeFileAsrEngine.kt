@@ -26,6 +26,9 @@ class DashscopeFileAsrEngine(
     onRequestDuration: ((Long) -> Unit)? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
 
+    // DashScope：官方限制 3 分钟
+    override val maxRecordDurationMillis: Int = 3 * 60 * 1000
+
     private val http: OkHttpClient = OkHttpClient.Builder()
         .callTimeout(90, TimeUnit.SECONDS)
         .build()

@@ -529,18 +529,22 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             // 收到最终结果，取消兜底任务
             try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
             processingTimeoutJob = null
-            if (hasCommittedResult) {
-                Log.w(TAG, "Result already committed by fallback; ignoring onFinal")
+            // 若已由兜底提交且当前不在录音，忽略后续 onFinal，避免重复写入
+            if (hasCommittedResult && asrEngine?.isRunning != true) {
+                Log.w(TAG, "Result already committed by fallback; ignoring residual onFinal")
                 return@launch
             }
             var finalText = text
+            val stillRecording = (asrEngine?.isRunning == true)
 
             if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
-                // AI后处理
-                Log.d(TAG, "Starting AI post-processing")
-                isProcessing = true
-                updateBallState()
-                showToast(getString(R.string.floating_asr_processing))
+                // AI后处理：若仍在录音分段，不切换到蓝色“处理中”以保持连贯性
+                Log.d(TAG, "Starting AI post-processing (stillRecording=$stillRecording)")
+                if (!stillRecording) {
+                    isProcessing = true
+                    updateBallState()
+                    showToast(getString(R.string.floating_asr_processing))
+                }
 
                 val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
                 finalText = try {
@@ -559,9 +563,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             }
 
             isProcessing = false
-            isRecording = false
+            // 分段期间保持“录音中”外观，不打断录音连贯性
+            isRecording = (asrEngine?.isRunning == true)
             updateBallState()
-            // 结果提交后根据偏好恢复显隐规则
+            // 结果提交后根据偏好恢复显隐规则；若还在录音，则保持强制可见
             updateVisibilityByPref()
 
             // 插入文本：优先使用开始录音时的焦点快照；若为空，再尝试在提交时获取一次快照，避免覆盖
@@ -599,8 +604,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 // 空结果时给出明确提示，避免用户无感等待
                 showToast(getString(R.string.asr_error_empty_result))
             }
-            // 结束会话，清理状态
-            hasCommittedResult = true
+            // 结束一次 onFinal 的提交，但不封锁后续片段（分段模式可能继续回调 onFinal）
             focusContext = null
             lastPartialForPreview = null
             markerInserted = false

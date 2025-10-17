@@ -1147,7 +1147,12 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
                 aiEditState = null
                 committedStableLen = 0
                 lastPostprocCommit = null
-                goIdleWithTimingHint()
+                if (asrEngine?.isRunning == true) {
+                    // 连续分段期间保持“正在聆听”，不打断录音观感
+                    updateUiListening()
+                } else {
+                    goIdleWithTimingHint()
+                }
             } else if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
                 // Keep recognized text as composing while we post-process
                 currentInputConnection?.setComposingText(text, 1)
@@ -1171,7 +1176,11 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
                 lastAsrCommitText = finalProcessed
                 // 统计：累加本次识别最终提交的字数（AI编辑不计入，上面分支已排除）
                 try { prefs.addAsrChars(finalProcessed.length) } catch (_: Throwable) { }
-                goIdleWithTimingHint()
+                if (asrEngine?.isRunning == true) {
+                    updateUiListening()
+                } else {
+                    goIdleWithTimingHint()
+                }
             } else {
                 val ic = currentInputConnection
                 val finalText = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
@@ -1218,8 +1227,12 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
                 lastPartialText = null
                 // 统计：累加本次识别最终提交的字数
                 try { prefs.addAsrChars(finalText.length) } catch (_: Throwable) { }
-                // Always return to idle after finalizing one utterance
-                goIdleWithTimingHint()
+                // 分段期间保持“正在聆听”，否则回到空闲并显示耗时提示
+                if (asrEngine?.isRunning == true) {
+                    updateUiListening()
+                } else {
+                    goIdleWithTimingHint()
+                }
                 // Clear any previous postproc commit context
                 lastPostprocCommit = null
             }

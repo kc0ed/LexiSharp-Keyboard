@@ -28,6 +28,9 @@ class SonioxFileAsrEngine(
     onRequestDuration: ((Long) -> Unit)? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
 
+    // Soniox：未明确限制，本地限制为 1 小时
+    override val maxRecordDurationMillis: Int = 60 * 60 * 1000
+
     private val http: OkHttpClient = OkHttpClient.Builder()
         .callTimeout(120, TimeUnit.SECONDS)
         .build()

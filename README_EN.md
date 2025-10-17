@@ -165,6 +165,21 @@ English | [简体中文](README.md)
 - Adjustable silence duration (0.5-3 seconds) and sensitivity (1-10 levels) in settings
 - Supports both streaming recognition (Volcengine, Soniox) and file recognition modes
 
+**Segmented Recording & Auto-Continue (non-streaming)**:
+
+- When reaching per-vendor local time limit, the current segment is cut and uploaded in the background while recording immediately continues for the next segment (no gap)
+- Keyboard panel and Floating Ball keep the “Recording” appearance during segmentation (no flicker into “Processing/Idle”)
+- Per-vendor local caps (non-streaming):
+  - Volcengine: 1 hour (official 2h, with safety margin)
+  - SiliconFlow: 20 minutes
+  - ElevenLabs: 20 minutes
+  - OpenAI Whisper: 20 minutes
+  - Alibaba DashScope: 3 minutes
+  - Google Gemini: 4 hours (official ~9.5h, with safety margin)
+  - Soniox: 1 hour
+  - Local SenseVoice: 5 minutes
+- Streaming mode has no duration cap
+
 </details>
 
 <details>

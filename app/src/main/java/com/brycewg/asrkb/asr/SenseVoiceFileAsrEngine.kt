@@ -21,6 +21,9 @@ class SenseVoiceFileAsrEngine(
     onRequestDuration: ((Long) -> Unit)? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
 
+    // 本地 SenseVoice：为降低内存占用，主动限制为 5 分钟
+    override val maxRecordDurationMillis: Int = 5 * 60 * 1000
+
     interface LocalModelLoadUi {
         fun onLocalModelLoadStart()
         fun onLocalModelLoadDone()
