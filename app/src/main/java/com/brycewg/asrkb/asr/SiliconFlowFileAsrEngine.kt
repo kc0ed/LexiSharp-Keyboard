@@ -31,7 +31,11 @@ class SiliconFlowFileAsrEngine(
     override val maxRecordDurationMillis: Int = 20 * 60 * 1000
 
     private val http: OkHttpClient = OkHttpClient.Builder()
-        .callTimeout(60, TimeUnit.SECONDS)
+        // 普通转写可能较慢：放宽连接/读/写与总超时，避免长音频或排队导致的 SocketTimeout
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .writeTimeout(120, TimeUnit.SECONDS)
+        .callTimeout(180, TimeUnit.SECONDS)
         .build()
 
     override fun ensureReady(): Boolean {
@@ -50,10 +54,8 @@ class SiliconFlowFileAsrEngine(
             val t0 = System.nanoTime()
             if (prefs.sfUseOmni) {
                 val b64 = Base64.encodeToString(wav, Base64.NO_WRAP)
-                val model = run {
-                    val cur = prefs.sfModel
-                    if (cur == Prefs.DEFAULT_SF_MODEL) Prefs.DEFAULT_SF_OMNI_MODEL else cur
-                }
+                // 仅由开关决定走 chat/completions，但模型使用用户填写的值（为空回退默认）
+                val model = prefs.sfModel.ifBlank { Prefs.DEFAULT_SF_OMNI_MODEL }
                 val prompt = prefs.sfOmniPrompt.ifBlank { Prefs.DEFAULT_SF_OMNI_PROMPT }
                 val body = buildSfChatCompletionsBody(model, b64, prompt)
                 val request = Request.Builder()
@@ -84,7 +86,8 @@ class SiliconFlowFileAsrEngine(
             } else {
                 val tmp = File.createTempFile("asr_", ".wav", context.cacheDir)
                 FileOutputStream(tmp).use { it.write(wav) }
-                val model = prefs.sfModel
+                // 仅由开关决定走 transcriptions，但模型使用用户填写的值（为空回退默认）
+                val model = prefs.sfModel.ifBlank { Prefs.DEFAULT_SF_MODEL }
                 val multipart = MultipartBody.Builder().setType(MultipartBody.FORM)
                     .addFormDataPart("model", model)
                     .addFormDataPart(
@@ -127,6 +130,7 @@ class SiliconFlowFileAsrEngine(
             )
         }
     }
+
 
     private fun buildSfChatCompletionsBody(model: String, base64Wav: String, prompt: String): String {
         val audioPart = JSONObject().apply {
