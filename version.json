@@ -2,7 +2,7 @@
   "version": "3.0.1",
   "version_code": 64,
   "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.0.1",
-  "release_notes": "本次更新包含 14 个提交:\n- feat(version): 更新版本号至 3.0.1\n- feat(ui): 添加一键设置按钮替换原有三重启用按钮\n- docs(readme): 添加本地 ASR (SenseVoice) 功能文档\n- feat(sv): 优化 SenseVoice 本地模型加载体验和状态提示\n- feat(sv): 添加模型预加载和保留时长配置\n- feat(asr): 支持 SenseVoice 模型版本选择和管理\n- feat(asr): 添加 SenseVoice 本地 ASR 引擎\n- fix(asr): 调整输入法聚焦保持时间和延迟检查时间\n- feat(ime): 添加键盘可见性兼容模式\n- fix(ime): 修复 AI 编辑时选中文本获取的可靠性\n- feat(asr): 允许为 OpenAI ASR 添加 Prompt 和语言设置\n- feat(haptic): 扩展触觉反馈至所有按键和悬浮球\n- fix(asr): 增强录音权限检查和错误处理\n- Modify release notes in version.json",
+  "release_notes": "本次更新包含 11 个提交:\n- fix(CI): 解决 SettingsActivity.kt 中 applyPrefsToUi 的编译错误\n- chore: Update version.json locally before merging remote changes\n- feat(asr): 支持非流式 ASR 分段录音与自动续录\n- chore: auto-update version.json to 2.9.6 [skip ci]\n- feat: 新增预置信息功能，支持通过预置名称输入指定内容\n- feat: 新增预置信息功能，支持通过预置名称输入指定内容",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-17T07:50:18Z"
+  "update_time": "2025-10-17T09:34:04Z"
 }
