@@ -357,6 +357,17 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             return
         }
 
+        // 本地 SenseVoice
+        if (prefs.asrVendor == AsrVendor.SenseVoice) {
+            val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
+            val probe = java.io.File(base, "sensevoice")
+            val found = tryFindModelDir(probe)
+            if (found == null) {
+                showToast(getString(R.string.error_sensevoice_model_missing))
+                return
+            }
+        }
+
         isRecording = true
         updateBallState()
         // 录音开始后，若当前键盘未显示，也应强制展示悬浮球
@@ -715,6 +726,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                     SonioxFileAsrEngine(this, serviceScope, prefs, this) { }
                 }
             } else null
+            AsrVendor.SenseVoice -> {
+                // 本地引擎无需鉴权；占位实现会在依赖缺失时提示
+                com.brycewg.asrkb.asr.SenseVoiceFileAsrEngine(this, serviceScope, prefs, this) { }
+            }
         }
     }
 
@@ -727,6 +742,20 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             this,
             Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun tryFindModelDir(root: java.io.File?): java.io.File? {
+        if (root == null || !root.exists()) return null
+        val direct = java.io.File(root, "tokens.txt")
+        if (direct.exists()) return root
+        val subs = root.listFiles() ?: return null
+        for (f in subs) {
+            if (f.isDirectory) {
+                val t = java.io.File(f, "tokens.txt")
+                if (t.exists()) return f
+            }
+        }
+        return null
     }
 
     private var edgeAnimator: ValueAnimator? = null
@@ -1036,7 +1065,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             AsrVendor.OpenAI to getString(R.string.vendor_openai),
             AsrVendor.DashScope to getString(R.string.vendor_dashscope),
             AsrVendor.Gemini to getString(R.string.vendor_gemini),
-            AsrVendor.Soniox to getString(R.string.vendor_soniox)
+            AsrVendor.Soniox to getString(R.string.vendor_soniox),
+            AsrVendor.SenseVoice to getString(R.string.vendor_sensevoice)
         )
         val cur = try { prefs.asrVendor } catch (_: Throwable) { AsrVendor.Volc }
         entries.forEach { (v, name) ->

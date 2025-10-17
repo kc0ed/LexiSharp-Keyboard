@@ -33,6 +33,7 @@ import com.brycewg.asrkb.asr.ElevenLabsFileAsrEngine
 import com.brycewg.asrkb.asr.OpenAiFileAsrEngine
 import com.brycewg.asrkb.asr.DashscopeFileAsrEngine
 import com.brycewg.asrkb.asr.GeminiFileAsrEngine
+import com.brycewg.asrkb.asr.SenseVoiceFileAsrEngine
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.asr.VolcStreamAsrEngine
@@ -265,6 +266,16 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 refreshPermissionUi()
                 return@setOnClickListener
             }
+            // 本地 SenseVoice
+            if (prefs.asrVendor == AsrVendor.SenseVoice) {
+                val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
+                val probe = java.io.File(base, "sensevoice")
+                val found = tryFindModelDir(probe)
+                if (found == null) {
+                    txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
+                    return@setOnClickListener
+                }
+            }
             asrEngine = ensureEngineMatchesMode(asrEngine) ?: buildEngineForCurrentMode()
             val running = asrEngine?.isRunning == true
             if (running) {
@@ -299,6 +310,16 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                         refreshPermissionUi()
                         v.performClick()
                         return@setOnTouchListener true
+                    }
+                    if (prefs.asrVendor == AsrVendor.SenseVoice) {
+                        val base = try { getExternalFilesDir(null) } catch (_: Throwable) { null } ?: filesDir
+                        val probe = java.io.File(base, "sensevoice")
+                        val found = tryFindModelDir(probe)
+                        if (found == null) {
+                            txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
+                            v.performClick()
+                            return@setOnTouchListener true
+                        }
                     }
                     asrEngine = ensureEngineMatchesMode(asrEngine)
                     micLongPressStarted = false
@@ -765,6 +786,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                     SonioxFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
                 }
             } else null
+            AsrVendor.SenseVoice -> {
+                // 本地引擎无需鉴权；占位实现会在依赖缺失时给出提示
+                SenseVoiceFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+            }
         }
     }
 
@@ -803,11 +828,29 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener {
                 else -> if (prefs.sonioxStreamingEnabled) SonioxStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
                         else SonioxFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
+            AsrVendor.SenseVoice -> when (current) {
+                is SenseVoiceFileAsrEngine -> current
+                else -> SenseVoiceFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+            }
         }
     }
 
     private fun onAsrRequestDuration(ms: Long) {
         lastRequestDurationMs = ms
+    }
+
+    private fun tryFindModelDir(root: java.io.File?): java.io.File? {
+        if (root == null || !root.exists()) return null
+        val direct = java.io.File(root, "tokens.txt")
+        if (direct.exists()) return root
+        val subs = root.listFiles() ?: return null
+        for (f in subs) {
+            if (f.isDirectory) {
+                val t = java.io.File(f, "tokens.txt")
+                if (t.exists()) return f
+            }
+        }
+        return null
     }
 
     private fun goIdleWithTimingHint() {

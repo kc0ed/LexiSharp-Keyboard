@@ -628,7 +628,8 @@ class FloatingImeSwitcherService : Service() {
             com.brycewg.asrkb.asr.AsrVendor.OpenAI to getString(R.string.vendor_openai),
             com.brycewg.asrkb.asr.AsrVendor.DashScope to getString(R.string.vendor_dashscope),
             com.brycewg.asrkb.asr.AsrVendor.Gemini to getString(R.string.vendor_gemini),
-            com.brycewg.asrkb.asr.AsrVendor.Soniox to getString(R.string.vendor_soniox)
+            com.brycewg.asrkb.asr.AsrVendor.Soniox to getString(R.string.vendor_soniox),
+            com.brycewg.asrkb.asr.AsrVendor.SenseVoice to getString(R.string.vendor_sensevoice)
         )
         val cur = try { Prefs(this).asrVendor } catch (_: Throwable) { com.brycewg.asrkb.asr.AsrVendor.Volc }
         entries.forEach { (v, name) ->

@@ -624,6 +624,89 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/soniox_lang_auto" />
       </LinearLayout>
+
+      <!-- SenseVoice (Local) -->
+      <TextView
+        android:id="@+id/titleSenseVoice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:text="@string/sensevoice_section_title"
+        android:textStyle="bold" />
+
+      <LinearLayout
+        android:id="@+id/groupSenseVoice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          app:boxBackgroundMode="outline"
+          android:hint="@string/label_sv_threads">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etSvThreads"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchSvUseNnapi"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_sv_use_nnapi" />
+
+        <TextView
+          android:id="@+id/tvSvLanguageLabel"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:textColor="?attr/colorOnSurface"
+          android:text="@string/label_sv_language" />
+
+        <Spinner
+          android:id="@+id/spSvLanguage"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchSvUseItn"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_sv_use_itn" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnSvDownloadModel"
+          style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="12dp"
+          android:text="@string/btn_sv_download_model" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnSvClearModel"
+          style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/btn_sv_clear_model" />
+
+        <TextView
+          android:id="@+id/tvSvDownloadStatus"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="6dp"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="" />
+      </LinearLayout>
     </LinearLayout>
   </ScrollView>
 
