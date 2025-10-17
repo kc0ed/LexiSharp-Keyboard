@@ -185,6 +185,19 @@
 
     <!-- Language & misc -->
     <string name="label_language">App Language</string>
+    <string name="label_speech_preset_section">Speech Presets</string>
+    <string name="speech_preset_empty_placeholder">No presets yet</string>
+    <string name="speech_preset_untitled">Untitled preset</string>
+    <string name="hint_speech_preset_name">Preset trigger phrase</string>
+    <string name="hint_speech_preset_content">Replacement content</string>
+    <string name="btn_speech_preset_add">Add Preset</string>
+    <string name="btn_speech_preset_delete">Delete Preset</string>
+    <string name="speech_preset_default_name">Preset %1$d</string>
+    <string name="toast_speech_preset_added">Preset added</string>
+    <string name="toast_speech_preset_deleted">Preset deleted</string>
+    <string name="dialog_speech_preset_delete_title">Delete Preset</string>
+    <string name="dialog_speech_preset_delete_message">Delete \"%1$s\"?</string>
+    <string name="error_speech_preset_name_required">Name cannot be empty</string>
     <string name="lang_follow_system">Follow System</string>
     <string name="lang_zh_cn">Simplified Chinese</string>
     <string name="lang_en">English</string>
