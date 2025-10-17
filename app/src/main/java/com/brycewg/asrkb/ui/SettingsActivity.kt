@@ -108,6 +108,20 @@ class SettingsActivity : AppCompatActivity() {
         val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
         val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
         val spKeyboardHeight = findViewById<Spinner>(R.id.spKeyboardHeight)
+
+        fun applyPrefsToUi() {
+            switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
+            switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
+            switchMicHaptic.isChecked = prefs.micHapticEnabled
+            switchMicTapToggle.isChecked = prefs.micTapToggleEnabled
+            switchSwapAiEditWithSwitcher.isChecked = prefs.swapAiEditWithImeSwitcher
+            switchHideRecentTasks.isChecked = prefs.hideRecentTaskCard
+            spKeyboardHeight.setSelection((prefs.keyboardHeightTier - 1).coerceIn(0, 2))
+            try {
+                tvAsrTotalChars.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
+            } catch (_: Throwable) { }
+        }
+        applyPrefsToUi()
         // AI编辑与切换键位置交换
         switchSwapAiEditWithSwitcher.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)
