@@ -445,7 +445,7 @@ class AsrSettingsActivity : AppCompatActivity() {
       }
     }
 
-    // 预加载开关（应用启动时预加载）；开启时若当前渠道为 SenseVoice 则立即预热
+    // 预加载开关（首次显示键盘/悬浮球时预加载）；开启时若当前渠道为 SenseVoice 则立即预热
     switchSvPreload.isChecked = prefs.svPreloadEnabled
     switchSvPreload.setOnCheckedChangeListener { btn, isChecked ->
       hapticTapIfEnabled(btn)

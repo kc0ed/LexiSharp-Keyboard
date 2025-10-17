@@ -481,7 +481,7 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SV_USE_ITN, false)
         set(value) = sp.edit { putBoolean(KEY_SV_USE_ITN, value) }
 
-    // SenseVoice：应用启动时预加载（默认关闭）
+    // SenseVoice：首次显示时预加载（默认关闭）
     var svPreloadEnabled: Boolean
         get() = sp.getBoolean(KEY_SV_PRELOAD_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_SV_PRELOAD_ENABLED, value) }

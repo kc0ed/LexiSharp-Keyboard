@@ -259,7 +259,7 @@
     <string name="sv_model_small_full">Small（full，约850MB）</string>
     <string name="sv_loading_model">本地模型加载中…</string>
     <string name="sv_model_ready">本地模型加载完成</string>
-    <string name="label_sv_preload">应用启动时预加载模型</string>
+    <string name="label_sv_preload">首次显示时加载模型</string>
     <string name="label_sv_keep_alive">模型内存保留时长</string>
     <string name="sv_keep_alive_immediate">不保留（识别后立即卸载）</string>
     <string name="sv_keep_alive_5m">5 分钟</string>

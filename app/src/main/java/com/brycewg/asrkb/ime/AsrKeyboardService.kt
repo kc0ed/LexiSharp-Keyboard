@@ -111,6 +111,8 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
     private var lastPartialText: String? = null
     // 最近一次 ASR API 请求耗时（毫秒）
     private var lastRequestDurationMs: Long? = null
+    // 本地模型延迟预加载触发标记：仅在键盘面板首次出现时尝试一次
+    private var svPreloadTriggered: Boolean = false
 
     private enum class SessionKind { AiEdit }
     private data class AiEditState(
@@ -146,6 +148,44 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        // 键盘面板首次出现时，按需异步预加载本地 SenseVoice；在键盘状态栏提示“加载中…”，不打断其他功能使用
+        try {
+            if (!svPreloadTriggered) {
+                val p = prefs
+                if (p.asrVendor == AsrVendor.SenseVoice && p.svPreloadEnabled) {
+                    val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                    if (!prepared) {
+                        // 先在状态栏提示“加载中…”，随后在后台线程执行预热，完成后恢复提示
+                        try { rootView?.post { txtStatus?.text = getString(R.string.sv_loading_model) } } catch (_: Throwable) { }
+                        serviceScope.launch(Dispatchers.Default) {
+                            try {
+                                com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(
+                                    this@AsrKeyboardService,
+                                    p,
+                                    onLoadStart = null,
+                                    onLoadDone = {
+                                        try {
+                                            rootView?.post {
+                                                txtStatus?.text = getString(R.string.sv_model_ready)
+                                                rootView?.postDelayed({
+                                                    if (asrEngine?.isRunning == true) {
+                                                        txtStatus?.text = getString(R.string.status_listening)
+                                                    } else {
+                                                        txtStatus?.text = getString(R.string.status_idle)
+                                                    }
+                                                }, 1200)
+                                            }
+                                        } catch (_: Throwable) { }
+                                    },
+                                    suppressToastOnStart = true
+                                )
+                            } catch (_: Throwable) { }
+                        }
+                    }
+                }
+                svPreloadTriggered = true
+            }
+        } catch (_: Throwable) { }
         // If current field is a password and user opted in, auto-switch back to previous IME
         if (prefs.autoSwitchOnPassword && isPasswordEditor(info)) {
             try {

@@ -97,6 +97,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     // 结果提交与超时兜底
     private var processingTimeoutJob: Job? = null
     private var hasCommittedResult: Boolean = false
+    // 本地模型延迟预加载触发标记：仅在悬浮球首次出现时尝试一次
+    private var svPreloadTriggered: Boolean = false
 
     private val handler = Handler(Looper.getMainLooper())
     private var imeVisible: Boolean = false
@@ -240,6 +242,19 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to add ball view", e)
         }
+
+        // 悬浮球首次出现时，按需延迟预加载本地 SenseVoice，避免应用启动期加载导致崩溃
+        try {
+            if (!svPreloadTriggered) {
+                if (prefs.asrVendor == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
+                    val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
+                    if (!prepared) {
+                        try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this, prefs) } catch (_: Throwable) { }
+                    }
+                }
+                svPreloadTriggered = true
+            }
+        } catch (_: Throwable) { }
     }
 
     private fun updateVisibilityByPref() {

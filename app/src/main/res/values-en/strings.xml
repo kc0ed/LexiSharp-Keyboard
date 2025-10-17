@@ -333,7 +333,7 @@
     <string name="sv_model_small_full">Small (full, ~850MB)</string>
     <string name="sv_loading_model">Loading local model…</string>
     <string name="sv_model_ready">Local model loaded</string>
-    <string name="label_sv_preload">Preload model on app start</string>
+    <string name="label_sv_preload">Load model on first show</string>
     <string name="label_sv_keep_alive">Model keep-alive duration</string>
     <string name="sv_keep_alive_immediate">No keep-alive (unload after recognition)</string>
     <string name="sv_keep_alive_5m">5 minutes</string>

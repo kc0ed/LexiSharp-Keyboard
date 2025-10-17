@@ -170,7 +170,13 @@ fun unloadSenseVoiceRecognizer() {
 }
 
 // 预加载：根据当前配置尝试构建本地识别器，便于降低首次点击等待
-fun preloadSenseVoiceIfConfigured(context: Context, prefs: Prefs) {
+fun preloadSenseVoiceIfConfigured(
+    context: Context,
+    prefs: Prefs,
+    onLoadStart: (() -> Unit)? = null,
+    onLoadDone: (() -> Unit)? = null,
+    suppressToastOnStart: Boolean = false
+) {
     try {
         if (!SenseVoiceOnnxBridge.isOnnxAvailable()) return
         // 保护：若“保留时长=不保留(0)”，则跳过预加载，避免立刻卸载造成空转
@@ -207,7 +213,13 @@ fun preloadSenseVoiceIfConfigured(context: Context, prefs: Prefs) {
             numThreads = try { prefs.svNumThreads } catch (_: Throwable) { 2 },
             keepAliveMs = keepMs,
             alwaysKeep = alwaysKeep,
-            onLoadStart = { try { android.widget.Toast.makeText(context, context.getString(R.string.sv_loading_model), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { } },
+            onLoadStart = {
+                try { onLoadStart?.invoke() } catch (_: Throwable) { }
+                if (!suppressToastOnStart) {
+                    try { android.widget.Toast.makeText(context, context.getString(R.string.sv_loading_model), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
+                }
+            },
+            onLoadDone = onLoadDone,
         )
     } catch (_: Throwable) { }
 }
