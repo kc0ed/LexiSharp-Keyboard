@@ -53,6 +53,12 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+    sourceSets {
+        getByName("main") {
+            java.srcDir("store")
+        }
+    }
 }
 
 dependencies {
