@@ -48,24 +48,7 @@
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           style="@style/Widget.Material3.Button"
-          android:text="@string/btn_one_click_setup" />
-       
-
-        <com.google.android.material.button.MaterialButton
-          android:id="@+id/btnShowGuide"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
-          style="@style/Widget.Material3.Button.OutlinedButton"
-          android:text="@string/btn_show_guide" />
-
-        <com.google.android.material.button.MaterialButton
-          android:id="@+id/btnCheckUpdate"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
-          style="@style/Widget.Material3.Button.OutlinedButton"
-          android:text="@string/btn_check_update" />
+          android:text="@string/btn_one_click_setup" />      
 
         <!-- 测试输入：按钮，点击后弹出底部输入框 -->
         <com.google.android.material.button.MaterialButton
@@ -197,7 +180,21 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="16dp" />
 
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnShowGuide"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.OutlinedButton"
+          android:text="@string/btn_show_guide" />
 
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnCheckUpdate"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.OutlinedButton"
+          android:text="@string/btn_check_update" />
 
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnExportSettings"
