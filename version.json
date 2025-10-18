@@ -1,8 +1,8 @@
 {
-  "version": "3.0.4",
-  "version_code": 67,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.0.4",
-  "release_notes": "本次更新包含 8 个提交:\n- fix(ui): 增强悬浮菜单定位与子面板可见性\n- refactor(ui): 重命名标点设置页面为其他设置\n- refractor(settings): 引入输入设置页面并迁移相关选项\n- feat(ui): 重构悬浮球菜单为垂直布局，新增Prompt切换\n- fix: 更新 Telegram 链接至最新群组\n- feat(ime): 将麦克风长按判断时间去除,改为按下即说\n- Update Telegram link in README.md",
+  "version": "3.1.1",
+  "version_code": 69,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.1.1",
+  "release_notes": "本次更新包含 16 个提交:\n- chore: 更新版本号至 3.1.1\n- fix: 提升 ASR 引擎和剪贴板的健壮性\n- fix(ui): 添加悬浮菜单剪贴板同步标签\n- feat(clipboard, ui): 添加悬浮菜单剪贴板上传与拉取功能\n- style(ui): 统一按钮样式并调整部分布局\n- feat(clipboard): 依赖于外部项目实现剪贴板同步功能\n- chore: auto-update version.json to 3.0.4 [skip ci]\n- fix(ui): 增强悬浮菜单定位与子面板可见性\n- refactor(ui): 重命名标点设置页面为其他设置\n- refractor(settings): 引入输入设置页面并迁移相关选项\n- feat(ui): 重构悬浮球菜单为垂直布局，新增Prompt切换\n- fix: 更新 Telegram 链接至最新群组\n- feat(ime): 将麦克风长按判断时间去除,改为按下即说\n- Update Telegram link in README.md",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-18T07:22:47Z"
+  "update_time": "2025-10-18T13:08:50Z"
 }
