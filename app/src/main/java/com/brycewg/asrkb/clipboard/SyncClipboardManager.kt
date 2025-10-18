@@ -182,6 +182,22 @@ class SyncClipboardManager(
     }
   }
 
+  /**
+   * 一次性上传当前系统粘贴板文本（不进行“与上次一致”跳过判断）。
+   * 返回是否成功。
+   */
+  fun uploadOnce(): Boolean {
+    val url = buildUrl() ?: return false
+    val auth1 = authHeaderPlain() ?: return false
+    val auth2 = authHeaderB64() ?: return false
+    val text = readClipboardText() ?: return false
+    if (text.isEmpty()) return false
+    return try {
+      val ok = if (!uploadText(url, auth1, text)) uploadText(url, auth2, text) else true
+      ok
+    } catch (_: Throwable) { false }
+  }
+
   fun pullNow(updateClipboard: Boolean): Pair<Boolean, String?> {
     val url = buildUrl() ?: return false to null
     val auth1 = authHeaderPlain() ?: return false to null

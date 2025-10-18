@@ -184,6 +184,8 @@
     <string name="label_radial_move">Move floating ball</string>
     <string name="label_radial_postproc">Toggle AI post-processing</string>
     <string name="label_radial_switch_prompt">Switch AI post-processing prompt</string>
+    <string name="label_radial_clipboard_upload">Upload Clipboard</string>
+    <string name="label_radial_clipboard_pull">Pull Clipboard</string>
     <string name="label_radial_clipboard_sync">Clipboard sync</string>
     <string name="label_choose_asr_vendor">Choose ASR provider</string>
     <string name="toast_move_mode_on">Move mode enabled. Tap the ball to exit.</string>

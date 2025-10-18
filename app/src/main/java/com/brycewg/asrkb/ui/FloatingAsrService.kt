@@ -50,6 +50,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import com.brycewg.asrkb.clipboard.SyncClipboardManager
 import androidx.core.graphics.toColorInt
 import java.util.Locale
 import com.brycewg.asrkb.LocaleHelper
@@ -913,8 +914,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 getString(R.string.label_radial_postproc),
                 getString(R.string.label_radial_postproc)
             ) { togglePostprocFromMenu() },
-            // 底部：剪贴板同步（仅 UI 占位）
-            RadialItem(R.drawable.ic_clipboard, getString(R.string.label_radial_clipboard_sync), getString(R.string.label_radial_clipboard_sync)) { /* UI only */ }
+            // 底部：一次性上传/拉取粘贴板
+            RadialItem(R.drawable.ic_stat_upload, getString(R.string.label_radial_clipboard_upload), getString(R.string.label_radial_clipboard_upload)) { uploadClipboardOnceFromMenu() },
+            RadialItem(R.drawable.ic_stat_download, getString(R.string.label_radial_clipboard_pull), getString(R.string.label_radial_clipboard_pull)) { pullClipboardOnceFromMenu() }
         )
         // 垂直容器：统一承载按钮
         val container = android.widget.LinearLayout(this).apply {
@@ -1287,6 +1289,42 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             vendorMenuView = root
             touchActiveGuard = false
             updateVisibilityByPref()
+        } catch (_: Throwable) { }
+    }
+
+    private fun uploadClipboardOnceFromMenu() {
+        try {
+            val mgr = SyncClipboardManager(this, prefs, serviceScope)
+            serviceScope.launch(Dispatchers.IO) {
+                val ok = try { mgr.uploadOnce() } catch (t: Throwable) { false }
+                handler.post {
+                    try {
+                        android.widget.Toast.makeText(
+                            this@FloatingAsrService,
+                            getString(if (ok) R.string.sc_status_uploaded else R.string.sc_test_failed),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    } catch (_: Throwable) { }
+                }
+            }
+        } catch (_: Throwable) { }
+    }
+
+    private fun pullClipboardOnceFromMenu() {
+        try {
+            val mgr = SyncClipboardManager(this, prefs, serviceScope)
+            serviceScope.launch(Dispatchers.IO) {
+                val ok = try { mgr.pullNow(updateClipboard = true).first } catch (t: Throwable) { false }
+                handler.post {
+                    try {
+                        android.widget.Toast.makeText(
+                            this@FloatingAsrService,
+                            getString(if (ok) R.string.sc_test_success else R.string.sc_test_failed),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    } catch (_: Throwable) { }
+                }
+            }
         } catch (_: Throwable) { }
     }
 

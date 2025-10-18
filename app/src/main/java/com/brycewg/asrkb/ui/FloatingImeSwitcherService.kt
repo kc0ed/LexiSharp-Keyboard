@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.clipboard.SyncClipboardManager
 import com.brycewg.asrkb.LocaleHelper
 
 /**
@@ -431,7 +432,9 @@ class FloatingImeSwitcherService : Service() {
                 getString(R.string.label_radial_postproc),
                 getString(R.string.label_radial_postproc)
             ) { togglePostprocFromMenu() },
-            RadialItem(R.drawable.ic_clipboard, getString(R.string.label_radial_clipboard_sync), getString(R.string.label_radial_clipboard_sync)) { /* UI only */ }
+            // 一次性上传/拉取粘贴板
+            RadialItem(R.drawable.ic_stat_upload, getString(R.string.label_radial_clipboard_upload), getString(R.string.label_radial_clipboard_upload)) { uploadClipboardOnceFromMenu() },
+            RadialItem(R.drawable.ic_stat_download, getString(R.string.label_radial_clipboard_pull), getString(R.string.label_radial_clipboard_pull)) { pullClipboardOnceFromMenu() }
         )
         // 改为垂直排布：统一承载在纵向容器
         val container = android.widget.LinearLayout(this).apply {
@@ -833,6 +836,44 @@ class FloatingImeSwitcherService : Service() {
             vendorMenuView = root
             touchActiveGuard = false
             updateBallVisibility()
+        } catch (_: Throwable) { }
+    }
+
+    private fun uploadClipboardOnceFromMenu() {
+        try {
+            val prefs = Prefs(this)
+            val mgr = SyncClipboardManager(this, prefs, serviceScope)
+            serviceScope.launch(Dispatchers.IO) {
+                val ok = try { mgr.uploadOnce() } catch (t: Throwable) { false }
+                handler.post {
+                    try {
+                        android.widget.Toast.makeText(
+                            this@FloatingImeSwitcherService,
+                            getString(if (ok) R.string.sc_status_uploaded else R.string.sc_test_failed),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    } catch (_: Throwable) { }
+                }
+            }
+        } catch (_: Throwable) { }
+    }
+
+    private fun pullClipboardOnceFromMenu() {
+        try {
+            val prefs = Prefs(this)
+            val mgr = SyncClipboardManager(this, prefs, serviceScope)
+            serviceScope.launch(Dispatchers.IO) {
+                val ok = try { mgr.pullNow(updateClipboard = true).first } catch (t: Throwable) { false }
+                handler.post {
+                    try {
+                        android.widget.Toast.makeText(
+                            this@FloatingImeSwitcherService,
+                            getString(if (ok) R.string.sc_test_success else R.string.sc_test_failed),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    } catch (_: Throwable) { }
+                }
+            }
         } catch (_: Throwable) { }
     }
 
