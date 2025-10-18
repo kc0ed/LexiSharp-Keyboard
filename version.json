@@ -1,8 +1,8 @@
 {
-  "version": "3.0.3",
-  "version_code": 66,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.0.3",
-  "release_notes": "本次更新包含 5 个提交:\n- feat(model): 添加本地模型后台下载与解压服务\n- fix(asr): 修复启用录音判停后 ASR 引擎重复输出\n- refactor(settings): 调整按钮布局，重新排列引导和检查更新按钮\n- perf(asr): 优化 ASR 引擎音频录制初始化",
+  "version": "3.0.4",
+  "version_code": 67,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.0.4",
+  "release_notes": "本次更新包含 9 个提交:\n- feat(asr): 添加录音判停灵敏度一键校准功能\n- chore: auto-update version.json to 3.0.3 [skip ci]\n- Revert \"perf(asr): 优化 ASR 引擎音频录制初始化\"\n- feat(model): 添加本地模型后台下载与解压服务\n- fix(asr): 修复启用录音判停后 ASR 引擎重复输出\n- refactor(settings): 调整按钮布局，重新排列引导和检查更新按钮\n- perf(asr): 优化 ASR 引擎音频录制初始化",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-18T03:31:32Z"
+  "update_time": "2025-10-18T04:10:49Z"
 }
