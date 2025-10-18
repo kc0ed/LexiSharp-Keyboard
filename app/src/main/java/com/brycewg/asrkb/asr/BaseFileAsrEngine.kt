@@ -311,6 +311,8 @@ abstract class BaseFileAsrEngine(
                             // 尝试直接投递最后一段；不成则加入待发送
                             val ok2 = chan.trySend(last).isSuccess
                             if (!ok2) pendingList.addLast(last)
+                            // 关键：已投递/入队最后一段后，重置缓冲，避免 finally 重复推送
+                            currentSeg.reset()
                         }
                         break
                     }
