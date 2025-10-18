@@ -366,4 +366,19 @@
     <string name="sv_lang_ko">Korean (ko)</string>
     <string name="sv_lang_yue">Cantonese (yue)</string>
     <string name="label_sv_use_itn">Enable ITN (inverse text normalization)</string>
+    <!-- SyncClipboard settings -->
+    <string name="section_sync_clipboard">Clipboard Sync</string>
+    <string name="label_enable_sync_clipboard">Use SyncClipboard project to sync clipboard</string>
+    <string name="label_sc_server_base">Server base URL (will append /SyncClipboard.json)</string>
+    <string name="label_sc_username">Username</string>
+    <string name="label_sc_password">Password</string>
+    <string name="label_sc_auto_pull">Auto pull clipboard periodically (only when IME is visible)</string>
+    <string name="label_sc_pull_interval">Pull interval (sec, 1-600)</string>
+    <string name="btn_sc_test_pull">Pull now (validate configuration)</string>
+    <string name="sc_test_success">Pull succeeded</string>
+    <string name="sc_test_failed">Pull failed. Please check URL and credentials.</string>
+    <string name="sc_status_pulled_new">Pulled new clipboard content</string>
+    <string name="sc_status_uploaded">Clipboard uploaded successfully</string>
+    <string name="btn_sc_project_home">Project Home</string>
+    <string name="sc_open_browser_failed">Cannot open browser</string>
 </resources>

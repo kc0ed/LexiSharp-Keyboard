@@ -363,4 +363,20 @@
     <string name="notif_model_summary_text">正在后台下载/解压本地模型</string>
     <string name="notif_model_title_int8">SenseVoice 模型（Small int8）</string>
     <string name="notif_model_title_full">SenseVoice 模型（Small full）</string>
+    
+    <!-- SyncClipboard settings -->
+    <string name="section_sync_clipboard">剪贴板同步</string>
+    <string name="label_enable_sync_clipboard">使用 SyncClipboard 项目来同步粘贴板</string>
+    <string name="label_sc_server_base">服务器地址（会自动拼接 /SyncClipboard.json）</string>
+    <string name="label_sc_username">用户名</string>
+    <string name="label_sc_password">密码</string>
+    <string name="label_sc_auto_pull">自动定时拉取粘贴板内容（仅在输入法面板展开时）</string>
+    <string name="label_sc_pull_interval">拉取间隔（秒，1-600）</string>
+    <string name="btn_sc_test_pull">立即拉取（验证配置）</string>
+    <string name="sc_test_success">拉取成功</string>
+    <string name="sc_test_failed">拉取失败，请检查地址与凭证</string>
+    <string name="sc_status_pulled_new">获取到新粘贴内容</string>
+    <string name="sc_status_uploaded">成功上传粘贴板</string>
+    <string name="btn_sc_project_home">项目主页</string>
+    <string name="sc_open_browser_failed">无法打开浏览器</string>
 </resources>
