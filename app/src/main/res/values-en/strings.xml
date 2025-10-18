@@ -40,6 +40,7 @@
     <string name="btn_check_update">Check for Updates</string>
     <!-- Material UI additions -->
     <string name="settings_title">LexiSharp Keyboard Settings</string>
+    <string name="title_input_settings">Input Settings</string>
     <string name="title_asr_settings">ASR Settings</string>
     <string name="title_ai_settings">AI Post-processing Settings</string>
     <string name="title_punct_settings">Custom Punctuation Settings</string>

@@ -41,6 +41,7 @@
     <string name="btn_check_update">检查更新</string>
   <!-- Material UI additions -->
   <string name="settings_title">言犀键盘设置</string>
+  <string name="title_input_settings">输入设置</string>
   <string name="title_asr_settings">ASR 设置</string>
   <string name="title_ai_settings">AI 后处理设置</string>
   <string name="title_punct_settings">自定义标点设置</string>
