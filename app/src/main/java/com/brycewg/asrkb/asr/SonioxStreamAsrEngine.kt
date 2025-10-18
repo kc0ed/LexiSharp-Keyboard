@@ -174,20 +174,29 @@ class SonioxStreamAsrEngine(
                 val silence = if (prefs.autoStopOnSilenceEnabled)
                     SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
                 else null
-                // 预热 + 探测：首读直接纳入发送/预缓冲，避免起始丢字
+                // 预热 + 探测：若无有效音频，回退到 MIC
                 run {
                     val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-                    if (pre > 0) {
-                        val first = buf.copyOfRange(0, pre)
-                        if (!wsReady.get()) {
-                            synchronized(prebufferLock) {
-                                prebuffer.addLast(first)
-                                val maxFrames = (2000 / 200).coerceAtLeast(1)
-                                while (prebuffer.size > maxFrames) prebuffer.removeFirst()
-                            }
+                    val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
+                    if (!hasSignal) {
+                        try { recorder.stop() } catch (_: Throwable) {}
+                        try { recorder.release() } catch (_: Throwable) {}
+                        val alt = try {
+                            AudioRecord(
+                                MediaRecorder.AudioSource.MIC,
+                                sampleRate,
+                                channelConfig,
+                                audioFormat,
+                                readSize
+                            )
+                        } catch (_: Throwable) { null }
+                        if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
+                            recorder = alt
+                            try { recorder.startRecording() } catch (_: Throwable) { }
+                            try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
                         } else {
-                            val socket = ws
-                            if (socket != null) try { socket.send(ByteString.of(*first)) } catch (_: Throwable) { }
+                            listener.onError(context.getString(R.string.error_audio_init_failed))
+                            stop(); return@launch
                         }
                     }
                 }
