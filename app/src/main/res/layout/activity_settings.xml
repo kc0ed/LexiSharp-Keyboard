@@ -97,12 +97,12 @@
           android:text="@string/title_floating_settings" />
 
         <com.google.android.material.button.MaterialButton
-          android:id="@+id/btnOpenPunctSettings"
+          android:id="@+id/btnOpenOtherSettings"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button.OutlinedButton"
-          android:text="@string/title_punct_settings" />
+          android:text="@string/title_other_settings" />
 
         <com.google.android.material.divider.MaterialDivider
           android:layout_width="match_parent"

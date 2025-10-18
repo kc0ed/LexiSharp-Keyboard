@@ -94,8 +94,8 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnOpenAiSettings)?.setOnClickListener {
             startActivity(Intent(this, AiPostSettingsActivity::class.java))
         }
-        findViewById<Button>(R.id.btnOpenPunctSettings)?.setOnClickListener {
-            startActivity(Intent(this, PunctSettingsActivity::class.java))
+        findViewById<Button>(R.id.btnOpenOtherSettings)?.setOnClickListener {
+            startActivity(Intent(this, OtherSettingsActivity::class.java))
         }
         findViewById<Button>(R.id.btnOpenFloatingSettings)?.setOnClickListener {
             startActivity(Intent(this, FloatingSettingsActivity::class.java))

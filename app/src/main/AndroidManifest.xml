@@ -52,7 +52,7 @@
             android:exported="false" />
 
         <activity
-            android:name=".ui.PunctSettingsActivity"
+            android:name=".ui.OtherSettingsActivity"
             android:exported="false" />
 
         <activity

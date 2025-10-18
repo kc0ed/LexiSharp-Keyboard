@@ -9,13 +9,13 @@ import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import com.google.android.material.appbar.MaterialToolbar
 
-class PunctSettingsActivity : AppCompatActivity() {
+class OtherSettingsActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    setContentView(R.layout.activity_punct_settings)
+    setContentView(R.layout.activity_other_settings)
 
     val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
-    toolbar.setTitle(R.string.title_punct_settings)
+    toolbar.setTitle(R.string.title_other_settings)
     toolbar.setNavigationOnClickListener { finish() }
 
     val prefs = Prefs(this)
@@ -44,4 +44,3 @@ class PunctSettingsActivity : AppCompatActivity() {
     etP4.bind { prefs.punct4 = it }
   }
 }
-

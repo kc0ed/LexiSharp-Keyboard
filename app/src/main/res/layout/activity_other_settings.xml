@@ -10,7 +10,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:titleCentered="true"
-    app:title="@string/title_punct_settings" />
+    app:title="@string/title_other_settings" />
 
   <LinearLayout
     android:layout_width="match_parent"
@@ -91,4 +91,3 @@
   </LinearLayout>
 
 </LinearLayout>
-
