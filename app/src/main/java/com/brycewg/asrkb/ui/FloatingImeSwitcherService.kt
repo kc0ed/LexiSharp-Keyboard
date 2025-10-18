@@ -441,7 +441,7 @@ class FloatingImeSwitcherService : Service() {
             setPadding(pad, pad, pad, pad)
         }
         items.forEachIndexed { index, it ->
-            val row = buildCapsule(it.iconRes, it.label, it.contentDescription) { hideRadialMenu(); it.onClick() }
+            val row = buildCapsule(it.iconRes, it.label, it.contentDescription) { it.onClick(); hideRadialMenu() }
             val lpRow = android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT)
             if (index > 0) lpRow.topMargin = dp(6)
             container.addView(row, lpRow)
@@ -603,6 +603,8 @@ class FloatingImeSwitcherService : Service() {
     }
 
     private fun onPickAsrVendor() {
+        // 打开子面板期间保持可见，避免 lp 在可见性刷新时被清空
+        touchActiveGuard = true
         hideVendorMenu()
         // 构造供应商列表面板
         val root = android.widget.FrameLayout(this).apply {
@@ -674,8 +676,8 @@ class FloatingImeSwitcherService : Service() {
         )
         // 先添加，待测量后再根据左右位置与尺寸精确定位，避免越界与遮挡
         root.addView(container, paramsContainer)
-        val p = lp ?: return
-        val isLeft = isBallOnLeft()
+        val (cx, cy) = getBallCenterSnapshot()
+        val isLeft = cx < (resources.displayMetrics.widthPixels / 2)
         // 入场动画：从靠近悬浮球一侧轻微平移并淡入
         container.alpha = 0f
         container.translationX = if (isLeft) dp(8).toFloat() else -dp(8).toFloat()
@@ -684,8 +686,6 @@ class FloatingImeSwitcherService : Service() {
                 val dm = resources.displayMetrics
                 val screenW = dm.widthPixels
                 val screenH = dm.heightPixels
-                val cx = p.x + (ballView?.width ?: p.width) / 2
-                val cy = p.y + (ballView?.height ?: p.height) / 2
                 val offset = dp(16)
                 val w = container.width
                 val h = container.height
@@ -713,6 +713,7 @@ class FloatingImeSwitcherService : Service() {
         try {
             windowManager.addView(root, params)
             vendorMenuView = root
+            touchActiveGuard = false
             updateBallVisibility()
         } catch (_: Throwable) { }
     }
@@ -734,7 +735,20 @@ class FloatingImeSwitcherService : Service() {
         } ?: run { updateBallVisibility() }
     }
 
+    // 获取悬浮球中心点（容错：lp 可能为 null 时使用持久化位置与默认大小）
+    private fun getBallCenterSnapshot(): Pair<Int, Int> {
+        val dm = resources.displayMetrics
+        val sizeDp = try { Prefs(this).floatingBallSizeDp } catch (_: Throwable) { 44 }
+        val vw = (ballView?.width?.takeIf { it > 0 }) ?: (lp?.width ?: dp(sizeDp))
+        val vh = (ballView?.height?.takeIf { it > 0 }) ?: (lp?.height ?: dp(sizeDp))
+        val px = lp?.x ?: run { try { Prefs(this).floatingBallPosX } catch (_: Throwable) { (dm.widthPixels - vw) / 2 } }
+        val py = lp?.y ?: run { try { Prefs(this).floatingBallPosY } catch (_: Throwable) { (dm.heightPixels - vh) / 2 } }
+        return (px + vw / 2) to (py + vh / 2)
+    }
+
     private fun onPickPromptPresetFromMenu() {
+        // 打开子面板期间保持可见，避免 lp 在可见性刷新时被清空
+        touchActiveGuard = true
         hideVendorMenu()
         val root = android.widget.FrameLayout(this).apply {
             setBackgroundColor(android.graphics.Color.TRANSPARENT)
@@ -783,8 +797,8 @@ class FloatingImeSwitcherService : Service() {
             android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
         )
         root.addView(container, paramsContainer)
-        val p = lp ?: return
-        val isLeft = isBallOnLeft()
+        val (cx, cy) = getBallCenterSnapshot()
+        val isLeft = cx < (resources.displayMetrics.widthPixels / 2)
         container.alpha = 0f
         container.translationX = if (isLeft) dp(8).toFloat() else -dp(8).toFloat()
         container.post {
@@ -792,8 +806,6 @@ class FloatingImeSwitcherService : Service() {
                 val dm = resources.displayMetrics
                 val screenW = dm.widthPixels
                 val screenH = dm.heightPixels
-                val cx = p.x + (ballView?.width ?: p.width) / 2
-                val cy = p.y + (ballView?.height ?: p.height) / 2
                 val offset = dp(16)
                 val w = container.width
                 val h = container.height
@@ -819,6 +831,7 @@ class FloatingImeSwitcherService : Service() {
         try {
             windowManager.addView(root, params)
             vendorMenuView = root
+            touchActiveGuard = false
             updateBallVisibility()
         } catch (_: Throwable) { }
     }
