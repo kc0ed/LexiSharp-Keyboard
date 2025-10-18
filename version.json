@@ -2,7 +2,7 @@
   "version": "3.0.3",
   "version_code": 66,
   "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.0.3",
-  "release_notes": "本次更新包含 2 个提交:\n- chore(release): 更新版本号至 3.0.3\n- fix(asr): 更新 SenseVoice ASR 模型下载链接，修复无标点符号的问题",
+  "release_notes": "本次更新包含 5 个提交:\n- feat(model): 添加本地模型后台下载与解压服务\n- fix(asr): 修复启用录音判停后 ASR 引擎重复输出\n- refactor(settings): 调整按钮布局，重新排列引导和检查更新按钮\n- perf(asr): 优化 ASR 引擎音频录制初始化",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-17T13:22:30Z"
+  "update_time": "2025-10-18T03:31:32Z"
 }
