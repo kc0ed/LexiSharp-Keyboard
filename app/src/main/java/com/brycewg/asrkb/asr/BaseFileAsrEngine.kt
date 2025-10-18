@@ -282,7 +282,7 @@ abstract class BaseFileAsrEngine(
 
                 // 尝试非阻塞地刷出待发送片段（若存在）
                 while (!pendingList.isEmpty()) {
-                    val head = pendingList.peekFirst()
+                    val head = pendingList.peekFirst() ?: break
                     val r = chan.trySend(head)
                     if (r.isSuccess) {
                         pendingList.removeFirst()
@@ -304,7 +304,7 @@ abstract class BaseFileAsrEngine(
                         if (last.isNotEmpty()) {
                             // 刷出已有待发送
                             while (!pendingList.isEmpty()) {
-                                val head = pendingList.peekFirst()
+                                val head = pendingList.peekFirst() ?: break
                                 val ok = chan.trySend(head).isSuccess
                                 if (ok) pendingList.removeFirst() else break
                             }
@@ -323,7 +323,7 @@ abstract class BaseFileAsrEngine(
                         currentSeg.reset()
                         // 先尝试刷出之前的待发送段
                         while (!pendingList.isEmpty()) {
-                            val head = pendingList.peekFirst()
+                            val head = pendingList.peekFirst() ?: break
                             val ok = chan.trySend(head).isSuccess
                             if (ok) pendingList.removeFirst() else break
                         }

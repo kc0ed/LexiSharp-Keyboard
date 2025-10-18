@@ -882,7 +882,7 @@ class AsrSettingsActivity : AppCompatActivity() {
   private suspend fun extractTarBz2Strict(file: File, outDir: File) = withContext(Dispatchers.IO) {
     BZip2CompressorInputStream(file.inputStream().buffered(64 * 1024)).use { bz ->
       TarArchiveInputStream(bz).use { tar ->
-        var entry = tar.getNextTarEntry()
+        var entry = tar.nextEntry
         val buf = ByteArray(64 * 1024)
         while (entry != null) {
           val outFile = File(outDir, entry.name)
@@ -907,7 +907,7 @@ class AsrSettingsActivity : AppCompatActivity() {
               throw IllegalStateException("tar entry size mismatch: ${'$'}{entry.name}")
             }
           }
-          entry = tar.getNextTarEntry()
+          entry = tar.nextEntry
         }
       }
     }

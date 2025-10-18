@@ -214,7 +214,8 @@ class SyncClipboardManager(
         val o = try { JSONObject(body) } catch (_: Throwable) { return false to null }
         val type = o.optString("Type")
         if (!TextUtils.equals(type, "Text")) return false to null
-        val text = o.optString("Clipboard", null) ?: return false to null
+        val text = o.optString("Clipboard", "")
+        if (text.isEmpty()) return false to null
         if (updateClipboard) {
           val cur = readClipboardText()
           if (text.isNotEmpty() && text != cur) {
