@@ -183,6 +183,7 @@
     <string name="label_radial_switch_prompt">切换 AI 后处理 Prompt</string>
     <string name="label_radial_clipboard_upload">上传粘贴板</string>
     <string name="label_radial_clipboard_pull">拉取粘贴板</string>
+    <string name="label_radial_clipboard_sync">同步粘贴板</string>
     <string name="label_choose_asr_vendor">选择 ASR 供应商</string>
     <string name="toast_move_mode_on">已进入移动模式，再次点击悬浮球退出</string>
 
