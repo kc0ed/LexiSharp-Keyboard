@@ -267,6 +267,14 @@
     <string name="btn_download">前往下载</string>
     <string name="btn_manual_check">手动查看</string>
     <string name="btn_cancel">取消</string>
+    
+    <!-- 模型下载通知 -->
+    <string name="notif_channel_model_download">模型下载</string>
+    <string name="notif_channel_model_download_desc">本地模型下载与解压进度通知</string>
+    <string name="notif_model_summary_title">模型下载</string>
+    <string name="notif_model_summary_text">正在后台下载/解压本地模型</string>
+    <string name="notif_model_title_int8">SenseVoice 模型（Small int8）</string>
+    <string name="notif_model_title_full">SenseVoice 模型（Small full）</string>
     <string name="download_source_title">选择下载源</string>
     <string name="download_source_github_official">GitHub 官方</string>
     <string name="download_source_mirror_ghproxy">GitHub 镜像 (ghproxy.net)</string>
@@ -322,6 +330,7 @@
     <string name="sv_download_status_extracting">解压中…</string>
     <string name="sv_download_status_done">模型已就绪</string>
     <string name="sv_download_status_failed">下载或解压失败</string>
+    <string name="sv_download_started_in_bg">已开始后台下载，请到通知栏查看进度</string>
     <string name="sv_clear_confirm_title">确认清除模型？</string>
     <string name="sv_clear_confirm_message">将删除已下载的模型文件，可稍后重新下载。是否继续？</string>
     <string name="sv_clear_done">已清除模型</string>

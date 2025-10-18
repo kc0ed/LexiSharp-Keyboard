@@ -245,9 +245,10 @@
     <string name="btn_sv_download_model_full">一键下载 SenseVoice 模型（small full，约 850MB）</string>
     <string name="btn_sv_clear_model">清除已下载模型</string>
     <string name="sv_download_status_downloading">下载中… %1$d%%</string>
-    <string name="sv_download_status_extracting">解压中…</string>
-    <string name="sv_download_status_done">模型已就绪</string>
+    <string name="sv_download_status_extracting">解压中…时间预计较长,请耐心等待</string>
+    <string name="sv_download_status_done">模型已安装</string>
     <string name="sv_download_status_failed">下载或解压失败</string>
+    <string name="sv_download_started_in_bg">已开始后台下载，请到通知栏查看进度</string>
     <string name="sv_clear_confirm_title">确认清除模型？</string>
     <string name="sv_clear_confirm_message">将删除已下载的模型文件，可稍后重新下载。是否继续？</string>
     <string name="sv_clear_done">已清除模型</string>
@@ -347,4 +348,12 @@
     <!-- Keyboard layout option -->
     <string name="label_swap_ai_edit_switcher">交换 AI 编辑与输入法切换键位置</string>
     <string name="label_hide_recent_task_card">后台隐藏任务卡片</string>
+    
+    <!-- Model download notifications -->
+    <string name="notif_channel_model_download">模型下载</string>
+    <string name="notif_channel_model_download_desc">本地模型下载与解压进度通知</string>
+    <string name="notif_model_summary_title">模型下载</string>
+    <string name="notif_model_summary_text">正在后台下载/解压本地模型</string>
+    <string name="notif_model_title_int8">SenseVoice 模型（Small int8）</string>
+    <string name="notif_model_title_full">SenseVoice 模型（Small full）</string>
 </resources>

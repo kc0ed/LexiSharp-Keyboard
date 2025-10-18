@@ -511,56 +511,14 @@ class AsrSettingsActivity : AppCompatActivity() {
             3 -> "https://gh-proxy.net/" + urlOfficial
             else -> urlOfficial
           }
-          lifecycleScope.launch {
-            try {
-              // 下载到 cacheDir
-              val tmp = File(cacheDir, if (variant == "small-full") "sv_small_full.tar.bz2" else "sv_small_int8.tar.bz2")
-              downloadFile(url, tmp) { progress ->
-                tvSvDownloadStatus.text = getString(R.string.sv_download_status_downloading, progress)
-              }
-              tvSvDownloadStatus.text = getString(R.string.sv_download_status_extracting)
-              // 统一下载到 App 专属外部目录（/storage/emulated/0/Android/data/<pkg>/files/）
-              val base = getExternalFilesDir(null) ?: filesDir
-              val outDirRoot = File(base, "sensevoice")
-              val outDirFinal = if (variant == "small-full") File(outDirRoot, "small-full") else File(outDirRoot, "small-int8")
-              // 使用临时目录解压，校验后原子替换，避免半成品导致 ORT 解析崩溃
-              val tmpDir = File(outDirRoot, ".tmp_extract_${'$'}{System.currentTimeMillis()}")
-              if (tmpDir.exists()) tmpDir.deleteRecursively()
-              tmpDir.mkdirs()
-              try {
-                extractTarBz2Strict(tmp, tmpDir)
-                // 解压成功后验证模型必要文件存在
-                val modelDir = findModelDir(tmpDir)
-                if (modelDir == null ||
-                  !File(modelDir, "tokens.txt").exists() ||
-                  !(File(modelDir, "model.int8.onnx").exists() || File(modelDir, "model.onnx").exists())) {
-                  throw IllegalStateException("model files missing after extract")
-                }
-                // 原子替换：先删除旧目录，再重命名临时目录为最终目录
-                if (outDirFinal.exists()) {
-                  withContext(Dispatchers.IO) { outDirFinal.deleteRecursively() }
-                }
-                val renamed = tmpDir.renameTo(outDirFinal)
-                if (!renamed) {
-                  // 重命名失败则回退为拷贝
-                  copyDirRecursively(tmpDir, outDirFinal)
-                  withContext(Dispatchers.IO) { tmpDir.deleteRecursively() }
-                }
-                tvSvDownloadStatus.text = getString(R.string.sv_download_status_done)
-              } catch (e: Throwable) {
-                // 失败清理临时目录，提示失败
-                withContext(Dispatchers.IO) { tmpDir.deleteRecursively() }
-                tvSvDownloadStatus.text = getString(R.string.sv_download_status_failed)
-              } finally {
-                // 清理压缩包
-                try { tmp.delete() } catch (_: Throwable) { }
-                updateSvDownloadUiVisibility()
-              }
-            } catch (t: Throwable) {
-              tvSvDownloadStatus.text = getString(R.string.sv_download_status_failed)
-            } finally {
-              v.isEnabled = true
-            }
+          try {
+            ModelDownloadService.startDownload(this, url, variant)
+            tvSvDownloadStatus.text = getString(R.string.sv_download_started_in_bg)
+          } catch (_: Throwable) {
+            tvSvDownloadStatus.text = getString(R.string.sv_download_status_failed)
+          } finally {
+            // 允许用户切换版本再次发起下载，实现并发
+            v.isEnabled = true
           }
         }
         .setOnDismissListener { v.isEnabled = true }

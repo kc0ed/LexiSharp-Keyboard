@@ -310,6 +310,14 @@
     <string name="label_swap_ai_edit_switcher">Swap positions of AI Edit and IME switcher</string>
     <string name="label_hide_recent_task_card">Hide recent task preview</string>
 
+    <!-- Model download notifications -->
+    <string name="notif_channel_model_download">Model Downloads</string>
+    <string name="notif_channel_model_download_desc">Progress of local model download and extraction</string>
+    <string name="notif_model_summary_title">Model Downloads</string>
+    <string name="notif_model_summary_text">Downloading/extracting models in background</string>
+    <string name="notif_model_title_int8">SenseVoice Model (Small int8)</string>
+    <string name="notif_model_title_full">SenseVoice Model (Small full)</string>
+
     <!-- Silence auto-stop (ASR) -->
     <string name="section_silence_autostop">Auto-stop on Silence</string>
     <string name="label_auto_stop_silence">Auto stop when no speech</string>
@@ -321,9 +329,10 @@
     <string name="btn_sv_download_model_full">One-click download SenseVoice (small full, ~850MB)</string>
     <string name="btn_sv_clear_model">Clear downloaded model</string>
     <string name="sv_download_status_downloading">Downloading… %1$d%%</string>
-    <string name="sv_download_status_extracting">Extracting…</string>
-    <string name="sv_download_status_done">Model ready</string>
+    <string name="sv_download_status_extracting">Extracting…Please wait</string>
+    <string name="sv_download_status_done">Model installed</string>
     <string name="sv_download_status_failed">Download or extraction failed</string>
+    <string name="sv_download_started_in_bg">Started background download. Check notification for progress.</string>
     <string name="sv_clear_confirm_title">Confirm clear model?</string>
     <string name="sv_clear_confirm_message">This will delete downloaded model files. You can re-download later. Continue?</string>
     <string name="sv_clear_done">Model cleared</string>
