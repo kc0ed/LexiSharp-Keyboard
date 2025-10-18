@@ -185,19 +185,32 @@
           android:textColorHint="?attr/colorOnSurfaceVariant" />
       </com.google.android.material.textfield.TextInputLayout>
 
-      <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnScTestPull"
-        android:layout_width="wrap_content"
+      <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/btn_sc_test_pull" />
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
 
-      <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnScProjectHome"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        style="?attr/materialButtonOutlinedStyle"
-        android:text="@string/btn_sc_project_home" />
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnScTestPull"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:text="@string/btn_sc_test_pull"
+          app:shapeAppearanceOverlay="@style/AsrkbShapeOverlayCapsule" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnScProjectHome"
+          style="?attr/materialButtonOutlinedStyle"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:layout_marginStart="8dp"
+          android:text="@string/btn_sc_project_home" />
+      </LinearLayout>
+
+      
     </LinearLayout>
     <!-- Close scroll content container -->
     </LinearLayout>

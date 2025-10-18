@@ -374,7 +374,7 @@
     <string name="label_sc_password">Password</string>
     <string name="label_sc_auto_pull">Auto pull clipboard periodically (only when IME is visible)</string>
     <string name="label_sc_pull_interval">Pull interval (sec, 1-600)</string>
-    <string name="btn_sc_test_pull">Pull now (validate configuration)</string>
+    <string name="btn_sc_test_pull">Validate</string>
     <string name="sc_test_success">Pull succeeded</string>
     <string name="sc_test_failed">Pull failed. Please check URL and credentials.</string>
     <string name="sc_status_pulled_new">Pulled new clipboard content</string>

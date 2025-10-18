@@ -372,7 +372,7 @@
     <string name="label_sc_password">密码</string>
     <string name="label_sc_auto_pull">自动定时拉取粘贴板内容（仅在输入法面板展开时）</string>
     <string name="label_sc_pull_interval">拉取间隔（秒，1-600）</string>
-    <string name="btn_sc_test_pull">立即拉取（验证配置）</string>
+    <string name="btn_sc_test_pull">立即验证</string>
     <string name="sc_test_success">拉取成功</string>
     <string name="sc_test_failed">拉取失败，请检查地址与凭证</string>
     <string name="sc_status_pulled_new">获取到新粘贴内容</string>
