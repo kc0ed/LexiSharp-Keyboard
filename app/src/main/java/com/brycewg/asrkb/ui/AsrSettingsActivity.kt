@@ -18,6 +18,7 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.slider.Slider
 import com.google.android.material.button.MaterialButton
 import androidx.lifecycle.lifecycleScope
+import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,6 +49,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val sliderSilenceWindow = findViewById<Slider>(R.id.sliderSilenceWindow)
     val tvSilenceSensitivityLabel = findViewById<View>(R.id.tvSilenceSensitivityLabel)
     val sliderSilenceSensitivity = findViewById<Slider>(R.id.sliderSilenceSensitivity)
+    val btnSilenceCalibrate = findViewById<MaterialButton>(R.id.btnSilenceCalibrate)
     val groupVolc = findViewById<View>(R.id.groupVolc)
     val groupSf = findViewById<View>(R.id.groupSf)
     val groupEleven = findViewById<View>(R.id.groupEleven)
@@ -567,6 +569,7 @@ class AsrSettingsActivity : AppCompatActivity() {
       sliderSilenceWindow.visibility = vis
       tvSilenceSensitivityLabel.visibility = vis
       sliderSilenceSensitivity.visibility = vis
+      btnSilenceCalibrate.visibility = vis
     }
 
     // Initial visibility per switch
@@ -590,13 +593,37 @@ class AsrSettingsActivity : AppCompatActivity() {
 
     sliderSilenceSensitivity.addOnChangeListener { _, value, fromUser ->
       if (fromUser) {
-        prefs.autoStopSilenceSensitivity = value.toInt().coerceIn(1, 10)
+        prefs.autoStopSilenceSensitivity = value.toInt().coerceIn(1, 15)
       }
     }
     sliderSilenceSensitivity.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
       override fun onStartTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
       override fun onStopTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
     })
+
+    // 一键校准录音判停灵敏度
+    btnSilenceCalibrate.setOnClickListener { v ->
+      hapticTapIfEnabled(v)
+      lifecycleScope.launch {
+        runSilenceCalibration(
+          // 点击即开始采样，仅展示引导提示，不再额外提示“采集中”
+          onStart = { Toast.makeText(this@AsrSettingsActivity, getString(R.string.toast_silence_calib_intro), Toast.LENGTH_SHORT).show() },
+          onListening = { /* no-op: 不再显示“采集中” */ },
+          onResult = { peak, suggested ->
+            // 应用建议档位：在当前基础上尽量保守，下调两档（最低 1 档）
+            val current = Prefs(this@AsrSettingsActivity).autoStopSilenceSensitivity
+            val finalLevel = suggested.coerceAtLeast(1)
+            Prefs(this@AsrSettingsActivity).autoStopSilenceSensitivity = finalLevel
+            sliderSilenceSensitivity.value = finalLevel.toFloat()
+            Toast.makeText(
+              this@AsrSettingsActivity,
+              getString(R.string.toast_silence_calib_result_set, peak, finalLevel, current),
+              Toast.LENGTH_LONG
+            ).show()
+          }
+        )
+      }
+    }
 
     switchVolcStreaming.setOnCheckedChangeListener { btn, isChecked ->
       hapticTapIfEnabled(btn)
@@ -950,5 +977,116 @@ class AsrSettingsActivity : AppCompatActivity() {
     try {
       if (Prefs(this).micHapticEnabled) view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     } catch (_: Throwable) { }
+  }
+
+  // —— 录音判停灵敏度一键校准 ——
+  private suspend fun runSilenceCalibration(
+    onStart: () -> Unit,
+    onListening: () -> Unit,
+    onResult: (peakAbs: Int, suggestedLevel: Int) -> Unit
+  ) {
+    val ctx = this@AsrSettingsActivity
+    val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+      ctx,
+      android.Manifest.permission.RECORD_AUDIO
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    if (!granted) {
+      Toast.makeText(ctx, getString(R.string.toast_silence_calib_need_perm), Toast.LENGTH_SHORT).show()
+      try { startActivity(android.content.Intent(ctx, PermissionActivity::class.java)) } catch (_: Throwable) {}
+      return
+    }
+
+    // 点击即开始采样：展示引导提示，但不阻塞采样启动
+    onStart()
+
+    // 在 IO 线程进行录音，避免阻塞主线程导致提示顺序错乱
+    withContext(Dispatchers.IO) {
+      val sampleRate = 16000
+      val channel = android.media.AudioFormat.CHANNEL_IN_MONO
+      val format = android.media.AudioFormat.ENCODING_PCM_16BIT
+      val durationMs = 4000L // 约 4s 采样
+      val warmupMs = 300L    // 丢弃首段暖机，避免早期抖动影响
+      val minBuffer = android.media.AudioRecord.getMinBufferSize(sampleRate, channel, format)
+      val readBytesPerPass = ((sampleRate * 200) / 1000) * 2 // 200ms 一帧
+      val bufferSize = kotlin.math.max(minBuffer, readBytesPerPass)
+      var recorder: android.media.AudioRecord? = null
+      var peak = 0
+      try {
+        recorder = try {
+          android.media.AudioRecord(
+            android.media.MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            sampleRate, channel, format, bufferSize
+          )
+        } catch (_: Throwable) { null }
+        if (recorder == null || recorder.state != android.media.AudioRecord.STATE_INITIALIZED) {
+          try { recorder?.release() } catch (_: Throwable) {}
+          recorder = try {
+            android.media.AudioRecord(
+              android.media.MediaRecorder.AudioSource.MIC,
+              sampleRate, channel, format, bufferSize
+            )
+          } catch (_: Throwable) { null }
+        }
+        if (recorder == null || recorder.state != android.media.AudioRecord.STATE_INITIALIZED) {
+          withContext(Dispatchers.Main) {
+            Toast.makeText(ctx, getString(R.string.error_audio_init_failed), Toast.LENGTH_SHORT).show()
+          }
+          return@withContext
+        }
+
+        try { recorder.startRecording() } catch (t: Throwable) {
+          withContext(Dispatchers.Main) {
+            Toast.makeText(ctx, getString(R.string.error_audio_error, t.message ?: ""), Toast.LENGTH_SHORT).show()
+          }
+          return@withContext
+        }
+
+        val buf = ByteArray(readBytesPerPass)
+        val now = android.os.SystemClock.elapsedRealtime()
+        val warmupEnd = now + warmupMs
+        val sampleEnd = warmupEnd + durationMs
+
+        // 暖机阶段：丢弃数据
+        while (android.os.SystemClock.elapsedRealtime() < warmupEnd) {
+          try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { break }
+        }
+        // 采样阶段：计算峰值
+        while (android.os.SystemClock.elapsedRealtime() < sampleEnd) {
+          val n = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+          if (n <= 0) continue
+          val p = peakAbs(buf, n)
+          if (p > peak) peak = p
+        }
+
+      } finally {
+        try { recorder?.stop() } catch (_: Throwable) {}
+        try { recorder?.release() } catch (_: Throwable) {}
+      }
+
+      // 将峰值映射到阈值档位，再下调两档，避免误触发
+      val thresholds = com.brycewg.asrkb.asr.SilenceDetector.THRESHOLDS
+      var estimated = 1
+      // 选择不超过峰值的最大阈值对应的档位
+      for (i in thresholds.indices) {
+        if (thresholds[i] <= peak) estimated = i + 1 else break
+      }
+      val suggested = (estimated - 2).coerceAtLeast(1)
+      withContext(Dispatchers.Main) { onResult(peak, suggested) }
+    }
+  }
+
+  private fun peakAbs(buf: ByteArray, len: Int): Int {
+    var max = 0
+    var i = 0
+    while (i + 1 < len) {
+      val lo = buf[i].toInt() and 0xFF
+      val hi = buf[i + 1].toInt() and 0xFF
+      val s = (hi shl 8) or lo
+      val v = if (s < 0x8000) s else s - 0x10000
+      val a = kotlin.math.abs(v)
+      if (a > max) max = a
+      i += 2
+    }
+    return max
   }
 }

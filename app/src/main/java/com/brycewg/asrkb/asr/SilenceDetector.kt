@@ -15,10 +15,8 @@ class SilenceDetector(
   private var silentMsAcc: Int = 0
 
   init {
-    val lvl = sensitivityLevel.coerceIn(1, 10)
-    // 放宽整体灵敏度：约 460..1900（16-bit 绝对幅度）
-    // 经验：环境静音 < ~600，正常语音峰值 > ~1200。
-    threshold = 300 + lvl * 160
+    val lvl = sensitivityLevel.coerceIn(1, LEVELS)
+    threshold = THRESHOLDS[lvl - 1]
   }
 
   /**
@@ -50,5 +48,18 @@ class SilenceDetector(
       i += 2
     }
     return max
+  }
+
+  companion object {
+    // 灵敏度档位总数
+    const val LEVELS: Int = 15
+    // 非线性阈值表（16-bit 绝对幅度），小档位更细，后段增量更大
+    // 经验值：常见设备环境静音 < ~300-600，正常语音峰值 ~300-1200。
+    // 1..5：步长 50；6..10：步长 100；11..15：步长 150/100
+    val THRESHOLDS: IntArray = intArrayOf(
+      100, 150, 200, 250, 300, // 1..5（细）
+      400, 500, 600, 700, 800, // 6..10（中）
+      950, 1100, 1250, 1400, 1500 // 11..15（粗）
+    )
   }
 }

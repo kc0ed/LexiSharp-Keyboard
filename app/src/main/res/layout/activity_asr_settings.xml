@@ -71,8 +71,16 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:valueFrom="1"
-        android:valueTo="10"
+        android:valueTo="15"
         android:stepSize="1" />
+
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSilenceCalibrate"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/btn_silence_calibrate" />
 
       <!-- Divider between silence settings and vendor selection -->
       <com.google.android.material.divider.MaterialDivider
