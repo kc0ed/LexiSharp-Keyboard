@@ -4,10 +4,46 @@
     android:layout_height="match_parent">
 
     <FrameLayout
+        android:id="@+id/ballContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_floating_ball">
+        android:background="@drawable/bg_floating_ball"
+        android:clipToOutline="true">
 
+        <View
+            android:id="@+id/ripple1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:visibility="invisible"
+            android:alpha="0"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no" />
+
+        <View
+            android:id="@+id/ripple2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:visibility="invisible"
+            android:alpha="0"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no" />
+
+        <View
+            android:id="@+id/ripple3"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:visibility="invisible"
+            android:alpha="0"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no" />
+
+        <!-- 图标置于最上层，保证点击与可见性 -->
         <ImageView
             android:id="@+id/ballIcon"
             android:layout_width="36dp"
@@ -19,15 +55,14 @@
             android:contentDescription="@string/cd_floating_asr" />
     </FrameLayout>
 
+    <!-- 进度环（置于顶层） -->
     <ProgressBar
         android:id="@+id/ballProgress"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:indeterminate="false"
-        android:max="100"
-        android:progress="0"
-        android:progressDrawable="@drawable/circular_progress"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:indeterminate="true"
         android:visibility="gone" />
 
 </FrameLayout>

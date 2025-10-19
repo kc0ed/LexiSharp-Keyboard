@@ -72,7 +72,15 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private var ballView: View? = null
     private var ballIcon: ImageView? = null
     private var ballProgress: ProgressBar? = null
+    private var processingSpinner: ProcessingSpinnerView? = null
+    private var ripple1: View? = null
+    private var ripple2: View? = null
+    private var ripple3: View? = null
     private var lp: WindowManager.LayoutParams? = null
+    // 动画相关
+    private var pulseAnimator: ValueAnimator? = null
+    private var partialFeedbackAnimator: ValueAnimator? = null
+    private var rippleAnimators: MutableList<Animator> = mutableListOf()
     // 轮盘菜单与供应商选择面板
     private var radialMenuView: View? = null
     private var vendorMenuView: View? = null
@@ -89,6 +97,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private var isProcessing = false
     private var progressAnimator: ObjectAnimator? = null
     private var currentToast: Toast? = null
+    // 错误视觉保护：错误动画期间保持红色，不被状态刷新清除
+    private var errorVisualActive: Boolean = false
     // 预览会话上下文：记录焦点输入框前后缀与上次中间结果，便于动态预览
     private var focusContext: FocusContext? = null
     private var lastPartialForPreview: String? = null
@@ -162,6 +172,12 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
 
     override fun onDestroy() {
         super.onDestroy()
+        // 清理动画资源
+        stopPulseAnimation()
+        stopRippleAnimation()
+        stopProcessingSpinner()
+        partialFeedbackAnimator?.cancel()
+        partialFeedbackAnimator = null
         hideBall()
         hideRadialMenu()
         hideVendorMenu()
@@ -196,6 +212,73 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         val view = LayoutInflater.from(this).inflate(R.layout.floating_asr_ball, null, false)
         ballIcon = view.findViewById(R.id.ballIcon)
         ballProgress = view.findViewById(R.id.ballProgress)
+        ripple1 = view.findViewById(R.id.ripple1)
+        ripple2 = view.findViewById(R.id.ripple2)
+        ripple3 = view.findViewById(R.id.ripple3)
+        val ballContainer = try { view.findViewById<android.widget.FrameLayout>(R.id.ballContainer) } catch (_: Throwable) { null }
+
+        // 获取与设置页“AI后处理设置”按钮同款的 Monet 取色（M3 Tonal：secondaryContainer / secondary）
+        val colorSecondaryContainer = try {
+            val tv = android.util.TypedValue()
+            if (theme.resolveAttribute(com.google.android.material.R.attr.colorSecondaryContainer, tv, true)) tv.data else throw IllegalStateException()
+        } catch (_: Throwable) {
+            // 回退到旧的 colorPrimary，确保兼容
+            try {
+                val tv = android.util.TypedValue()
+                theme.resolveAttribute(android.R.attr.colorPrimary, tv, true)
+                tv.data
+            } catch (_: Throwable) { 0xFF6200EE.toInt() }
+        }
+        val colorSecondary = try {
+            val tv = android.util.TypedValue()
+            if (theme.resolveAttribute(com.google.android.material.R.attr.colorSecondary, tv, true)) tv.data else throw IllegalStateException()
+        } catch (_: Throwable) { colorSecondaryContainer }
+
+        // 动态设置 ProgressBar 的 Monet 颜色（与 TonalButton 体系协调）
+        ballProgress?.let { pb ->
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                    pb.indeterminateTintList = android.content.res.ColorStateList.valueOf(colorSecondary)
+                }
+            } catch (_: Throwable) { }
+        }
+
+        // 为波纹层创建线状（描边）圆形背景，低透明度，呈现更像“波纹”的效果
+        val rippleStrokeColor = applyAlpha(colorSecondary, 1.0f)
+        val strokeWidthPx = dp(4)
+        val dashWidthPx = dp(8).toFloat()
+        val dashGapPx = dp(6).toFloat()
+        listOf(ripple1, ripple2, ripple3).forEach { ripple ->
+            ripple?.let {
+                try {
+                    val drawable = android.graphics.drawable.GradientDrawable()
+                    drawable.shape = android.graphics.drawable.GradientDrawable.OVAL
+                    drawable.setColor(android.graphics.Color.TRANSPARENT)
+                    drawable.setStroke(strokeWidthPx, rippleStrokeColor, dashWidthPx, dashGapPx)
+                    it.background = drawable
+                } catch (_: Throwable) { }
+            }
+        }
+
+        // 处理中旋转条状加载动画（自定义视图），置于最上层
+        try {
+            if (processingSpinner == null && ballContainer != null) {
+                processingSpinner = ProcessingSpinnerView(this).apply {
+                    isClickable = false
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    // 更浅一些的颜色（降低不透明度）
+                    setSpinnerColor(applyAlpha(colorSecondary, 0.6f))
+                    setStrokeWidth(dp(4).toFloat())
+                    setSweepAngle(110f)
+                    visibility = View.GONE
+                }
+                val lpSpinner = android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                ).apply { gravity = Gravity.CENTER }
+                ballContainer.addView(processingSpinner, lpSpinner)
+            }
+        } catch (_: Throwable) { }
         
         ballIcon?.setOnClickListener { v ->
             hapticTapIfEnabled(v)
@@ -308,6 +391,11 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             try { persistBallPosition() } catch (_: Throwable) { }
             return
         }
+        // 正在处理中：忽略点击，避免并发识别
+        if (isProcessing) {
+            hapticTapIfEnabled(ballIcon)
+            return
+        }
         // 检查无障碍权限
         if (!AsrAccessibilityService.isEnabled()) {
             Log.w(TAG, "Accessibility service not enabled")
@@ -396,11 +484,16 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             }
         }
 
+        // 开始录音前，确保图标恢复为麦克风
+        try { ballIcon?.setImageResource(R.drawable.ic_mic) } catch (_: Throwable) { }
+
         isRecording = true
+        // 播放录音开始的反馈动画
+        playRecordingStartAnimation()
         updateBallState()
         // 录音开始后，若当前键盘未显示，也应强制展示悬浮球
         updateVisibilityByPref()
-        showToast(getString(R.string.floating_asr_recording))
+        // 去除录音中 Toast 提示
 
         // Telegram 特判：为空时其占位文本会作为真实 text 暴露，先注入零宽字符使其进入“非空”状态，后续全量替换即可避开占位符拼接
         tryFixTelegramPlaceholderIfNeeded()
@@ -427,12 +520,12 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         isRecording = false
         asrEngine?.stop()
 
+        // 进入识别/上传处理阶段：统一视为处理中（无论是否启用 LLM 后处理）
+        isProcessing = true
+        updateBallState()
+        // 去除识别中 Toast 提示
+        // 启动 LLM 后处理的超时兜底（仅当启用时）
         if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
-            // 需要后处理,显示处理中状态
-            isProcessing = true
-            updateBallState()
-            showToast(getString(R.string.floating_asr_recognizing))
-            // 启动超时兜底：若迟迟未收到 onFinal，则使用最后一次预览结果提交，避免卡在蓝色状态
             try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
             processingTimeoutJob = serviceScope.launch {
                 val timeoutMs = 8000L
@@ -473,7 +566,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                             wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
                         }
                         Log.d(TAG, "Fallback inserted=$wrote text='$toWrite'")
-                        showToast(getString(R.string.floating_asr_completed))
+                        showCompletionTick()
                         if (wrote) {
                             try { prefs.addAsrChars(textOut.length) } catch (_: Throwable) { }
                             // 同步把光标移到“前缀 + 文本”的末尾，避免续写回到段首
@@ -500,12 +593,12 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             if (prefs.asrVendor == AsrVendor.SenseVoice) {
                 val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
                 if (!prepared) {
-                    handler.postDelayed({ showToast(getString(R.string.floating_asr_recognizing)) }, 700)
+                        // 去除识别中 Toast 提示（延时分支）
                 } else {
-                    showToast(getString(R.string.floating_asr_recognizing))
+                        // 去除识别中 Toast 提示
                 }
             } else {
-                showToast(getString(R.string.floating_asr_recognizing))
+                    // 去除识别中 Toast 提示
             }
         }
         // 录音结束后根据偏好与当前场景重新评估显隐
@@ -530,15 +623,29 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private fun updateBallState() {
         handler.post {
             Log.d(TAG, "updateBallState: recording=$isRecording, processing=$isProcessing")
+
+            // 清除颜色滤镜（错误视觉期间不清除）
+            if (!errorVisualActive) ballIcon?.clearColorFilter()
+
             if (isRecording) {
-                // 录音中:图标变红色,顺时针旋转动画
-                ballIcon?.setColorFilter("#F44336".toColorInt())
+                // 录音中：只显示波纹扩散；取消麦克风呼吸动画
+                ballProgress?.visibility = View.GONE
+                processingSpinner?.visibility = View.GONE
+                stopProcessingSpinner()
+                startRippleAnimation()
             } else if (isProcessing) {
-                // 处理中:图标变蓝色,逆时针旋转动画
-                ballIcon?.setColorFilter("#2196F3".toColorInt())
+                // 处理中：停止波纹，显示环绕条状旋转动画
+                stopRippleAnimation()
+                ballProgress?.visibility = View.GONE
+                processingSpinner?.visibility = View.VISIBLE
+                startProcessingSpinner()
             } else {
-                // 空闲:图标恢复默认颜色,停止动画
-                ballIcon?.clearColorFilter()
+                // 空闲：停止所有动画
+                stopRippleAnimation()
+                ballProgress?.visibility = View.GONE
+                processingSpinner?.visibility = View.GONE
+                stopProcessingSpinner()
+                resetIconScale()
             }
         }
     }
@@ -563,7 +670,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 if (!stillRecording) {
                     isProcessing = true
                     updateBallState()
-                    showToast(getString(R.string.floating_asr_processing))
+                    // 去除处理中 Toast 提示
                 }
 
                 val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
@@ -615,7 +722,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 } else {
                     wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
                 }
-                showToast(getString(R.string.floating_asr_completed))
+                showCompletionTick()
                 if (wrote) {
                     try { prefs.addAsrChars(finalText.length) } catch (_: Throwable) { }
                     // 写入成功后，将光标移到“前缀 + 最终文本”的末尾，便于继续续写
@@ -640,24 +747,9 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         // 录音阶段结束：若开启后处理，切至处理中；否则恢复空闲外观但仍显示“识别中…”
         serviceScope.launch {
             isRecording = false
-            if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
-                isProcessing = true
-                updateBallState()
-                showToast(getString(R.string.floating_asr_processing))
-            } else {
-                isProcessing = false
-                updateBallState()
-                if (prefs.asrVendor == AsrVendor.SenseVoice) {
-                    val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
-                    if (!prepared) {
-                        handler.postDelayed({ showToast(getString(R.string.floating_asr_recognizing)) }, 700)
-                    } else {
-                        showToast(getString(R.string.floating_asr_recognizing))
-                    }
-                } else {
-                    showToast(getString(R.string.floating_asr_recognizing))
-                }
-            }
+            // 录音结束后，进入识别/上传阶段，统一显示处理中动画
+            isProcessing = true
+            updateBallState()
             // 非录音阶段恢复“仅在键盘显示时显示悬浮球”的约束
             updateVisibilityByPref()
         }
@@ -672,10 +764,12 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         if (lastPartialForPreview == text) return
         val toWrite = ctx.prefix + text + ctx.suffix
         Log.d(TAG, "onPartial preview: $text")
+
+
         // 切到主线程，静默写入，避免 Toast/Looper 异常与刷屏
         serviceScope.launch {
             AsrAccessibilityService.insertTextSilent(toWrite)
-            // 预览阶段也让光标跟随识别文本，移动到“前缀 + 中间文本”的末尾
+            // 预览阶段也让光标跟随识别文本，移动到"前缀 + 中间文本"的末尾
             val prefixLenForCursor = stripMarkersIfAny(ctx.prefix).length
             val desiredCursor = (prefixLenForCursor + text.length).coerceAtLeast(0)
             AsrAccessibilityService.setSelectionSilent(desiredCursor)
@@ -732,6 +826,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             isRecording = false
             isProcessing = false
             updateBallState()
+
+            // 播放错误抖动动画
+            playErrorShakeAnimation()
+
             // 出错时也根据偏好恢复显隐规则
             updateVisibilityByPref()
             val mapped = mapErrorToFriendlyMessage(message)
@@ -1400,6 +1498,219 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private fun dp(v: Int): Int {
         val d = resources.displayMetrics.density
         return (v * d + 0.5f).toInt()
+    }
+
+    /**
+     * 为颜色应用透明度
+     */
+    private fun applyAlpha(color: Int, alpha: Float): Int {
+        val a = (alpha * 255).toInt().coerceIn(0, 255)
+        val r = (color shr 16) and 0xFF
+        val g = (color shr 8) and 0xFF
+        val b = color and 0xFF
+        return (a shl 24) or (r shl 16) or (g shl 8) or b
+    }
+
+    // ==================== 动画相关方法 ====================
+
+    /**
+     * 录音开始的即时反馈动画：快速缩放弹跳
+     */
+    private fun playRecordingStartAnimation() {
+        val icon = ballIcon ?: return
+        // 压低再回弹至 1.0，结束时确保恢复到标准尺寸
+        icon.animate()
+            .scaleX(0.9f)
+            .scaleY(0.9f)
+            .setDuration(80)
+            .withEndAction {
+                icon.animate()
+                    .scaleX(1.0f)
+                    .scaleY(1.0f)
+                    .setDuration(170)
+                    .setInterpolator(android.view.animation.OvershootInterpolator())
+                    .withEndAction {
+                        icon.scaleX = 1.0f
+                        icon.scaleY = 1.0f
+                    }
+                    .start()
+            }
+            .start()
+    }
+
+    /**
+     * 启动录音中的脉冲动画：图标缩放 0.85 ↔ 1.15，周期 1200ms
+     */
+    private fun startPulseAnimation() {
+        stopPulseAnimation()
+        val icon = ballIcon ?: return
+
+        pulseAnimator = ValueAnimator.ofFloat(0.85f, 1.15f).apply {
+            duration = 1200
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            addUpdateListener { anim ->
+                val scale = anim.animatedValue as Float
+                icon.scaleX = scale
+                icon.scaleY = scale
+            }
+            start()
+        }
+    }
+
+    /**
+     * 停止脉冲动画
+     */
+    private fun stopPulseAnimation() {
+        pulseAnimator?.cancel()
+        pulseAnimator = null
+    }
+
+    private var completionResetPosted: Boolean = false
+    private fun showCompletionTick(durationMs: Long = 1000L) {
+        val icon = ballIcon ?: return
+        try { icon.setImageResource(R.drawable.ic_check) } catch (_: Throwable) { return }
+        if (!completionResetPosted) {
+            completionResetPosted = true
+            handler.postDelayed({
+                try { ballIcon?.setImageResource(R.drawable.ic_mic) } catch (_: Throwable) { }
+                completionResetPosted = false
+            }, durationMs)
+        }
+    }
+
+    private fun startProcessingSpinner() {
+        try { processingSpinner?.start() } catch (_: Throwable) { }
+    }
+
+    private fun stopProcessingSpinner() {
+        try { processingSpinner?.stop() } catch (_: Throwable) { }
+    }
+
+    /**
+     * 启动波纹扩散动画：3个波纹依次从中心扩散（限制在圆形范围内）
+     */
+    private fun startRippleAnimation() {
+        stopRippleAnimation()
+
+        val ripples = listOf(ripple1, ripple2, ripple3)
+        ripples.forEachIndexed { index, ripple ->
+            ripple ?: return@forEachIndexed
+
+            // 延迟启动，形成连续波纹效果
+            val delay = index * 500L
+
+            val animator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 1600
+                repeatCount = ValueAnimator.INFINITE
+                startDelay = delay
+                interpolator = android.view.animation.LinearInterpolator()
+
+                addUpdateListener { anim ->
+                    val progress = anim.animatedValue as Float
+                    // 缩放：从中心 0.1 放大到 1.0（停在球形边缘）
+                    val scale = 0.10f + progress * 0.90f
+                    ripple.scaleX = scale
+                    ripple.scaleY = scale
+                    // 透明度：更亮，起始100%逐渐衰减到0
+                    val alpha = (1f - progress)
+                    ripple.alpha = alpha
+                    // 控制可见性
+                    ripple.visibility = if (alpha > 0.01f) View.VISIBLE else View.INVISIBLE
+                }
+
+                addListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationRepeat(animation: Animator) {
+                        // 每次重复时重置初始状态
+                        ripple.scaleX = 0.10f
+                        ripple.scaleY = 0.10f
+                    }
+                })
+
+                start()
+            }
+
+            rippleAnimators.add(animator)
+        }
+    }
+
+    /**
+     * 停止波纹扩散动画
+     */
+    private fun stopRippleAnimation() {
+        rippleAnimators.forEach { it.cancel() }
+        rippleAnimators.clear()
+        // 隐藏所有波纹层
+        ripple1?.visibility = View.INVISIBLE
+        ripple2?.visibility = View.INVISIBLE
+        ripple3?.visibility = View.INVISIBLE
+        ripple1?.alpha = 0f
+        ripple2?.alpha = 0f
+        ripple3?.alpha = 0f
+    }
+
+    /**
+     * 重置图标缩放到正常大小
+     */
+    private fun resetIconScale() {
+        ballIcon?.let {
+            it.scaleX = 1.0f
+            it.scaleY = 1.0f
+        }
+    }
+
+    /**
+     * onPartial 即时反馈动画：快速放大缩小（增强版）
+     */
+    private fun playPartialFeedbackAnimation() {
+        val icon = ballIcon ?: return
+
+        // 如果已有反馈动画在播放，不重复触发
+        if (partialFeedbackAnimator?.isRunning == true) return
+
+        partialFeedbackAnimator = ValueAnimator.ofFloat(1.0f, 1.3f, 1.0f).apply {
+            duration = 200
+            interpolator = android.view.animation.OvershootInterpolator()
+            addUpdateListener { anim ->
+                val scale = anim.animatedValue as Float
+                // 叠加在当前脉冲动画的缩放基础上
+                val currentBase = if (pulseAnimator?.isRunning == true) icon.scaleX else 1.0f
+                icon.scaleX = currentBase * scale
+                icon.scaleY = currentBase * scale
+            }
+            start()
+        }
+    }
+
+    /**
+     * 错误抖动动画：左右抖动 + 红色
+     */
+    private fun playErrorShakeAnimation() {
+        val icon = ballIcon ?: return
+
+        // 进入错误视觉态：更亮的红色 + 左右抖动
+        errorVisualActive = true
+        try { icon.animate().cancel() } catch (_: Throwable) { }
+        icon.setColorFilter("#FF1744".toColorInt())
+
+        val shake = ValueAnimator.ofFloat(0f, -16f, 16f, -12f, 12f, -6f, 6f, 0f).apply {
+            duration = 500
+            addUpdateListener { anim ->
+                icon.translationX = (anim.animatedValue as Float)
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    icon.translationX = 0f
+                    // 错误态红色保持一段时间后恢复
+                    handler.postDelayed({
+                        try { icon.clearColorFilter() } catch (_: Throwable) { }
+                        errorVisualActive = false
+                    }, 1000)
+                }
+            })
+            start()
+        }
     }
 
     /**
