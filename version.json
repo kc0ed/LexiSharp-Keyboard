@@ -1,8 +1,8 @@
 {
-  "version": "3.1.3",
-  "version_code": 71,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.1.3",
-  "release_notes": "本次更新包含 6 个提交:\n- fix(ui): 识别文本后自动移动光标\n- refactor(app): 优化应用代码结构，清理冗余资源和配置\n- feat(colors): 添加悬浮麦克风Monet\n- refactor(ui): 优化设置界面布局\n- docs(readme): 更新语音识别功能描述，添加 Fcitx5 联动说明",
+  "version": "3.1.4",
+  "version_code": 72,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.1.4",
+  "release_notes": "本次更新包含 11 个提交:\n- chore(app): 更新应用版本号\n- feat(ui): 为悬浮球添加视觉反馈和动画\n- refactor(ui): 优化设置界面选择器交互\n- chore: auto-update version.json to 3.1.3 [skip ci]\n- fix(ui): 识别文本后自动移动光标\n- refactor(app): 优化应用代码结构，清理冗余资源和配置\n- feat(colors): 添加悬浮麦克风Monet\n- refactor(ui): 优化设置界面布局\n- docs(readme): 更新语音识别功能描述，添加 Fcitx5 联动说明",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-19T05:35:31Z"
+  "update_time": "2025-10-19T08:05:47Z"
 }
