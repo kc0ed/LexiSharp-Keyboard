@@ -179,8 +179,13 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="6dp"
-      android:textColor="?attr/colorOnSurfaceVariant"
+      android:textColor="@android:color/darker_gray"
       android:text="@string/speech_preset_intro" />
+    
+    <com.google.android.material.divider.MaterialDivider
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="24dp" />
 
     <!-- SyncClipboard 区域 -->
     <View
