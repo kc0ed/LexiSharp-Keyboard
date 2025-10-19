@@ -27,6 +27,7 @@ class InputSettingsActivity : AppCompatActivity() {
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
         val switchMicTapToggle = findViewById<MaterialSwitch>(R.id.switchMicTapToggle)
         val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
+        val switchFcitx5ReturnOnSwitcher = findViewById<MaterialSwitch>(R.id.switchFcitx5ReturnOnSwitcher)
         val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
         val spKeyboardHeight = findViewById<Spinner>(R.id.spKeyboardHeight)
         val spLanguage = findViewById<Spinner>(R.id.spLanguage)
@@ -37,6 +38,7 @@ class InputSettingsActivity : AppCompatActivity() {
             switchMicHaptic.isChecked = prefs.micHapticEnabled
             switchMicTapToggle.isChecked = prefs.micTapToggleEnabled
             switchSwapAiEditWithSwitcher.isChecked = prefs.swapAiEditWithImeSwitcher
+            switchFcitx5ReturnOnSwitcher.isChecked = prefs.fcitx5ReturnOnImeSwitch
             switchHideRecentTasks.isChecked = prefs.hideRecentTaskCard
         }
         applyPrefsToUi()
@@ -104,6 +106,10 @@ class InputSettingsActivity : AppCompatActivity() {
             prefs.swapAiEditWithImeSwitcher = isChecked
             try { sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
         }
+        switchFcitx5ReturnOnSwitcher.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.fcitx5ReturnOnImeSwitch = isChecked
+        }
         switchHideRecentTasks.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)
             prefs.hideRecentTaskCard = isChecked
@@ -139,4 +145,3 @@ class InputSettingsActivity : AppCompatActivity() {
         } catch (_: Throwable) { }
     }
 }
-

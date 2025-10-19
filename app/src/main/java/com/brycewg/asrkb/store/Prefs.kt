@@ -77,6 +77,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_SWAP_AI_EDIT_IME_SWITCHER, false)
         set(value) = sp.edit { putBoolean(KEY_SWAP_AI_EDIT_IME_SWITCHER, value) }
 
+    // Fcitx5 联动：通过“输入法切换”键返回（隐藏自身）
+    var fcitx5ReturnOnImeSwitch: Boolean
+        get() = sp.getBoolean(KEY_FCITX5_RETURN_ON_SWITCHER, false)
+        set(value) = sp.edit { putBoolean(KEY_FCITX5_RETURN_ON_SWITCHER, value) }
+
     // 后台隐藏任务卡片（最近任务不显示预览图）
     var hideRecentTaskCard: Boolean
         get() = sp.getBoolean(KEY_HIDE_RECENT_TASK_CARD, false)
@@ -706,6 +711,7 @@ class Prefs(context: Context) {
         private const val KEY_FLOATING_POS_X = "floating_ball_pos_x"
         private const val KEY_FLOATING_POS_Y = "floating_ball_pos_y"
         private const val KEY_SWAP_AI_EDIT_IME_SWITCHER = "swap_ai_edit_ime_switcher"
+        private const val KEY_FCITX5_RETURN_ON_SWITCHER = "fcitx5_return_on_switcher"
         private const val KEY_HIDE_RECENT_TASK_CARD = "hide_recent_task_card"
         private const val KEY_FLOATING_WRITE_COMPAT_ENABLED = "floating_write_compat_enabled"
         private const val KEY_FLOATING_ASR_ENABLED = "floating_asr_enabled"
@@ -878,6 +884,7 @@ class Prefs(context: Context) {
         o.put(KEY_AUTO_STOP_SILENCE_SENSITIVITY, autoStopSilenceSensitivity)
         o.put(KEY_KEYBOARD_HEIGHT_TIER, keyboardHeightTier)
         o.put(KEY_SWAP_AI_EDIT_IME_SWITCHER, swapAiEditWithImeSwitcher)
+        o.put(KEY_FCITX5_RETURN_ON_SWITCHER, fcitx5ReturnOnImeSwitch)
         o.put(KEY_HIDE_RECENT_TASK_CARD, hideRecentTaskCard)
         o.put(KEY_APP_LANGUAGE_TAG, appLanguageTag)
         o.put(KEY_FLOATING_SWITCHER_ENABLED, floatingSwitcherEnabled)
@@ -973,6 +980,7 @@ class Prefs(context: Context) {
             optInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY)?.let { autoStopSilenceSensitivity = it }
             optInt(KEY_KEYBOARD_HEIGHT_TIER)?.let { keyboardHeightTier = it }
             optBool(KEY_SWAP_AI_EDIT_IME_SWITCHER)?.let { swapAiEditWithImeSwitcher = it }
+            optBool(KEY_FCITX5_RETURN_ON_SWITCHER)?.let { fcitx5ReturnOnImeSwitch = it }
             optBool(KEY_HIDE_RECENT_TASK_CARD)?.let { hideRecentTaskCard = it }
             optString(KEY_APP_LANGUAGE_TAG)?.let { appLanguageTag = it }
             optBool(KEY_POSTPROC_ENABLED)?.let { postProcessEnabled = it }

@@ -617,7 +617,22 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
             }
         }
         btnHide?.setOnClickListener { v -> performKeyHaptic(v); hideKeyboardPanel() }
-        btnImeSwitcher?.setOnClickListener { v -> performKeyHaptic(v); showImePicker() }
+        btnImeSwitcher?.setOnClickListener { v ->
+            performKeyHaptic(v)
+            // Fcitx5 联动：开启后优先切回上一个输入法
+            if (prefs.fcitx5ReturnOnImeSwitch) {
+                try {
+                    if (asrEngine?.isRunning == true) asrEngine?.stop()
+                } catch (_: Throwable) { }
+                val switched = try { switchToPreviousInputMethod() } catch (_: Throwable) { false }
+                if (!switched) {
+                    // 回退：弹出系统输入法选择器
+                    showImePicker()
+                }
+            } else {
+                showImePicker()
+            }
+        }
         btnPromptPicker?.setOnClickListener { v ->
             performKeyHaptic(v)
             showPromptPicker(v)

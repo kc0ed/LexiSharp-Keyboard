@@ -328,6 +328,7 @@
 
     <!-- Keyboard layout option -->
     <string name="label_swap_ai_edit_switcher">Swap positions of AI Edit and IME switcher</string>
+    <string name="label_fcitx5_return_on_switcher">Fcitx5 integration: hide self on IME switch key</string>
     <string name="label_hide_recent_task_card">Hide recent task preview</string>
 
     <!-- Model download notifications -->
