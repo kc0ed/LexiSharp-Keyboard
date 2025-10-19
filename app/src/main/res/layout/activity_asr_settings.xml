@@ -96,10 +96,22 @@
         android:textStyle="bold"
         android:textColor="?attr/colorOnSurface" />
 
+      <TextView
+        android:id="@+id/tvAsrVendorValue"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:text="@string/vendor_volc" />
       <Spinner
         android:id="@+id/spAsrVendor"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
 
       <!-- Volcano Engine -->
       <TextView
@@ -189,11 +201,22 @@
           android:layout_marginTop="8dp"
           android:textColor="?attr/colorOnSurface"
           android:text="@string/label_volc_language" />
-
+        <TextView
+          android:id="@+id/tvVolcLanguageValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/volc_lang_auto" />
         <Spinner
           android:id="@+id/spVolcLanguage"
           android:layout_width="match_parent"
-          android:layout_height="wrap_content" />
+          android:layout_height="wrap_content"
+          android:visibility="gone" />
       </LinearLayout>
 
       <!-- SiliconFlow -->
@@ -322,11 +345,22 @@
           android:layout_marginTop="8dp"
           android:textColor="?attr/colorOnSurface"
           android:text="@string/label_eleven_language" />
-
+        <TextView
+          android:id="@+id/tvElevenLanguageValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/eleven_lang_auto" />
         <Spinner
           android:id="@+id/spElevenLanguage"
           android:layout_width="match_parent"
-          android:layout_height="wrap_content" />
+          android:layout_height="wrap_content"
+          android:visibility="gone" />
       </LinearLayout>
 
       <!-- OpenAI ASR -->
@@ -423,11 +457,22 @@
           android:layout_marginTop="8dp"
           android:textColor="?attr/colorOnSurface"
           android:text="@string/label_openai_language" />
-
+        <TextView
+          android:id="@+id/tvOpenAiLanguageValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/dash_lang_auto" />
         <Spinner
           android:id="@+id/spOpenAiLanguage"
           android:layout_width="match_parent"
-          android:layout_height="wrap_content" />
+          android:layout_height="wrap_content"
+          android:visibility="gone" />
       </LinearLayout>
 
       <!-- DashScope -->
@@ -503,10 +548,22 @@
           android:textColor="?attr/colorOnSurface"
           android:text="@string/label_dash_language" />
 
+        <TextView
+          android:id="@+id/tvDashLanguageValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/dash_lang_auto" />
         <Spinner
           android:id="@+id/spDashLanguage"
           android:layout_width="match_parent"
-          android:layout_height="wrap_content" />
+          android:layout_height="wrap_content"
+          android:visibility="gone" />
       </LinearLayout>
 
       <!-- Gemini -->
@@ -650,10 +707,22 @@
         android:orientation="vertical">
 
 
+        <TextView
+          android:id="@+id/tvSvModelVariantValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/sv_model_small_int8" />
         <Spinner
           android:id="@+id/spSvModelVariant"
           android:layout_width="match_parent"
-          android:layout_height="wrap_content" />
+          android:layout_height="wrap_content"
+          android:visibility="gone" />
 
         <TextView
             android:layout_width="match_parent"
@@ -662,10 +731,22 @@
           android:textColor="?attr/colorOnSurface"
           android:text="@string/label_sv_language" />
 
+        <TextView
+          android:id="@+id/tvSvLanguageValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/sv_lang_auto" />
         <Spinner
           android:id="@+id/spSvLanguage"
           android:layout_width="match_parent"
-          android:layout_height="wrap_content" />
+          android:layout_height="wrap_content"
+          android:visibility="gone" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
           android:id="@+id/switchSvUseNnapi"
@@ -702,10 +783,22 @@
           android:textColor="?attr/colorOnSurface"
           android:text="@string/label_sv_keep_alive" />
 
+        <TextView
+          android:id="@+id/tvSvKeepAliveValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/sv_keep_alive_always" />
         <Spinner
           android:id="@+id/spSvKeepAlive"
           android:layout_width="match_parent"
-          android:layout_height="wrap_content" />
+          android:layout_height="wrap_content"
+          android:visibility="gone" />
 
         <TextView
             android:layout_width="match_parent"

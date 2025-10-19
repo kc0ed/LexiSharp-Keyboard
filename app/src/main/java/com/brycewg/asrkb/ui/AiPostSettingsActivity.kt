@@ -4,10 +4,10 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.brycewg.asrkb.R
@@ -17,7 +17,7 @@ import com.google.android.material.appbar.MaterialToolbar
 
 class AiPostSettingsActivity : AppCompatActivity() {
   private var updating = false
-  // 避免因刷新 Spinner 导致的重复绑定
+  // 兼容旧逻辑保留变量（已不再使用 Spinner 重绑）
   private var suppressRebind = false
   private var suppressPromptRebind = false
 
@@ -32,6 +32,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
     val prefs = Prefs(this)
 
     val spLlmProfiles = findViewById<Spinner>(R.id.spLlmProfiles)
+    val tvLlmProfiles = findViewById<TextView>(R.id.tvLlmProfilesValue)
     val etLlmProfileName = findViewById<EditText>(R.id.etLlmProfileName)
     val etLlmEndpoint = findViewById<EditText>(R.id.etLlmEndpoint)
     val etLlmApiKey = findViewById<EditText>(R.id.etLlmApiKey)
@@ -39,18 +40,15 @@ class AiPostSettingsActivity : AppCompatActivity() {
     val etLlmTemperature = findViewById<EditText>(R.id.etLlmTemperature)
 
     val spPromptPresets = findViewById<Spinner>(R.id.spPromptPresets)
+    val tvPromptPresets = findViewById<TextView>(R.id.tvPromptPresetsValue)
     val etLlmPromptTitle = findViewById<EditText>(R.id.etLlmPromptTitle)
     val etLlmPrompt = findViewById<EditText>(R.id.etLlmPrompt)
 
-    fun refreshLlmProfilesSpinner() {
+    fun refreshLlmProfilesUi() {
       val profiles = prefs.getLlmProviders()
-      val titles = profiles.map { it.name }
-      // 刷新下拉框时会触发 onItemSelected，这里抑制一次重绑，避免光标抖动
-      suppressRebind = true
-      spLlmProfiles.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
       val idx = profiles.indexOfFirst { it.id == prefs.activeLlmId }.let { if (it < 0) 0 else it }
-      if (idx in titles.indices) spLlmProfiles.setSelection(idx)
-      suppressRebind = false
+      val title = profiles.getOrNull(idx)?.name ?: getString(R.string.untitled_profile)
+      tvLlmProfiles.text = title
     }
 
     fun bindLlmEditorsFromActive() {
@@ -73,20 +71,26 @@ class AiPostSettingsActivity : AppCompatActivity() {
       updating = false
     }
 
-    refreshLlmProfilesSpinner()
+    refreshLlmProfilesUi()
     bindLlmEditorsFromActive()
 
-    spLlmProfiles.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-      override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-        if (suppressRebind) return
-        val profiles = prefs.getLlmProviders()
-        val p = profiles.getOrNull(position)
-        if (p != null) {
-          prefs.activeLlmId = p.id
-          bindLlmEditorsFromActive()
+    tvLlmProfiles.setOnClickListener {
+      val profiles = prefs.getLlmProviders()
+      val titles = profiles.map { it.name }
+      val idx = profiles.indexOfFirst { it.id == prefs.activeLlmId }.let { if (it < 0) 0 else it }
+      com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        .setTitle(R.string.label_llm_choose_profile)
+        .setSingleChoiceItems(titles.toTypedArray(), idx) { dlg, which ->
+          val p = profiles.getOrNull(which)
+          if (p != null) {
+            prefs.activeLlmId = p.id
+            tvLlmProfiles.text = p.name
+            bindLlmEditorsFromActive()
+          }
+          dlg.dismiss()
         }
-      }
-      override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        .setNegativeButton(R.string.btn_cancel, null)
+        .show()
     }
 
     fun EditText.bind(onChange: (String) -> Unit) {
@@ -121,7 +125,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
         prefs.activeLlmId = created.id
       }
       prefs.setLlmProviders(list)
-      if (refreshSpinner) refreshLlmProfilesSpinner()
+      if (refreshSpinner) refreshLlmProfilesUi()
     }
 
     etLlmProfileName.bind { v -> updateActiveProfile({ it.copy(name = v.ifBlank { getString(R.string.untitled_profile) }) }, refreshSpinner = true) }
@@ -131,15 +135,11 @@ class AiPostSettingsActivity : AppCompatActivity() {
     etLlmTemperature.bind { v -> updateActiveProfile({ it.copy(temperature = (v.toFloatOrNull() ?: Prefs.DEFAULT_LLM_TEMPERATURE).coerceIn(0f, 2f)) }, refreshSpinner = false) }
 
     // Prompt presets
-    fun refreshPromptPresets() {
+    fun refreshPromptPresetsUi() {
       val presets = prefs.getPromptPresets()
-      val titles = presets.map { it.title }
-      suppressPromptRebind = true
-      spPromptPresets.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, titles)
       val idx = presets.indexOfFirst { it.id == prefs.activePromptId }.let { if (it < 0) 0 else it }
-      if (idx in titles.indices) spPromptPresets.setSelection(idx)
-      suppressPromptRebind = false
       val cur = presets.getOrNull(idx)
+      tvPromptPresets.text = cur?.title ?: getString(R.string.untitled_preset)
       updating = true
       val t = cur?.title ?: ""
       if (etLlmPromptTitle.text?.toString() != t) etLlmPromptTitle.setText(t)
@@ -148,18 +148,26 @@ class AiPostSettingsActivity : AppCompatActivity() {
       updating = false
     }
 
-    spPromptPresets.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-      override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-        if (suppressPromptRebind) return
-        val presets = prefs.getPromptPresets()
-        val p = presets.getOrNull(position) ?: return
-        prefs.activePromptId = p.id
-        updating = true
-        if (etLlmPromptTitle.text?.toString() != p.title) etLlmPromptTitle.setText(p.title)
-        if (etLlmPrompt.text?.toString() != p.content) etLlmPrompt.setText(p.content)
-        updating = false
-      }
-      override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+    tvPromptPresets.setOnClickListener {
+      val presets = prefs.getPromptPresets()
+      val titles = presets.map { it.title }
+      val idx = presets.indexOfFirst { it.id == prefs.activePromptId }.let { if (it < 0) 0 else it }
+      com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        .setTitle(R.string.label_llm_prompt_presets)
+        .setSingleChoiceItems(titles.toTypedArray(), idx) { dlg, which ->
+          val p = presets.getOrNull(which)
+          if (p != null) {
+            prefs.activePromptId = p.id
+            tvPromptPresets.text = p.title
+            updating = true
+            if (etLlmPromptTitle.text?.toString() != p.title) etLlmPromptTitle.setText(p.title)
+            if (etLlmPrompt.text?.toString() != p.content) etLlmPrompt.setText(p.content)
+            updating = false
+          }
+          dlg.dismiss()
+        }
+        .setNegativeButton(R.string.btn_cancel, null)
+        .show()
     }
 
     fun updateActivePrompt(mutator: (PromptPreset) -> PromptPreset, refreshSpinner: Boolean = false) {
@@ -167,7 +175,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
       val idx = list.indexOfFirst { it.id == prefs.activePromptId }
       if (idx >= 0) list[idx] = mutator(list[idx])
       prefs.setPromptPresets(list)
-      if (refreshSpinner) refreshPromptPresets()
+      if (refreshSpinner) refreshPromptPresetsUi()
     }
 
     etLlmPromptTitle.bind { v ->
@@ -194,7 +202,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
       )
       prefs.setLlmProviders(cur)
       prefs.activeLlmId = id
-      refreshLlmProfilesSpinner()
+      refreshLlmProfilesUi()
       bindLlmEditorsFromActive()
       Toast.makeText(this, getString(R.string.toast_llm_profile_added), Toast.LENGTH_SHORT).show()
     }
@@ -207,7 +215,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
         cur.removeAt(idx)
         prefs.setLlmProviders(cur)
         prefs.activeLlmId = cur.firstOrNull()?.id ?: ""
-        refreshLlmProfilesSpinner()
+      refreshLlmProfilesUi()
         bindLlmEditorsFromActive()
         Toast.makeText(this, getString(R.string.toast_llm_profile_deleted), Toast.LENGTH_SHORT).show()
       }
@@ -218,7 +226,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
       val list = prefs.getPromptPresets().toMutableList().apply { add(created) }
       prefs.setPromptPresets(list)
       prefs.activePromptId = created.id
-      refreshPromptPresets()
+      refreshPromptPresetsUi()
       Toast.makeText(this, getString(R.string.toast_preset_added), Toast.LENGTH_SHORT).show()
     }
 
@@ -230,12 +238,12 @@ class AiPostSettingsActivity : AppCompatActivity() {
         list.removeAt(idx)
         prefs.setPromptPresets(list)
         prefs.activePromptId = list.firstOrNull()?.id ?: ""
-        refreshPromptPresets()
+        refreshPromptPresetsUi()
         Toast.makeText(this, getString(R.string.toast_preset_deleted), Toast.LENGTH_SHORT).show()
       }
     }
 
     // 初始载入
-    refreshPromptPresets()
+    refreshPromptPresetsUi()
   }
 }

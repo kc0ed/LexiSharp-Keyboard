@@ -5,7 +5,6 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.view.HapticFeedbackConstants
-import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
@@ -38,6 +37,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val prefs = Prefs(this)
 
     val spAsrVendor = findViewById<Spinner>(R.id.spAsrVendor)
+    val tvAsrVendor = findViewById<TextView>(R.id.tvAsrVendorValue)
     // Silence auto-stop controls
     val switchAutoStopSilence = findViewById<MaterialSwitch>(R.id.switchAutoStopSilence)
     val tvSilenceWindowLabel = findViewById<View>(R.id.tvSilenceWindowLabel)
@@ -76,13 +76,15 @@ class AsrSettingsActivity : AppCompatActivity() {
     val etElevenModel = findViewById<EditText>(R.id.etElevenModel)
       findViewById<View>(R.id.tvElevenLanguageLabel)
     val spElevenLanguage = findViewById<Spinner>(R.id.spElevenLanguage)
+    val tvElevenLanguage = findViewById<TextView>(R.id.tvElevenLanguageValue)
     val etDashApiKey = findViewById<EditText>(R.id.etDashApiKey)
     val etDashModel = findViewById<EditText>(R.id.etDashModel)
     val etDashPrompt = findViewById<EditText>(R.id.etDashPrompt)
     val spDashLanguage = findViewById<Spinner>(R.id.spDashLanguage)
-      findViewById<View>(R.id.tvDashLanguageLabel)
-      findViewById<View>(R.id.tvOpenAiLanguageLabel)
+    val tvDashLanguageLabel = findViewById<View>(R.id.tvDashLanguageLabel)
+    val tvOpenAiLanguageLabel = findViewById<View>(R.id.tvOpenAiLanguageLabel)
     val spOpenAiLanguage = findViewById<Spinner>(R.id.spOpenAiLanguage)
+    val tvOpenAiLanguage = findViewById<TextView>(R.id.tvOpenAiLanguageValue)
     val etOpenAiAsrEndpoint = findViewById<EditText>(R.id.etOpenAiAsrEndpoint)
     val etOpenAiApiKey = findViewById<EditText>(R.id.etOpenAiApiKey)
     val etOpenAiModel = findViewById<EditText>(R.id.etOpenAiModel)
@@ -97,17 +99,21 @@ class AsrSettingsActivity : AppCompatActivity() {
     val switchVolcFirstCharAccel = findViewById<MaterialSwitch>(R.id.switchVolcFirstCharAccel)
     val spVolcLanguage = findViewById<Spinner>(R.id.spVolcLanguage)
     val tvVolcLanguageLabel = findViewById<View>(R.id.tvVolcLanguageLabel)
+    val tvVolcLanguage = findViewById<TextView>(R.id.tvVolcLanguageValue)
     val etSonioxApiKey = findViewById<EditText>(R.id.etSonioxApiKey)
     val switchSonioxStreaming = findViewById<MaterialSwitch>(R.id.switchSonioxStreaming)
       findViewById<View>(R.id.tvSonioxLanguageLabel)
     val tvSonioxLanguageValue = findViewById<TextView>(R.id.tvSonioxLanguageValue)
     val sliderSvThreads = findViewById<Slider>(R.id.sliderSvThreads)
     val spSvModelVariant = findViewById<Spinner>(R.id.spSvModelVariant)
+    val tvSvModelVariant = findViewById<TextView>(R.id.tvSvModelVariantValue)
     val switchSvUseNnapi = findViewById<MaterialSwitch>(R.id.switchSvUseNnapi)
     val spSvLanguage = findViewById<Spinner>(R.id.spSvLanguage)
+    val tvSvLanguage = findViewById<TextView>(R.id.tvSvLanguageValue)
     val switchSvUseItn = findViewById<MaterialSwitch>(R.id.switchSvUseItn)
     val switchSvPreload = findViewById<MaterialSwitch>(R.id.switchSvPreload)
     val spSvKeepAlive = findViewById<Spinner>(R.id.spSvKeepAlive)
+    val tvSvKeepAlive = findViewById<TextView>(R.id.tvSvKeepAliveValue)
     val btnSvDownload = findViewById<MaterialButton>(R.id.btnSvDownloadModel)
     val btnSvClear = findViewById<MaterialButton>(R.id.btnSvClearModel)
     val tvSvDownloadStatus = findViewById<TextView>(R.id.tvSvDownloadStatus)
@@ -149,34 +155,37 @@ class AsrSettingsActivity : AppCompatActivity() {
       getString(R.string.vendor_soniox),
       getString(R.string.vendor_sensevoice)
     )
-    spAsrVendor.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, vendorItems)
-    spAsrVendor.setSelection(vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0))
-    applyVendorVisibility(prefs.asrVendor)
-
-      spAsrVendor.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-          override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-              val vendor = vendorOrder.getOrNull(position) ?: AsrVendor.Volc
-              val old = try { prefs.asrVendor } catch (_: Throwable) { AsrVendor.Volc }
-              if (vendor != old) {
-                // 更新选择
-                prefs.asrVendor = vendor
-                // 离开 SenseVoice -> 主动卸载本地模型
-                if (old == AsrVendor.SenseVoice && vendor != AsrVendor.SenseVoice) {
-                  try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
-                }
-                // 切回 SenseVoice -> 如开启预加载则立即预热
-                if (vendor == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
-                  // 预加载本地模型可能较耗时，放到后台线程避免阻塞主线程
-                  lifecycleScope.launch(Dispatchers.Default) {
-                    try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@AsrSettingsActivity, prefs) } catch (_: Throwable) { }
-                  }
-                }
+    fun updateVendorSummary() {
+      val idx = vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0)
+      tvAsrVendor.text = vendorItems[idx]
+      applyVendorVisibility(prefs.asrVendor)
+    }
+    updateVendorSummary()
+    tvAsrVendor.setOnClickListener { v ->
+      hapticTapIfEnabled(v)
+      val curIdx = vendorOrder.indexOf(prefs.asrVendor).coerceAtLeast(0)
+      com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        .setTitle(R.string.label_asr_vendor)
+        .setSingleChoiceItems(vendorItems.toTypedArray(), curIdx) { dlg, which ->
+          val vendor = vendorOrder.getOrNull(which) ?: AsrVendor.Volc
+          val old = try { prefs.asrVendor } catch (_: Throwable) { AsrVendor.Volc }
+          if (vendor != old) {
+            prefs.asrVendor = vendor
+            if (old == AsrVendor.SenseVoice && vendor != AsrVendor.SenseVoice) {
+              try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+            }
+            if (vendor == AsrVendor.SenseVoice && prefs.svPreloadEnabled) {
+              lifecycleScope.launch(Dispatchers.Default) {
+                try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@AsrSettingsActivity, prefs) } catch (_: Throwable) { }
               }
-              applyVendorVisibility(vendor)
+            }
           }
-
-          override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-      }
+          updateVendorSummary()
+          dlg.dismiss()
+        }
+        .setNegativeButton(R.string.btn_cancel, null)
+        .show()
+    }
 
     fun EditText.bindString(onChange: (String) -> Unit) {
       setText(this.text) // keep as is
@@ -299,7 +308,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     }
     etElevenApiKey.bindString { prefs.elevenApiKey = it }
     etElevenModel.bindString { prefs.elevenModelId = it }
-    // ElevenLabs 语言选择（单选，空=自动）
+    // ElevenLabs 语言选择（点击弹出单选，空=自动）
     run {
       val elLabels = listOf(
         getString(R.string.eleven_lang_auto),
@@ -327,14 +336,24 @@ class AsrSettingsActivity : AppCompatActivity() {
         "ru",
         "it"
       )
-      spElevenLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, elLabels)
-      spElevenLanguage.setSelection(elCodes.indexOf(prefs.elevenLanguageCode).coerceAtLeast(0))
-      spElevenLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-          val code = elCodes.getOrNull(position) ?: ""
-          if (code != prefs.elevenLanguageCode) prefs.elevenLanguageCode = code
-        }
-        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+      fun updateElSummary() {
+        val idx = elCodes.indexOf(prefs.elevenLanguageCode).coerceAtLeast(0)
+        tvElevenLanguage.text = elLabels[idx]
+      }
+      updateElSummary()
+      tvElevenLanguage.setOnClickListener { v ->
+        hapticTapIfEnabled(v)
+        val cur = elCodes.indexOf(prefs.elevenLanguageCode).coerceAtLeast(0)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+          .setTitle(R.string.label_eleven_language)
+          .setSingleChoiceItems(elLabels.toTypedArray(), cur) { dlg, which ->
+            val code = elCodes.getOrNull(which) ?: ""
+            if (code != prefs.elevenLanguageCode) prefs.elevenLanguageCode = code
+            updateElSummary()
+            dlg.dismiss()
+          }
+          .setNegativeButton(R.string.btn_cancel, null)
+          .show()
       }
     }
     etDashApiKey.bindString { prefs.dashApiKey = it }
@@ -361,25 +380,30 @@ class AsrSettingsActivity : AppCompatActivity() {
         getString(R.string.sv_model_small_full)
       )
       val variantCodes = listOf("small-int8", "small-full")
-      spSvModelVariant.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, variantLabels)
-      val idx = variantCodes.indexOf(prefs.svModelVariant).coerceAtLeast(0)
-      spSvModelVariant.setSelection(idx)
-      spSvModelVariant.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-          val code = variantCodes.getOrNull(position) ?: "small-int8"
-          if (code != prefs.svModelVariant) {
-            prefs.svModelVariant = code
-            // 参数变更即预卸载
-            try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
-            // 变更后刷新按钮文案与状态
+      fun updateVariantSummary() {
+        val idx = variantCodes.indexOf(prefs.svModelVariant).coerceAtLeast(0)
+        tvSvModelVariant.text = variantLabels[idx]
+      }
+      updateVariantSummary()
+      tvSvModelVariant.setOnClickListener { v ->
+        hapticTapIfEnabled(v)
+        val cur = variantCodes.indexOf(prefs.svModelVariant).coerceAtLeast(0)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+          .setTitle(R.string.label_sv_model_variant)
+          .setSingleChoiceItems(variantLabels.toTypedArray(), cur) { dlg, which ->
+            val code = variantCodes.getOrNull(which) ?: "small-int8"
+            if (code != prefs.svModelVariant) {
+              prefs.svModelVariant = code
+              // 参数变更即预卸载
+              try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+            }
+            updateVariantSummary()
             updateSvDownloadButtonText()
             updateSvDownloadUiVisibility()
-          } else {
-            updateSvDownloadButtonText()
-            updateSvDownloadUiVisibility()
+            dlg.dismiss()
           }
-        }
-        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+          .setNegativeButton(R.string.btn_cancel, null)
+          .show()
       }
     }
     run {
@@ -410,7 +434,7 @@ class AsrSettingsActivity : AppCompatActivity() {
       }
     }
 
-    // SenseVoice 语言与 ITN
+    // SenseVoice 语言与 ITN（点击弹出单选）
     run {
       val labels = listOf(
         getString(R.string.sv_lang_auto),
@@ -421,18 +445,28 @@ class AsrSettingsActivity : AppCompatActivity() {
         getString(R.string.sv_lang_yue)
       )
       val codes = listOf("auto", "zh", "en", "ja", "ko", "yue")
-      spSvLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
-      spSvLanguage.setSelection(codes.indexOf(prefs.svLanguage).coerceAtLeast(0))
-      spSvLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-          val code = codes.getOrNull(position) ?: "auto"
-          if (code != prefs.svLanguage) {
-            prefs.svLanguage = code
-            // 参数变更即预卸载
-            try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+      fun updateSvLangSummary() {
+        val idx = codes.indexOf(prefs.svLanguage).coerceAtLeast(0)
+        tvSvLanguage.text = labels[idx]
+      }
+      updateSvLangSummary()
+      tvSvLanguage.setOnClickListener { v ->
+        hapticTapIfEnabled(v)
+        val cur = codes.indexOf(prefs.svLanguage).coerceAtLeast(0)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+          .setTitle(R.string.label_sv_language)
+          .setSingleChoiceItems(labels.toTypedArray(), cur) { dlg, which ->
+            val code = codes.getOrNull(which) ?: "auto"
+            if (code != prefs.svLanguage) {
+              prefs.svLanguage = code
+              // 参数变更即预卸载
+              try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
+            }
+            updateSvLangSummary()
+            dlg.dismiss()
           }
-        }
-        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+          .setNegativeButton(R.string.btn_cancel, null)
+          .show()
       }
     }
     switchSvUseItn.isChecked = prefs.svUseItn
@@ -458,7 +492,7 @@ class AsrSettingsActivity : AppCompatActivity() {
       }
     }
 
-    // 模型保留时长
+    // 模型保留时长（点击弹出单选）
     run {
       val labels = listOf(
         getString(R.string.sv_keep_alive_immediate),
@@ -468,15 +502,24 @@ class AsrSettingsActivity : AppCompatActivity() {
         getString(R.string.sv_keep_alive_always)
       )
       val values = listOf(0, 5, 15, 30, -1)
-      spSvKeepAlive.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
-      val idx = values.indexOf(prefs.svKeepAliveMinutes).let { if (it >= 0) it else values.size - 1 }
-      spSvKeepAlive.setSelection(idx)
-      spSvKeepAlive.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-          val v = values.getOrNull(position) ?: -1
-          if (v != prefs.svKeepAliveMinutes) prefs.svKeepAliveMinutes = v
-        }
-        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+      fun updateKeepAliveSummary() {
+        val idx = values.indexOf(prefs.svKeepAliveMinutes).let { if (it >= 0) it else values.size - 1 }
+        tvSvKeepAlive.text = labels[idx]
+      }
+      updateKeepAliveSummary()
+      tvSvKeepAlive.setOnClickListener { v ->
+        hapticTapIfEnabled(v)
+        val cur = values.indexOf(prefs.svKeepAliveMinutes).let { if (it >= 0) it else values.size - 1 }
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+          .setTitle(R.string.label_sv_keep_alive)
+          .setSingleChoiceItems(labels.toTypedArray(), cur) { dlg, which ->
+            val vv = values.getOrNull(which) ?: -1
+            if (vv != prefs.svKeepAliveMinutes) prefs.svKeepAliveMinutes = vv
+            updateKeepAliveSummary()
+            dlg.dismiss()
+          }
+          .setNegativeButton(R.string.btn_cancel, null)
+          .show()
       }
     }
 
@@ -672,16 +715,24 @@ class AsrSettingsActivity : AppCompatActivity() {
       "th-TH",
       "ar-SA"
     )
-    spVolcLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, langLabels)
-    // 根据已保存的代码选择
-    val savedLang = prefs.volcLanguage
-    spVolcLanguage.setSelection(langCodes.indexOf(savedLang).coerceAtLeast(0))
-    spVolcLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-      override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-        val code = langCodes.getOrNull(position) ?: ""
-        if (code != prefs.volcLanguage) prefs.volcLanguage = code
-      }
-      override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+    fun updateVolcLangSummary() {
+      val idx = langCodes.indexOf(prefs.volcLanguage).coerceAtLeast(0)
+      tvVolcLanguage.text = langLabels[idx]
+    }
+    updateVolcLangSummary()
+    tvVolcLanguage.setOnClickListener { v ->
+      hapticTapIfEnabled(v)
+      val cur = langCodes.indexOf(prefs.volcLanguage).coerceAtLeast(0)
+      com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        .setTitle(R.string.label_volc_language)
+        .setSingleChoiceItems(langLabels.toTypedArray(), cur) { dlg, which ->
+          val code = langCodes.getOrNull(which) ?: ""
+          if (code != prefs.volcLanguage) prefs.volcLanguage = code
+          updateVolcLangSummary()
+          dlg.dismiss()
+        }
+        .setNegativeButton(R.string.btn_cancel, null)
+        .show()
     }
 
     fun updateVolcStreamOptionsVisibility(enabled: Boolean) {
@@ -690,7 +741,7 @@ class AsrSettingsActivity : AppCompatActivity() {
       switchVolcVad.visibility = vis
       switchVolcNonstream.visibility = vis
       switchVolcFirstCharAccel.visibility = vis
-      spVolcLanguage.visibility = vis
+      tvVolcLanguage.visibility = vis
       tvVolcLanguageLabel.visibility = vis
     }
 
@@ -742,47 +793,7 @@ class AsrSettingsActivity : AppCompatActivity() {
       builder.show()
     }
 
-    // DashScope 语言：单选（language），空值为自动
-    // OpenAI 语言：单选（language），空值为自动
-    run {
-      val oaLangLabels = listOf(
-        getString(R.string.dash_lang_auto),
-        getString(R.string.dash_lang_zh),
-        getString(R.string.dash_lang_en),
-        getString(R.string.dash_lang_ja),
-        getString(R.string.dash_lang_de),
-        getString(R.string.dash_lang_ko),
-        getString(R.string.dash_lang_ru),
-        getString(R.string.dash_lang_fr),
-        getString(R.string.dash_lang_pt),
-        getString(R.string.dash_lang_ar),
-        getString(R.string.dash_lang_it),
-        getString(R.string.dash_lang_es)
-      )
-      val oaLangCodes = listOf(
-        "",
-        "zh",
-        "en",
-        "ja",
-        "de",
-        "ko",
-        "ru",
-        "fr",
-        "pt",
-        "ar",
-        "it",
-        "es"
-      )
-      spOpenAiLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, oaLangLabels)
-      spOpenAiLanguage.setSelection(oaLangCodes.indexOf(prefs.oaAsrLanguage).coerceAtLeast(0))
-      spOpenAiLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-        override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-          val code = oaLangCodes.getOrNull(position) ?: ""
-          if (code != prefs.oaAsrLanguage) prefs.oaAsrLanguage = code
-        }
-        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-      }
-    }
+    // DashScope / OpenAI 语言：单选（点击弹出），空值为自动
     val dashLangLabels = listOf(
       getString(R.string.dash_lang_auto),
       getString(R.string.dash_lang_zh),
@@ -811,15 +822,44 @@ class AsrSettingsActivity : AppCompatActivity() {
       "it",
       "es"
     )
-    spDashLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, dashLangLabels)
-    val savedDashLang = prefs.dashLanguage
-    spDashLanguage.setSelection(dashLangCodes.indexOf(savedDashLang).coerceAtLeast(0))
-    spDashLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-      override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-        val code = dashLangCodes.getOrNull(position) ?: ""
-        if (code != prefs.dashLanguage) prefs.dashLanguage = code
-      }
-      override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+    fun updateDashLangSummary() {
+      val idx = dashLangCodes.indexOf(prefs.dashLanguage).coerceAtLeast(0)
+      findViewById<TextView>(R.id.tvDashLanguageValue)?.text = dashLangLabels[idx]
+    }
+    updateDashLangSummary()
+    findViewById<TextView>(R.id.tvDashLanguageValue)?.setOnClickListener { v ->
+      hapticTapIfEnabled(v)
+      val cur = dashLangCodes.indexOf(prefs.dashLanguage).coerceAtLeast(0)
+      com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        .setTitle(R.string.label_dash_language)
+        .setSingleChoiceItems(dashLangLabels.toTypedArray(), cur) { dlg, which ->
+          val code = dashLangCodes.getOrNull(which) ?: ""
+          if (code != prefs.dashLanguage) prefs.dashLanguage = code
+          updateDashLangSummary()
+          dlg.dismiss()
+        }
+        .setNegativeButton(R.string.btn_cancel, null)
+        .show()
+    }
+
+    fun updateOaLangSummary() {
+      val idx = dashLangCodes.indexOf(prefs.oaAsrLanguage).coerceAtLeast(0)
+      tvOpenAiLanguage.text = dashLangLabels[idx]
+    }
+    updateOaLangSummary()
+    tvOpenAiLanguage.setOnClickListener { v ->
+      hapticTapIfEnabled(v)
+      val cur = dashLangCodes.indexOf(prefs.oaAsrLanguage).coerceAtLeast(0)
+      com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        .setTitle(R.string.label_openai_language)
+        .setSingleChoiceItems(dashLangLabels.toTypedArray(), cur) { dlg, which ->
+          val code = dashLangCodes.getOrNull(which) ?: ""
+          if (code != prefs.oaAsrLanguage) prefs.oaAsrLanguage = code
+          updateOaLangSummary()
+          dlg.dismiss()
+        }
+        .setNegativeButton(R.string.btn_cancel, null)
+        .show()
     }
   }
 

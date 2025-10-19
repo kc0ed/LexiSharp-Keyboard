@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.EditText
+import android.widget.TextView
 import com.google.android.material.button.MaterialButton
 import android.widget.Toast
 import android.view.View
@@ -55,6 +56,7 @@ class OtherSettingsActivity : AppCompatActivity() {
 
     // ---- 语音预置信息（来自 PR 功能，迁移到“其他设置”） ----
     val spSpeechPresets = findViewById<android.widget.Spinner>(R.id.spSpeechPresets)
+    val tvSpeechPresets = findViewById<TextView>(R.id.tvSpeechPresetsValue)
     val tilSpeechPresetName = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilSpeechPresetName)
     val tilSpeechPresetContent = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilSpeechPresetContent)
     val etSpeechPresetName = findViewById<TextInputEditText>(R.id.etSpeechPresetName)
@@ -76,18 +78,14 @@ class OtherSettingsActivity : AppCompatActivity() {
       } else {
         listOf(getString(R.string.speech_preset_empty_placeholder))
       }
-      val adapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, displayNames)
-      adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-      suppressSpeechPresetSpinner = true
-      spSpeechPresets.adapter = adapter
+      // 更新展示文本
       if (hasAny) {
         val activeId = prefs.activeSpeechPresetId
         val idx = presets.indexOfFirst { it.id == activeId }.let { if (it < 0) 0 else it }
-        spSpeechPresets.setSelection(idx)
+        tvSpeechPresets.text = displayNames.getOrNull(idx) ?: getString(R.string.speech_preset_untitled)
       } else {
-        spSpeechPresets.setSelection(0)
+        tvSpeechPresets.text = getString(R.string.speech_preset_empty_placeholder)
       }
-      suppressSpeechPresetSpinner = false
 
       val current = if (hasAny) {
         val activeId = prefs.activeSpeechPresetId
@@ -149,27 +147,31 @@ class OtherSettingsActivity : AppCompatActivity() {
       })
     }
 
-    spSpeechPresets?.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-      override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-        if (suppressSpeechPresetSpinner) return
-        val presets = prefs.getSpeechPresets()
-        if (presets.isEmpty()) return
-        val preset = presets.getOrNull(position) ?: return
-        if (prefs.activeSpeechPresetId != preset.id) {
-          prefs.activeSpeechPresetId = preset.id
+    tvSpeechPresets.setOnClickListener {
+      val presets = prefs.getSpeechPresets()
+      val displayNames = if (presets.isNotEmpty()) presets.map { it.name.ifBlank { getString(R.string.speech_preset_untitled) } } else listOf(getString(R.string.speech_preset_empty_placeholder))
+      val idx = if (presets.isNotEmpty()) presets.indexOfFirst { it.id == prefs.activeSpeechPresetId }.let { if (it < 0) 0 else it } else 0
+      com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        .setTitle(R.string.label_speech_preset_section)
+        .setSingleChoiceItems(displayNames.toTypedArray(), idx) { dlg, which ->
+          val preset = presets.getOrNull(which)
+          if (preset != null) {
+            prefs.activeSpeechPresetId = preset.id
+            tvSpeechPresets.text = displayNames[which]
+            updatingSpeechPresetFields = true
+            if (etSpeechPresetName.text?.toString() != preset.name) {
+              etSpeechPresetName.setText(preset.name)
+            }
+            if (etSpeechPresetContent.text?.toString() != preset.content) {
+              etSpeechPresetContent.setText(preset.content)
+            }
+            updatingSpeechPresetFields = false
+            tilSpeechPresetName.error = null
+          }
+          dlg.dismiss()
         }
-        updatingSpeechPresetFields = true
-        if (etSpeechPresetName.text?.toString() != preset.name) {
-          etSpeechPresetName.setText(preset.name)
-        }
-        if (etSpeechPresetContent.text?.toString() != preset.content) {
-          etSpeechPresetContent.setText(preset.content)
-        }
-        updatingSpeechPresetFields = false
-        tilSpeechPresetName.error = null
-      }
-
-      override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        .setNegativeButton(R.string.btn_cancel, null)
+        .show()
     }
 
     etSpeechPresetName?.bindSpeechPreset { value ->

@@ -3,8 +3,7 @@ package com.brycewg.asrkb.ui
 import android.os.Bundle
 import android.view.View
 import android.view.HapticFeedbackConstants
-import android.widget.ArrayAdapter
-import android.widget.Spinner
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
@@ -29,8 +28,8 @@ class InputSettingsActivity : AppCompatActivity() {
         val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
         val switchFcitx5ReturnOnSwitcher = findViewById<MaterialSwitch>(R.id.switchFcitx5ReturnOnSwitcher)
         val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
-        val spKeyboardHeight = findViewById<Spinner>(R.id.spKeyboardHeight)
-        val spLanguage = findViewById<Spinner>(R.id.spLanguage)
+        val tvKeyboardHeight = findViewById<TextView>(R.id.tvKeyboardHeightValue)
+        val tvLanguage = findViewById<TextView>(R.id.tvLanguageValue)
 
         fun applyPrefsToUi() {
             switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
@@ -43,45 +42,76 @@ class InputSettingsActivity : AppCompatActivity() {
         }
         applyPrefsToUi()
 
-        // 键盘高度：三档
-        val kbHeightOptions = arrayOf(
+        // 键盘高度：三档（点击弹出单选对话框）
+        val kbHeightOptions = listOf(
             getString(R.string.keyboard_height_small),
             getString(R.string.keyboard_height_medium),
             getString(R.string.keyboard_height_large)
         )
-        spKeyboardHeight.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, kbHeightOptions)
-        spKeyboardHeight.setSelection((prefs.keyboardHeightTier - 1).coerceIn(0, 2))
+        fun updateKbHeightSummary() {
+            val idx = (prefs.keyboardHeightTier - 1).coerceIn(0, 2)
+            tvKeyboardHeight.text = kbHeightOptions[idx]
+        }
+        updateKbHeightSummary()
+        tvKeyboardHeight.setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            val checked = (prefs.keyboardHeightTier - 1).coerceIn(0, 2)
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.label_keyboard_height)
+                .setSingleChoiceItems(kbHeightOptions.toTypedArray(), checked) { dlg, which ->
+                    val tier = (which + 1).coerceIn(1, 3)
+                    if (prefs.keyboardHeightTier != tier) {
+                        prefs.keyboardHeightTier = tier
+                        updateKbHeightSummary()
+                        try { sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
+                    }
+                    dlg.dismiss()
+                }
+                .setNegativeButton(R.string.btn_cancel, null)
+                .show()
+        }
 
-        // 应用语言选择
+        // 应用语言选择（点击弹出单选对话框）
         val languageItems = listOf(
             getString(R.string.lang_follow_system),
             getString(R.string.lang_zh_cn),
             getString(R.string.lang_en)
         )
-        spLanguage.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, languageItems)
-        val savedTag = prefs.appLanguageTag
-        spLanguage.setSelection(
-            when (savedTag) {
+        fun updateLanguageSummary() {
+            val tag = prefs.appLanguageTag
+            val idx = when (tag) {
                 "zh", "zh-CN", "zh-Hans" -> 1
                 "en" -> 2
                 else -> 0
             }
-        )
-
-        spLanguage.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val newTag = when (position) {
-                    1 -> "zh-CN"
-                    2 -> "en"
-                    else -> "" // 跟随系统
-                }
-                if (newTag != prefs.appLanguageTag) {
-                    prefs.appLanguageTag = newTag
-                    val locales = if (newTag.isBlank()) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(newTag)
-                    AppCompatDelegate.setApplicationLocales(locales)
-                }
+            tvLanguage.text = languageItems[idx]
+        }
+        updateLanguageSummary()
+        tvLanguage.setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            val curIdx = when (prefs.appLanguageTag) {
+                "zh", "zh-CN", "zh-Hans" -> 1
+                "en" -> 2
+                else -> 0
             }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.label_language)
+                .setSingleChoiceItems(languageItems.toTypedArray(), curIdx) { dlg, which ->
+                    val newTag = when (which) {
+                        1 -> "zh-CN"
+                        2 -> "en"
+                        else -> ""
+                    }
+                    if (newTag != prefs.appLanguageTag) {
+                        prefs.appLanguageTag = newTag
+                        updateLanguageSummary()
+                        val locales = if (newTag.isBlank()) LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(newTag)
+                        AppCompatDelegate.setApplicationLocales(locales)
+                    }
+                    dlg.dismiss()
+                }
+                .setNegativeButton(R.string.btn_cancel, null)
+                .show()
         }
 
         // 监听与保存
@@ -116,17 +146,7 @@ class InputSettingsActivity : AppCompatActivity() {
             applyExcludeFromRecents(isChecked)
         }
 
-        // 键盘高度
-        spKeyboardHeight.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val tier = (position + 1).coerceIn(1, 3)
-                if (prefs.keyboardHeightTier != tier) {
-                    prefs.keyboardHeightTier = tier
-                    try { sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
-                }
-            }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        }
+        // 移除 Spinner 即时触发逻辑，改为点击对话框选择
 
         // 初始应用一次“从最近任务中排除”设置
         applyExcludeFromRecents(prefs.hideRecentTaskCard)

@@ -29,10 +29,22 @@
         android:text="@string/label_llm_choose_profile"
         android:textColor="?attr/colorOnSurface" />
 
+      <TextView
+        android:id="@+id/tvLlmProfilesValue"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:text="@string/untitled_profile" />
       <Spinner
         android:id="@+id/spLlmProfiles"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
 
       <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
@@ -139,10 +151,22 @@
         android:layout_marginTop="8dp"
         android:text="@string/label_llm_prompt_presets" />
 
+      <TextView
+        android:id="@+id/tvPromptPresetsValue"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:text="@string/untitled_preset" />
       <Spinner
         android:id="@+id/spPromptPresets"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
 
       <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"

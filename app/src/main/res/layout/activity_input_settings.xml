@@ -87,10 +87,22 @@
           android:textStyle="bold"
           android:text="@string/label_keyboard_height" />
 
+        <TextView
+          android:id="@+id/tvKeyboardHeightValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/keyboard_height_medium" />
         <Spinner
           android:id="@+id/spKeyboardHeight"
           android:layout_width="match_parent"
-          android:layout_height="wrap_content" />
+          android:layout_height="wrap_content"
+          android:visibility="gone" />
 
         <!-- App language selection -->
         <TextView
@@ -101,10 +113,22 @@
           android:textStyle="bold"
           android:text="@string/label_language" />
 
+        <TextView
+          android:id="@+id/tvLanguageValue"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:paddingTop="8dp"
+          android:paddingBottom="8dp"
+          android:clickable="true"
+          android:focusable="true"
+          android:foreground="?attr/selectableItemBackground"
+          android:textColor="?attr/colorOnSurfaceVariant"
+          android:text="@string/lang_follow_system" />
         <Spinner
           android:id="@+id/spLanguage"
           android:layout_width="match_parent"
-          android:layout_height="wrap_content" />
+          android:layout_height="wrap_content"
+          android:visibility="gone" />
 
       </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
