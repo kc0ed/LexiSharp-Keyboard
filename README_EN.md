@@ -11,11 +11,9 @@ English | [简体中文](README.md)
 [![Language](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue?logo=telegram)](https://t.me/+UGFobXqi2bYzMDFl)
 
-[Features](#-features) • [Quick Start](#-quick-start) • [User Guide](#-user-guide) • [Configuration](#-configuration) • [Architecture](#-architecture)
+[Features](#-features) • [Quick Start](#-quick-start) • [User Guide](#-user-guide) • [Configuration](#-configuration)
 
 </div>
-
----
 
 ## ✨ Features
 
@@ -70,9 +68,7 @@ English | [简体中文](README.md)
 </tr>
 </table>
 
----
-
-## � UI Showcase
+## 📱 UI Showcase
 
 <table>
 <tr>
@@ -109,9 +105,7 @@ English | [简体中文](README.md)
 </tr>
 </table>
 
----
-
-## �🚀 Quick Start
+## 🚀 Quick Start
 
 ### 📋 System Requirements
 
@@ -145,8 +139,6 @@ English | [简体中文](README.md)
    - Long press the microphone button to start voice input
 
 > 💡 **Tip**: First-time users are recommended to configure Volcengine for 20 hours of free quota!
-
----
 
 ## 📖 User Guide
 
@@ -528,42 +520,32 @@ This project is licensed under the **Apache 2.0 License**, see the [LICENSE](LIC
 Apache 2.0 License - Free to use, modify, distribute, must retain copyright notice
 ```
 
----
+## 👥 Contributors
 
-<details>
-<summary><h2>🤝 Contributing</h2></summary>
+Thanks to all the developers who have contributed to this project!
 
-Welcome to submit Issues and Pull Requests to improve the project!
-
-### Please ensure before submitting code:
-
-- ✅ Code passes all tests
-- ✅ Follow project coding standards (Kotlin standards)
-- ✅ Add necessary comments and documentation
-- ✅ Update relevant README documentation
-- ✅ Use Conventional Commits format
-
-</details>
-
----
-
-## 🌟 Star History
-
-If this project helps you, please give it a Star ⭐️
-
----
-
-## 💬 Community
-
-Welcome to join our Telegram group to exchange experiences, report issues, or share suggestions with other users!
-
-<div align="center">
-
-[![Telegram Group](https://img.shields.io/badge/Telegram-Join%20Group-blue?style=for-the-badge&logo=telegram)](https://t.me/+UGFobXqi2bYzMDFl)
-
-</div>
-
----
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/BryceWG">
+<img src="https://github.com/BryceWG.png" width="60px;" alt="BryceWG"/>
+<br />
+<sub><b>BryceWG</b></sub>
+</a>
+<br />
+<sub>Project Creator</sub>
+</td>
+<td align="center">
+  <a href="https://github.com/flyhunterl">
+    <img src="https://github.com/flyhunterl.png" width="60px;" alt="flyhunterl" />
+    <br />
+    <sub><b>flyhunterl</b></sub>
+  </a>
+  <br />
+  <sub>Feature Suggestions/Implementation</sub>
+</td>
+</tr>
+</table>
 
 ## ☕ Support & Appreciation
 
@@ -574,6 +556,14 @@ If this project helps you, please give it a Star ⭐️ and feel free to buy me 
 <br/>
 <sub>Scan with WeChat to appreciate</sub>
 </div>
+
+## 💝 Appreciation List
+
+Thanks to the following users for their support and appreciation. Your encouragement is the driving force for the project's continuous development!
+
+天凉好个秋 - 16.66 RMB
+
+flyhunterl - 6.66 RMB
 
 ---
 

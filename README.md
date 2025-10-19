@@ -11,11 +11,9 @@
 [![Language](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue?logo=telegram)](https://t.me/+UGFobXqi2bYzMDFl)
 
-[功能特性](#-功能特性) • [快速开始](#-快速开始) • [使用指南](#-使用指南) • [配置说明](#-配置说明) • [技术架构](#-技术架构)
+[功能特性](#-功能特性) • [快速开始](#-快速开始) • [使用指南](#-使用指南) • [配置说明](#-配置说明)
 
 </div>
-
----
 
 ## ✨ 功能特性
 
@@ -109,8 +107,6 @@
 </tr>
 </table>
 
----
-
 ## 🚀 快速开始
 
 ### 📋 系统要求
@@ -144,8 +140,6 @@
    - 长按麦克风按钮开始语音输入
 
 > 💡 **提示**: 首次使用建议先配置火山引擎，可获得 20 小时免费额度！
-
----
 
 ## 📖 使用指南
 
@@ -501,9 +495,9 @@
 
 </details>
 
----
-
 ### 🎨 技术栈
+
+---
 
 ```
 Kotlin 1.9.24
@@ -514,8 +508,6 @@ OkHttp (网络请求)
 SharedPreferences (数据存储)
 ```
 
----
-
 ## 📄 许可证
 
 本项目采用 **Apache 2.0 许可证**，详见 [LICENSE](LICENSE) 文件。
@@ -524,19 +516,32 @@ SharedPreferences (数据存储)
 Apache 2.0 License - 自由使用、修改、分发，需保留版权声明
 ```
 
----
+## 👥 贡献者
 
-## 💬 社区交流
+感谢所有为本项目做出贡献的开发者！
 
-欢迎加入我们的 Telegram 群组,与其他用户交流使用心得、反馈问题或提出建议!
-
-<div align="center">
-
-[![Telegram Group](https://img.shields.io/badge/Telegram-加入群组-blue?style=for-the-badge&logo=telegram)](https://t.me/+UGFobXqi2bYzMDFl)
-
-</div>
-
----
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/BryceWG">
+<img src="https://github.com/BryceWG.png" width="60px;" alt="BryceWG"/>
+<br />
+<sub><b>BryceWG</b></sub>
+</a>
+<br />
+<sub>项目创建者</sub>
+</td>
+<td align="center">
+  <a href="https://github.com/flyhunterl">
+    <img src="https://github.com/flyhunterl.png" width="60px;" alt="flyhunterl" />
+    <br />
+    <sub><b>flyhunterl</b></sub>
+  </a>
+  <br />
+  <sub>功能建议/实现</sub>
+</td>
+</tr>
+</table>
 
 ## ☕ 赞赏支持
 
@@ -548,7 +553,13 @@ Apache 2.0 License - 自由使用、修改、分发，需保留版权声明
 <sub>微信扫码赞赏</sub>
 </div>
 
----
+## 💝 感谢名单
+
+感谢以下用户的赞赏支持，你们的鼓励是项目持续发展的动力！
+
+天凉好个秋 - 16.66 RMB
+
+flyhunterl - 6.66 RMB
 
 ## 🙏 致谢
 
