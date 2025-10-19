@@ -79,6 +79,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
     private var btnPunct3: TextView? = null
     private var btnPunct4: TextView? = null
     private var txtStatus: TextView? = null
+    private var groupMicStatus: View? = null
     // 剪贴板预览状态
     private var clipboardPreviewFullText: String? = null
     private var clipboardPreviewActive: Boolean = false
@@ -333,6 +334,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
         btnPunct3 = view.findViewById(R.id.btnPunct3)
         btnPunct4 = view.findViewById(R.id.btnPunct4)
         txtStatus = view.findViewById(R.id.txtStatus)
+        groupMicStatus = view.findViewById(R.id.groupMicStatus)
         // 当信息条文本被外部逻辑改写且不再等于剪贴板预览时，自动移除遮罩
         txtStatus?.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
             if (!clipboardPreviewActive) return@addOnLayoutChangeListener
@@ -353,6 +355,20 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
                     tv.isFocusable = false
                     tv.setOnClickListener(null)
                 } catch (_: Throwable) { }
+            }
+        }
+
+        // 固定麦克风垂直位置：根据容器高度变化，给麦克风添加反向位移
+        var micBaseGroupHeight = -1
+        groupMicStatus?.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            val h = v.height
+            if (h <= 0) return@addOnLayoutChangeListener
+            if (micBaseGroupHeight < 0) {
+                micBaseGroupHeight = h
+                btnMic?.translationY = 0f
+            } else {
+                val delta = h - micBaseGroupHeight
+                btnMic?.translationY = (delta / 2f)
             }
         }
 
@@ -715,7 +731,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
         try {
             val d = tv.resources.displayMetrics.density
             val ph = (12f * d + 0.5f).toInt()
-            val pv = (6f * d + 0.5f).toInt()
+            val pv = (4f * d + 0.5f).toInt()
             tv.setPaddingRelative(ph, pv, ph, pv)
         } catch (_: Throwable) { }
         // 启用点击粘贴
@@ -739,7 +755,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
         clipboardPreviewTimeout?.let { tv.removeCallbacks(it) }
         val r = Runnable { hideClipboardPreview() }
         clipboardPreviewTimeout = r
-        try { tv.postDelayed(r, 20_000) } catch (_: Throwable) { }
+        try { tv.postDelayed(r, 10_000) } catch (_: Throwable) { }
     }
 
     private fun hideClipboardPreview() {
