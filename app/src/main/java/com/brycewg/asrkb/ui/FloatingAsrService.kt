@@ -133,7 +133,12 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 addAction(FloatingImeSwitcherService.ACTION_HINT_IME_VISIBLE)
                 addAction(FloatingImeSwitcherService.ACTION_HINT_IME_HIDDEN)
             }
-            registerReceiver(hintReceiver, filter)
+            // Android 13+ 需要显式指定接收器导出标志
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(hintReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(hintReceiver, filter)
+            }
         } catch (_: Throwable) { }
     }
 
@@ -471,6 +476,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                         showToast(getString(R.string.floating_asr_completed))
                         if (wrote) {
                             try { prefs.addAsrChars(textOut.length) } catch (_: Throwable) { }
+                            // 同步把光标移到“前缀 + 文本”的末尾，避免续写回到段首
+                            val prefixLenForCursor = if (isTg && markerInserted) 0 else stripMarkersIfAny(ctx?.prefix ?: "").length
+                            val desiredCursor = (prefixLenForCursor + textOut.length).coerceAtLeast(0)
+                            AsrAccessibilityService.setSelectionSilent(desiredCursor)
                         }
                         hasCommittedResult = true
                     } else {
@@ -609,6 +618,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 showToast(getString(R.string.floating_asr_completed))
                 if (wrote) {
                     try { prefs.addAsrChars(finalText.length) } catch (_: Throwable) { }
+                    // 写入成功后，将光标移到“前缀 + 最终文本”的末尾，便于继续续写
+                    val prefixLenForCursor = if (isTg && markerInserted) 0 else stripMarkersIfAny(ctx?.prefix ?: "").length
+                    val desiredCursor = (prefixLenForCursor + finalText.length).coerceAtLeast(0)
+                    AsrAccessibilityService.setSelectionSilent(desiredCursor)
                 }
             } else {
                 Log.w(TAG, "Final text is empty")
@@ -662,6 +675,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         // 切到主线程，静默写入，避免 Toast/Looper 异常与刷屏
         serviceScope.launch {
             AsrAccessibilityService.insertTextSilent(toWrite)
+            // 预览阶段也让光标跟随识别文本，移动到“前缀 + 中间文本”的末尾
+            val prefixLenForCursor = stripMarkersIfAny(ctx.prefix).length
+            val desiredCursor = (prefixLenForCursor + text.length).coerceAtLeast(0)
+            AsrAccessibilityService.setSelectionSilent(desiredCursor)
         }
         lastPartialForPreview = text
     }

@@ -156,6 +156,16 @@ class AsrAccessibilityService : AccessibilityService() {
             val service = instance ?: return false
             return service.performSelectAllAndPasteSilent(text)
         }
+
+        /**
+         * 静默设置当前焦点输入框的选区（通常用于把光标移到指定位置）。
+         * - start/end 以字符索引计（闭区间左端、开区间右端），若仅需设置光标请传相同值。
+         * - 返回是否设置成功（目标节点存在且支持 ACTION_SET_SELECTION）。
+         */
+        fun setSelectionSilent(start: Int, end: Int = start): Boolean {
+            val service = instance ?: return false
+            return service.performSetSelectionSilent(start, end)
+        }
         
         private fun copyToClipboard(context: Context, text: String) {
             try {
@@ -363,6 +373,22 @@ class AsrAccessibilityService : AccessibilityService() {
                 try { clipboard.setPrimaryClip(ClipData.newPlainText("", "")) } catch (_: Throwable) { }
             }
 
+            ok
+        } catch (_: Throwable) { false }
+    }
+
+    // 静默设置选区：不提示、不改剪贴板
+    private fun performSetSelectionSilent(start: Int, end: Int): Boolean {
+        return try {
+            val rootNode = rootInActiveWindow ?: return false
+            val target = findFocusedEditableNode(rootNode) ?: return false
+            val args = Bundle().apply {
+                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, start)
+                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, end)
+            }
+            val ok = try { target.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args) } catch (_: Throwable) { false }
+            @Suppress("DEPRECATION")
+            target.recycle()
             ok
         } catch (_: Throwable) { false }
     }

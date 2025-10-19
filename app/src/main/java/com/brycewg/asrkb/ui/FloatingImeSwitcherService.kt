@@ -85,7 +85,12 @@ class FloatingImeSwitcherService : Service() {
                 addAction(ACTION_HINT_IME_VISIBLE)
                 addAction(ACTION_HINT_IME_HIDDEN)
             }
-            registerReceiver(hintReceiver, filter)
+            // Android 13+ 需要显式指定接收器导出标志
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(hintReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(hintReceiver, filter)
+            }
         } catch (_: Throwable) { }
         updateBallVisibility()
     }
