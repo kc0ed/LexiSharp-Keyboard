@@ -1,8 +1,8 @@
 {
-  "version": "3.1.2",
-  "version_code": 70,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.1.2",
-  "release_notes": "本次更新包含 2 个提交:\n- chore: 更新版本号至 3.1.2\n- Revert \"fix: 提升 ASR 引擎和剪贴板的健壮性\"中关于粘贴板同步的更新",
+  "version": "3.1.3",
+  "version_code": 71,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.1.3",
+  "release_notes": "本次更新包含 17 个提交:\n- feat(other): 优化语音预置界面并添加说明\n- fix(ime): 减少键盘弹出时的系统栏闪烁和高度抖动\n- feat(ime): 新增 Fcitx5 联动选项,允许通过输入法切换键返回上一个输入法\n- fix(resources): 补充 OtherSettings 语音预置所需字符串（中/英）\n- feat(store): 为语音预置信息添加存取 API（speechPresetsJson/activeSpeechPresetId 等）\n- feat(other): 将“语音预置”集成到 OtherSettingsActivity 并更新布局\n- chore: auto-update version.json to 3.0.1 [skip ci]\n- fix(CI): 解决 SettingsActivity.kt 中 applyPrefsToUi 的编译错误\n- chore: Update version.json locally before merging remote changes\n- chore: auto-update version.json to 2.9.6 [skip ci]\n- feat: 新增预置信息功能，支持通过预置名称输入指定内容\n- feat: 新增预置信息功能，支持通过预置名称输入指定内容",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-18T14:48:56Z"
+  "update_time": "2025-10-19T03:39:45Z"
 }
