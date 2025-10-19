@@ -208,6 +208,7 @@
     <string name="dialog_speech_preset_delete_title">删除预置信息</string>
     <string name="dialog_speech_preset_delete_message">确定删除“%1$s”吗？</string>
     <string name="error_speech_preset_name_required">名称不能为空</string>
+    <string name="speech_preset_intro">当语音识别结果与某个“名称”完全一致时，将自动替换为其“内容”。适合常用短语、签名、地址、工号等快速输入。匹配规则：先严格大小写匹配，未命中则忽略大小写匹配；仅当整段文本与名称相同才会触发。可能需要开启去除句尾标点</string>
 
     <string name="label_language">应用语言</string>
     <string name="lang_follow_system">跟随系统</string>

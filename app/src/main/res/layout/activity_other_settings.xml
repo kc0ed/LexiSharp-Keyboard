@@ -155,22 +155,32 @@
       android:orientation="horizontal">
 
       <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSpeechPresetAdd"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginEnd="8dp"
+        android:text="@string/btn_speech_preset_add"
+        app:shapeAppearanceOverlay="@style/AsrkbShapeOverlayCapsule" />
+
+      <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSpeechPresetDelete"
         style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginEnd="8dp"
         android:text="@string/btn_speech_preset_delete" />
-
-      <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnSpeechPresetAdd"
-        style="@style/Widget.Material3.Button"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="@string/btn_speech_preset_add" />
     </LinearLayout>
+
+    <!-- 语音预置信息功能简介 -->
+    <TextView
+      android:id="@+id/tvSpeechPresetIntro"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="6dp"
+      android:textColor="?attr/colorOnSurfaceVariant"
+      android:text="@string/speech_preset_intro" />
 
     <!-- SyncClipboard 区域 -->
     <View

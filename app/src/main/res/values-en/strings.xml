@@ -212,6 +212,7 @@
     <string name="dialog_speech_preset_delete_title">Delete Preset</string>
     <string name="dialog_speech_preset_delete_message">Delete \"%1$s\"?</string>
     <string name="error_speech_preset_name_required">Name cannot be empty</string>
+    <string name="speech_preset_intro">When the ASR result exactly equals a preset Name, it will be replaced by its Content. Useful for quick phrases, signatures, addresses, IDs. Matching: first case-sensitive, then case-insensitive if not matched; triggers only when the entire text equals the Name. May need to enable Trim trailing punctuation.</string>
 
     <!-- Language & misc -->
     <string name="label_language">App Language</string>

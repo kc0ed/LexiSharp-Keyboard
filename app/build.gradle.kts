@@ -11,8 +11,8 @@ android {
         applicationId = "com.brycewg.asrkb"
         minSdk =29
         targetSdk = 34
-        versionCode = 70
-        versionName = "3.1.2"
+        versionCode = 71
+        versionName = "3.1.3"
 
         // 仅打包 arm64-v8a 以控制体积；可按需扩展
         ndk {
@@ -51,13 +51,29 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 
     buildFeatures {
         viewBinding = true
     }
+}
+
+// Kotlin 编译配置：使用 compilerOptions DSL 与 JDK 17 工具链
+kotlin {
+    // 使用本机 jbr-21 作为工具链，但 Kotlin 仍产出 JVM 17 目标字节码
+    jvmToolchain(21)
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+// 让 Java 编译任务使用本机 JDK 21 工具链，同时保持源码/目标兼容为 17
+val toolchainService = extensions.getByType(org.gradle.jvm.toolchain.JavaToolchainService::class.java)
+tasks.withType(org.gradle.api.tasks.compile.JavaCompile::class.java).configureEach {
+    javaCompiler.set(
+        toolchainService.compilerFor {
+            languageVersion.set(org.gradle.jvm.toolchain.JavaLanguageVersion.of(21))
+        }
+    )
 }
 
 dependencies {
