@@ -265,34 +265,75 @@ class VolcStreamAsrEngine(
                 val silence = if (prefs.autoStopOnSilenceEnabled)
                     SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
                 else null
-                // 预热 + 探测：若无有效音频，回退 MIC
+                // 预热 + 探测：兼容模式下稳定会话并写入预缓冲；非兼容模式保留回退机制
+                val maxFrames = (2000 / chunkMillis).coerceAtLeast(1) // 预缓冲上限≈2s
                 run {
-                    val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-                    val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
-                    if (!hasSignal) {
-                        try { recorder.stop() } catch (_: Throwable) {}
-                        try { recorder.release() } catch (_: Throwable) {}
-                        val alt = try {
-                            AudioRecord(
-                                MediaRecorder.AudioSource.MIC,
-                                sampleRate,
-                                channelConfig,
-                                audioFormat,
-                                bufferSize
-                            )
-                        } catch (_: Throwable) { null }
-                        if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
-                            recorder = alt
-                            try { recorder.startRecording() } catch (_: Throwable) { }
-                            try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
-                        } else {
-                            listener.onError(context.getString(R.string.error_audio_init_failed))
-                            running.set(false)
-                            return@launch
+                    val compat = try { prefs.audioCompatPreferMic } catch (_: Throwable) { false }
+                    if (compat) {
+                        val warmupFrames = 3
+                        repeat(warmupFrames) {
+                            val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+                            if (pre > 0) {
+                                val chunk = buf.copyOf(pre)
+                                if (!wsReady.get()) {
+                                    synchronized(prebufferLock) {
+                                        prebuffer.addLast(chunk)
+                                        while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                                    }
+                                } else {
+                                    var flushed: Array<ByteArray>? = null
+                                    synchronized(prebufferLock) {
+                                        if (prebuffer.isNotEmpty()) {
+                                            flushed = prebuffer.toTypedArray()
+                                            prebuffer.clear()
+                                        }
+                                    }
+                                    flushed?.forEach { b -> try { sendAudioFrame(b, last = false) } catch (_: Throwable) { } }
+                                    try { sendAudioFrame(chunk, last = false) } catch (_: Throwable) { }
+                                }
+                            }
+                        }
+                    } else {
+                        val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+                        val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
+                        if (pre > 0) {
+                            val chunk = buf.copyOf(pre)
+                            synchronized(prebufferLock) {
+                                prebuffer.addLast(chunk)
+                                while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                            }
+                        }
+                        if (!hasSignal) {
+                            try { recorder.stop() } catch (_: Throwable) {}
+                            try { recorder.release() } catch (_: Throwable) {}
+                            val alt = try {
+                                AudioRecord(
+                                    MediaRecorder.AudioSource.MIC,
+                                    sampleRate,
+                                    channelConfig,
+                                    audioFormat,
+                                    bufferSize
+                                )
+                            } catch (_: Throwable) { null }
+                            if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
+                                recorder = alt
+                                try { recorder.startRecording() } catch (_: Throwable) { }
+                                val pre2 = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+                                if (pre2 > 0) {
+                                    val chunk2 = buf.copyOf(pre2)
+                                    synchronized(prebufferLock) {
+                                        prebuffer.addLast(chunk2)
+                                        while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                                    }
+                                }
+                            } else {
+                                listener.onError(context.getString(R.string.error_audio_init_failed))
+                                running.set(false)
+                                return@launch
+                            }
                         }
                     }
                 }
-                val maxFrames = (2000 / chunkMillis).coerceAtLeast(1) // 预缓冲上限≈2s
                 while (isActive && running.get()) {
                     val read = recorder.read(buf, 0, buf.size)
                     if (read > 0) {

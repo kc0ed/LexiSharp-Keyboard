@@ -53,6 +53,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val groupGemini = findViewById<View>(R.id.groupGemini)
     val groupSoniox = findViewById<View>(R.id.groupSoniox)
     val groupSenseVoice = findViewById<View>(R.id.groupSenseVoice)
+    val switchAudioCompatPreferMic = findViewById<MaterialSwitch>(R.id.switchAudioCompatPreferMic)
     val switchSfUseOmni = findViewById<MaterialSwitch>(R.id.switchSfUseOmni)
     val tilSfOmniPrompt = findViewById<View>(R.id.tilSfOmniPrompt)
     val switchOpenAiUsePrompt = findViewById<MaterialSwitch>(R.id.switchOpenAiUsePrompt)
@@ -225,6 +226,8 @@ class AsrSettingsActivity : AppCompatActivity() {
     switchVolcVad.isChecked = prefs.volcVadEnabled
     switchVolcNonstream.isChecked = prefs.volcNonstreamEnabled
     switchVolcFirstCharAccel.isChecked = prefs.volcFirstCharAccelEnabled
+    // 录音兼容模式（稳定会话）
+    switchAudioCompatPreferMic.isChecked = prefs.audioCompatPreferMic
     etSonioxApiKey.setText(prefs.sonioxApiKey)
     switchSonioxStreaming.isChecked = prefs.sonioxStreamingEnabled
     // Soniox 语言：多选（language_hints）
@@ -305,6 +308,10 @@ class AsrSettingsActivity : AppCompatActivity() {
       hapticTapIfEnabled(btn)
       prefs.oaAsrUsePrompt = isChecked
       updateOpenAiPromptVisibility(isChecked)
+    }
+    switchAudioCompatPreferMic.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
+      prefs.audioCompatPreferMic = isChecked
     }
     etElevenApiKey.bindString { prefs.elevenApiKey = it }
     etElevenModel.bindString { prefs.elevenModelId = it }

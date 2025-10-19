@@ -393,4 +393,7 @@
     <string name="btn_sc_project_home">项目主页</string>
     <string name="sc_open_browser_failed">无法打开浏览器</string>
     <string name="hint_sc_server_base_placeholder">https://your-server.com/path</string>
+
+    <!-- Audio compatibility -->
+    <string name="label_audio_compat_prefer_mic">录音兼容模式（小米手机推荐开启）</string>
 </resources>

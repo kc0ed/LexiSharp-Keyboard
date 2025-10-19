@@ -842,6 +842,20 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="" />
       </LinearLayout>
+
+      <!-- Divider -->
+      <com.google.android.material.divider.MaterialDivider
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp" />
+
+      <!-- Audio compatibility: stable session mode -->
+      <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchAudioCompatPreferMic"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/label_audio_compat_prefer_mic" />
     </LinearLayout>
   </ScrollView>
 

@@ -187,33 +187,62 @@ class SonioxStreamAsrEngine(
                 val silence = if (prefs.autoStopOnSilenceEnabled)
                     SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
                 else null
-                // 预热 + 探测：若无有效音频，回退到 MIC
+                // 预热 + 探测：兼容模式下稳定会话并写入预缓冲；非兼容模式保留回退机制
+                val maxFrames = (2000 / 200).coerceAtLeast(1) // 预缓冲≈2s（readSize~200ms）
                 run {
-                    val pre = try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { -1 } catch (_: Throwable) { -1 }
-                    val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
-                    if (!hasSignal) {
-                        try { recorder.stop() } catch (_: Throwable) {}
-                        try { recorder.release() } catch (_: Throwable) {}
-                        val alt = try {
-                            AudioRecord(
-                                MediaRecorder.AudioSource.MIC,
-                                sampleRate,
-                                channelConfig,
-                                audioFormat,
-                                readSize
-                            )
-                        } catch (_: Throwable) { null }
-                        if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
-                            recorder = alt
-                            try { recorder.startRecording() } catch (_: SecurityException) { } catch (_: Throwable) { }
-                            try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { } catch (_: Throwable) { }
-                        } else {
-                            listener.onError(context.getString(R.string.error_audio_init_failed))
-                            stop(); return@launch
+                    val compat = try { prefs.audioCompatPreferMic } catch (_: Throwable) { false }
+                    if (compat) {
+                        val warmupFrames = 3
+                        repeat(warmupFrames) {
+                            val pre = try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { -1 } catch (_: Throwable) { -1 }
+                            if (pre > 0) {
+                                val chunk = buf.copyOfRange(0, pre)
+                                synchronized(prebufferLock) {
+                                    prebuffer.addLast(chunk)
+                                    while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                                }
+                            }
+                        }
+                    } else {
+                        val pre = try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { -1 } catch (_: Throwable) { -1 }
+                        val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
+                        if (pre > 0) {
+                            val chunk = buf.copyOfRange(0, pre)
+                            synchronized(prebufferLock) {
+                                prebuffer.addLast(chunk)
+                                while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                            }
+                        }
+                        if (!hasSignal) {
+                            try { recorder.stop() } catch (_: Throwable) {}
+                            try { recorder.release() } catch (_: Throwable) {}
+                            val alt = try {
+                                AudioRecord(
+                                    MediaRecorder.AudioSource.MIC,
+                                    sampleRate,
+                                    channelConfig,
+                                    audioFormat,
+                                    readSize
+                                )
+                            } catch (_: Throwable) { null }
+                            if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
+                                recorder = alt
+                                try { recorder.startRecording() } catch (_: SecurityException) { } catch (_: Throwable) { }
+                                val pre2 = try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { -1 } catch (_: Throwable) { -1 }
+                                if (pre2 > 0) {
+                                    val chunk2 = buf.copyOfRange(0, pre2)
+                                    synchronized(prebufferLock) {
+                                        prebuffer.addLast(chunk2)
+                                        while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                                    }
+                                }
+                            } else {
+                                listener.onError(context.getString(R.string.error_audio_init_failed))
+                                stop(); return@launch
+                            }
                         }
                     }
                 }
-                val maxFrames = (2000 / 200).coerceAtLeast(1) // 预缓冲≈2s（readSize~200ms）
                 while (running.get()) {
                     val n = try { recorder.read(buf, 0, buf.size) } catch (se: SecurityException) {
                         listener.onError(context.getString(R.string.error_record_permission_denied))
