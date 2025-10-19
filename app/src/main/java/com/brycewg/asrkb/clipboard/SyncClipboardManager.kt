@@ -49,6 +49,8 @@ class SyncClipboardManager(
   private var pullJob: Job? = null
   private var listenerRegistered = false
   @Volatile private var suppressNextChange = false
+  // 记录最近一次从服务端拉取的文本哈希，用于减少本地剪贴板读取次数
+  @Volatile private var lastPulledServerHash: String? = null
 
   private val clipListener = ClipboardManager.OnPrimaryClipChangedListener {
     if (suppressNextChange) {
@@ -72,6 +74,7 @@ class SyncClipboardManager(
     pullJob?.cancel()
     pullJob = null
     suppressNextChange = false
+    lastPulledServerHash = null
   }
 
   private fun ensureListener() {
@@ -215,7 +218,15 @@ class SyncClipboardManager(
         val type = o.optString("Type")
         if (!TextUtils.equals(type, "Text")) return false to null
         val text = o.optString("Clipboard", null) ?: return false to null
+        // 计算服务端文本哈希并与上次拉取缓存对比，未变化则避免读取系统剪贴板
+        val newServerHash = try { sha256Hex(text) } catch (_: Throwable) { null }
+        val prevServerHash = lastPulledServerHash
+        lastPulledServerHash = newServerHash
         if (updateClipboard) {
+          if (newServerHash != null && newServerHash == prevServerHash) {
+            // 服务端内容未变化：跳过本地剪贴板读取以降低读取频率
+            return true to text
+          }
           val cur = readClipboardText()
           if (text.isNotEmpty() && text != cur) {
             writeClipboardText(text)
