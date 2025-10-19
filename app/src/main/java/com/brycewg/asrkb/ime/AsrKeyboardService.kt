@@ -79,6 +79,10 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
     private var btnPunct3: TextView? = null
     private var btnPunct4: TextView? = null
     private var txtStatus: TextView? = null
+    // 剪贴板预览状态
+    private var clipboardPreviewFullText: String? = null
+    private var clipboardPreviewActive: Boolean = false
+    private var clipboardPreviewTimeout: Runnable? = null
     private var committedStableLen: Int = 0
     private var postproc: LlmPostProcessor = LlmPostProcessor()
     private var micLongPressStarted: Boolean = false
@@ -240,7 +244,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
                         serviceScope,
                         object : SyncClipboardManager.Listener {
                             override fun onPulledNewContent(text: String) {
-                                try { rootView?.post { txtStatus?.text = getString(R.string.sc_status_pulled_new) } } catch (_: Throwable) { }
+                                try {
+                                    rootView?.post { showClipboardPreview(text) }
+                                } catch (_: Throwable) { }
                             }
                             override fun onUploadSuccess() {
                                 try { rootView?.post { txtStatus?.text = getString(R.string.sc_status_uploaded) } } catch (_: Throwable) { }
@@ -327,6 +333,28 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
         btnPunct3 = view.findViewById(R.id.btnPunct3)
         btnPunct4 = view.findViewById(R.id.btnPunct4)
         txtStatus = view.findViewById(R.id.txtStatus)
+        // 当信息条文本被外部逻辑改写且不再等于剪贴板预览时，自动移除遮罩
+        txtStatus?.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            if (!clipboardPreviewActive) return@addOnLayoutChangeListener
+            val tv = v as? TextView ?: return@addOnLayoutChangeListener
+            val current = try { tv.text?.toString() } catch (_: Throwable) { null } ?: return@addOnLayoutChangeListener
+            val full = clipboardPreviewFullText
+            val expected = if (full.isNullOrEmpty()) null else (if (full.length <= 10) full else (full.substring(0, 10) + "…"))
+            if (expected != null && current != expected) {
+                // 清理预览视觉，不改变已显示的新文本
+                clipboardPreviewActive = false
+                clipboardPreviewFullText = null
+                clipboardPreviewTimeout?.let { tv.removeCallbacks(it) }
+                clipboardPreviewTimeout = null
+                try {
+                    tv.background = null
+                    tv.setPaddingRelative(0, 0, 0, 0)
+                    tv.isClickable = false
+                    tv.isFocusable = false
+                    tv.setOnClickListener(null)
+                } catch (_: Throwable) { }
+            }
+        }
 
         // 初次创建时按偏好应用按钮位置
         applyButtonSwapAccordingToPrefs(view)
@@ -672,6 +700,66 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
         // 同步系统导航栏颜色：放到首次布局完成后执行，避免动画阶段闪烁
         try { view.post { syncSystemBarsToKeyboardBackground(view) } } catch (_: Throwable) { }
         return view
+    }
+
+    private fun showClipboardPreview(fullText: String) {
+        val tv = txtStatus ?: return
+        clipboardPreviewFullText = fullText
+        clipboardPreviewActive = true
+        // 构造预览：取前 10 个字符，超出追加省略号
+        val snippet = if (fullText.length <= 10) fullText else (fullText.substring(0, 10) + "…")
+        tv.text = snippet
+        // 仅在预览时显示圆角遮罩，并保持宽度跟随内容
+        try { tv.setBackgroundResource(R.drawable.bg_status_chip) } catch (_: Throwable) { }
+        // 给予足够内边距，避免文字贴边
+        try {
+            val d = tv.resources.displayMetrics.density
+            val ph = (12f * d + 0.5f).toInt()
+            val pv = (6f * d + 0.5f).toInt()
+            tv.setPaddingRelative(ph, pv, ph, pv)
+        } catch (_: Throwable) { }
+        // 启用点击粘贴
+        tv.isClickable = true
+        tv.isFocusable = true
+        // 设置点击回调（每次刷新时覆盖旧回调）
+        tv.setOnClickListener { v ->
+            performKeyHaptic(v)
+            val text = clipboardPreviewFullText
+            if (!text.isNullOrEmpty()) {
+                try {
+                    currentInputConnection?.finishComposingText()
+                    // 记录撤回快照并提交
+                    currentInputConnection?.let { saveUndoSnapshot(it) }
+                    currentInputConnection?.commitText(text, 1)
+                } catch (_: Throwable) { }
+            }
+            hideClipboardPreview()
+        }
+        // 超时自动恢复（避免长时间占据信息条）
+        clipboardPreviewTimeout?.let { tv.removeCallbacks(it) }
+        val r = Runnable { hideClipboardPreview() }
+        clipboardPreviewTimeout = r
+        try { tv.postDelayed(r, 20_000) } catch (_: Throwable) { }
+    }
+
+    private fun hideClipboardPreview() {
+        val tv = txtStatus ?: return
+        clipboardPreviewActive = false
+        clipboardPreviewFullText = null
+        clipboardPreviewTimeout?.let { tv.removeCallbacks(it) }
+        clipboardPreviewTimeout = null
+        // 恢复默认状态文案
+        try {
+            tv.isClickable = false
+            tv.isFocusable = false
+            tv.setOnClickListener(null)
+            tv.background = null
+            tv.setPaddingRelative(0, 0, 0, 0)
+        } catch (_: Throwable) { }
+        // 若当前处于录音中，保持“正在聆听…”，否则“就绪”
+        try {
+            if (asrEngine?.isRunning == true) updateUiListening() else updateUiIdle()
+        } catch (_: Throwable) { }
     }
 
     private fun applyButtonSwapAccordingToPrefs(view: View?) {
