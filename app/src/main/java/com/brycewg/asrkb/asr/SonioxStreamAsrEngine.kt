@@ -366,7 +366,8 @@ class SonioxStreamAsrEngine(
             val finished = o.optBoolean("finished", false)
             if (finished) {
                 val finalText = stripEndMarker(finalTextBuffer.toString().ifBlank { preview })
-                if (finalText.isNotBlank()) listener.onFinal(finalText)
+                // 即使最终文本为空也通知上层，避免 UI 卡在处理中态
+                try { listener.onFinal(finalText) } catch (_: Throwable) { }
                 running.set(false)
             }
         } catch (_: Throwable) {

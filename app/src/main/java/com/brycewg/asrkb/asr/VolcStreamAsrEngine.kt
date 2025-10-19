@@ -480,22 +480,22 @@ class VolcStreamAsrEngine(
             }
             if (serialization == SERIALIZE_JSON) {
                 val text = parseTextFromJson(String(payload, Charsets.UTF_8))
-                if (text.isNotBlank()) {
-                    val isFinal = (flags and FLAG_SERVER_FINAL_MASK) == FLAG_SERVER_FINAL_MASK
-                    // 停止后仅接受最终结果；录音中允许 partial
-                    if (!running.get() && !isFinal) return
-                    if (isFinal) {
-                        try { listener.onFinal(text) } catch (_: Throwable) { }
-                        running.set(false)
-                        awaitingFinal.set(false)
-                        scope.launch(Dispatchers.IO) {
-                            try { ws?.close(1000, "final") } catch (_: Throwable) { }
-                            ws = null
-                            wsReady.set(false)
-                        }
-                    } else {
-                        listener.onPartial(text)
+                val isFinal = (flags and FLAG_SERVER_FINAL_MASK) == FLAG_SERVER_FINAL_MASK
+                // 停止后仅接受最终结果；录音中允许 partial
+                if (!running.get() && !isFinal) return
+                if (isFinal) {
+                    // 重要：即使服务端最终文本为空也要回调 onFinal("")，
+                    // 以便上层（悬浮球/IME）清理 isProcessing 状态并给出友好提示。
+                    try { listener.onFinal(text) } catch (_: Throwable) { }
+                    running.set(false)
+                    awaitingFinal.set(false)
+                    scope.launch(Dispatchers.IO) {
+                        try { ws?.close(1000, "final") } catch (_: Throwable) { }
+                        ws = null
+                        wsReady.set(false)
                     }
+                } else {
+                    if (text.isNotBlank()) listener.onPartial(text)
                 }
             }
         } else if (msgType == MSG_TYPE_ERROR_SERVER) {

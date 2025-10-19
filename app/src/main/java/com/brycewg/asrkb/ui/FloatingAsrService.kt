@@ -524,81 +524,65 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         isProcessing = true
         updateBallState()
         // 去除识别中 Toast 提示
-        // 启动 LLM 后处理的超时兜底（仅当启用时）
-        if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
-            try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
-            processingTimeoutJob = serviceScope.launch {
-                val timeoutMs = 8000L
-                delay(timeoutMs)
-                // 若仍处于处理态且未提交结果，则走兜底提交
-                if (isProcessing && !isRecording && !hasCommittedResult) {
-                    val candidate = lastPartialForPreview?.trim().orEmpty()
-                    Log.w(TAG, "Post-process timeout; fallback with preview='${candidate}'")
-                    if (candidate.isNotEmpty()) {
-                        var textOut = candidate
-                        // 可选：保持与最终逻辑一致的尾部标点裁剪与后处理
+        // 启动统一的识别结果超时兜底（无论是否启用 LLM 后处理）
+        try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+        processingTimeoutJob = serviceScope.launch {
+            val timeoutMs = 8000L
+            delay(timeoutMs)
+            // 若仍处于处理态且未提交结果，则走兜底提交/清理
+            if (isProcessing && !isRecording && !hasCommittedResult) {
+                val candidate = lastPartialForPreview?.trim().orEmpty()
+                Log.w(TAG, "Finalize timeout; fallback with preview='${candidate}'")
+                if (candidate.isNotEmpty()) {
+                    var textOut = candidate
+                    // 与最终逻辑一致的尾部标点裁剪
+                    if (prefs.trimFinalTrailingPunct) textOut = trimTrailingPunctuation(textOut)
+                    // 若启用 LLM 后处理则在兜底中也尝试一次
+                    if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
+                        try { textOut = postproc.process(textOut, prefs).ifBlank { textOut } } catch (_: Throwable) { }
                         if (prefs.trimFinalTrailingPunct) textOut = trimTrailingPunctuation(textOut)
-                        if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
-                            try {
-                                textOut = postproc.process(textOut, prefs).ifBlank { textOut }
-                            } catch (_: Throwable) { /* keep original */ }
-                            if (prefs.trimFinalTrailingPunct) textOut = trimTrailingPunctuation(textOut)
-                        }
-                        // 插入文本（与 onFinal 相同的写入策略与兼容分支）
-                        val ctx = focusContext ?: AsrAccessibilityService.getCurrentFocusContext()
-                        var toWrite = if (ctx != null) ctx.prefix + textOut + ctx.suffix else textOut
-                        toWrite = stripMarkersIfAny(toWrite)
-                        val pkg = AsrAccessibilityService.getActiveWindowPackage()
-                        val isTg = pkg != null && isTelegramLikePackage(pkg)
-                        val writeCompat = try { prefs.floatingWriteTextCompatEnabled } catch (_: Throwable) { true }
-                        val compatTarget = pkg != null && isPackageInCompatTargets(pkg)
-                        if (isTg && markerInserted) {
-                            // 初始为空场景（通过注入标记确认），忽略任何“已有文本”前后缀
-                            toWrite = textOut
-                        }
-                        var wrote: Boolean
-                        if (writeCompat && compatTarget) {
-                            wrote = AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
-                            if (!wrote) {
-                                wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
-                            }
-                        } else {
+                    }
+                    // 插入文本（与 onFinal 相同的写入策略与兼容分支）
+                    val ctx = focusContext ?: AsrAccessibilityService.getCurrentFocusContext()
+                    var toWrite = if (ctx != null) ctx.prefix + textOut + ctx.suffix else textOut
+                    toWrite = stripMarkersIfAny(toWrite)
+                    val pkg = AsrAccessibilityService.getActiveWindowPackage()
+                    val isTg = pkg != null && isTelegramLikePackage(pkg)
+                    val writeCompat = try { prefs.floatingWriteTextCompatEnabled } catch (_: Throwable) { true }
+                    val compatTarget = pkg != null && isPackageInCompatTargets(pkg)
+                    if (isTg && markerInserted) {
+                        // 初始为空场景（通过注入标记确认），忽略任何“已有文本”前后缀
+                        toWrite = textOut
+                    }
+                    var wrote: Boolean
+                    if (writeCompat && compatTarget) {
+                        wrote = AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
+                        if (!wrote) {
                             wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
                         }
-                        Log.d(TAG, "Fallback inserted=$wrote text='$toWrite'")
-                        showCompletionTick()
-                        if (wrote) {
-                            try { prefs.addAsrChars(textOut.length) } catch (_: Throwable) { }
-                            // 同步把光标移到“前缀 + 文本”的末尾，避免续写回到段首
-                            val prefixLenForCursor = if (isTg && markerInserted) 0 else stripMarkersIfAny(ctx?.prefix ?: "").length
-                            val desiredCursor = (prefixLenForCursor + textOut.length).coerceAtLeast(0)
-                            AsrAccessibilityService.setSelectionSilent(desiredCursor)
-                        }
-                        hasCommittedResult = true
                     } else {
-                        Log.w(TAG, "Fallback has no candidate text; only clear state")
+                        wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
                     }
-                    // 清理状态
-                    isProcessing = false
-                    updateBallState()
-                    focusContext = null
-                    lastPartialForPreview = null
-                    markerInserted = false
-                    markerChar = null
-                }
-            }
-        } else {
-            updateBallState()
-            // 若使用本地 SenseVoice 且当前未预加载/未缓存，则先让引擎触发“加载中…”，再稍后提示“识别中…”
-            if (prefs.asrVendor == AsrVendor.SenseVoice) {
-                val prepared = try { com.brycewg.asrkb.asr.isSenseVoicePrepared() } catch (_: Throwable) { false }
-                if (!prepared) {
-                        // 去除识别中 Toast 提示（延时分支）
+                    Log.d(TAG, "Fallback inserted=$wrote text='$toWrite'")
+                    showCompletionTick()
+                    if (wrote) {
+                        try { prefs.addAsrChars(textOut.length) } catch (_: Throwable) { }
+                        // 同步把光标移到“前缀 + 文本”的末尾
+                        val prefixLenForCursor = if (isTg && markerInserted) 0 else stripMarkersIfAny(ctx?.prefix ?: "").length
+                        val desiredCursor = (prefixLenForCursor + textOut.length).coerceAtLeast(0)
+                        AsrAccessibilityService.setSelectionSilent(desiredCursor)
+                    }
+                    hasCommittedResult = true
                 } else {
-                        // 去除识别中 Toast 提示
+                    Log.w(TAG, "Fallback has no candidate text; only clear state")
                 }
-            } else {
-                    // 去除识别中 Toast 提示
+                // 清理状态
+                isProcessing = false
+                updateBallState()
+                focusContext = null
+                lastPartialForPreview = null
+                markerInserted = false
+                markerChar = null
             }
         }
         // 录音结束后根据偏好与当前场景重新评估显隐
@@ -752,6 +736,54 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             updateBallState()
             // 非录音阶段恢复“仅在键盘显示时显示悬浮球”的约束
             updateVisibilityByPref()
+            // 与 stopRecording 一致：统一安排超时兜底，防止最终结果缺失导致卡死
+            try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+            processingTimeoutJob = serviceScope.launch {
+                val timeoutMs = 8000L
+                delay(timeoutMs)
+                if (isProcessing && !isRecording && !hasCommittedResult) {
+                    val candidate = lastPartialForPreview?.trim().orEmpty()
+                    Log.w(TAG, "Finalize timeout (onStopped); fallback preview='${candidate}'")
+                    if (candidate.isNotEmpty()) {
+                        var textOut = candidate
+                        if (prefs.trimFinalTrailingPunct) textOut = trimTrailingPunctuation(textOut)
+                        if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
+                            try { textOut = postproc.process(textOut, prefs).ifBlank { textOut } } catch (_: Throwable) { }
+                            if (prefs.trimFinalTrailingPunct) textOut = trimTrailingPunctuation(textOut)
+                        }
+                        val ctx = focusContext ?: AsrAccessibilityService.getCurrentFocusContext()
+                        var toWrite = if (ctx != null) ctx.prefix + textOut + ctx.suffix else textOut
+                        toWrite = stripMarkersIfAny(toWrite)
+                        val pkg = AsrAccessibilityService.getActiveWindowPackage()
+                        val isTg = pkg != null && isTelegramLikePackage(pkg)
+                        val writeCompat = try { prefs.floatingWriteTextCompatEnabled } catch (_: Throwable) { true }
+                        val compatTarget = pkg != null && isPackageInCompatTargets(pkg)
+                        if (isTg && markerInserted) toWrite = textOut
+                        var wrote: Boolean
+                        if (writeCompat && compatTarget) {
+                            wrote = AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
+                            if (!wrote) wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
+                        } else {
+                            wrote = AsrAccessibilityService.insertText(this@FloatingAsrService, toWrite)
+                        }
+                        Log.d(TAG, "Fallback(onStopped) inserted=$wrote text='$toWrite'")
+                        showCompletionTick()
+                        if (wrote) {
+                            try { prefs.addAsrChars(textOut.length) } catch (_: Throwable) { }
+                            val prefixLenForCursor = if (isTg && markerInserted) 0 else stripMarkersIfAny(ctx?.prefix ?: "").length
+                            val desiredCursor = (prefixLenForCursor + textOut.length).coerceAtLeast(0)
+                            AsrAccessibilityService.setSelectionSilent(desiredCursor)
+                        }
+                        hasCommittedResult = true
+                    }
+                    isProcessing = false
+                    updateBallState()
+                    focusContext = null
+                    lastPartialForPreview = null
+                    markerInserted = false
+                    markerChar = null
+                }
+            }
         }
     }
 
@@ -823,6 +855,8 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     override fun onError(message: String) {
         Log.e(TAG, "onError called: $message")
         serviceScope.launch {
+            try { processingTimeoutJob?.cancel() } catch (_: Throwable) { }
+            processingTimeoutJob = null
             isRecording = false
             isProcessing = false
             updateBallState()
