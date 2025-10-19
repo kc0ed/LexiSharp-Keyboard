@@ -879,13 +879,28 @@ class FloatingImeSwitcherService : Service() {
         val vh = if (v.height > 0) v.height else dp(def)
         val margin = dp(0)
 
-        // 计算目标X：吸附到左或右
-        val centerX = p.x + vw / 2
-        val targetX = if (centerX < screenW / 2) margin else (screenW - vw - margin)
-        // 约束Y范围，避免越界
-        val minY = margin
-        val maxY = (screenH - vh - margin).coerceAtLeast(minY)
-        val targetY = p.y.coerceIn(minY, maxY)
+        // 底部贴边阈值（接近底部时优先贴到底部）
+        val bottomSnapThreshold = dp(64)
+        val bottomY = (screenH - vh - margin)
+        val bottomDist = bottomY - p.y
+
+        val targetX: Int
+        val targetY: Int
+        if (bottomDist <= bottomSnapThreshold) {
+            // 贴到底部，X 保持当前位置并限制不越界
+            targetY = bottomY
+            val minX = margin
+            val maxX = (screenW - vw - margin).coerceAtLeast(minX)
+            targetX = p.x.coerceIn(minX, maxX)
+        } else {
+            // 计算目标X：吸附到左或右
+            val centerX = p.x + vw / 2
+            targetX = if (centerX < screenW / 2) margin else (screenW - vw - margin)
+            // 约束Y范围，避免越界
+            val minY = margin
+            val maxY = (screenH - vh - margin).coerceAtLeast(minY)
+            targetY = p.y.coerceIn(minY, maxY)
+        }
 
         p.x = targetX
         p.y = targetY
@@ -903,11 +918,25 @@ class FloatingImeSwitcherService : Service() {
         val vh = if (v.height > 0) v.height else dp(def)
         val margin = dp(0)
 
-        val centerX = p.x + vw / 2
-        val targetX = if (centerX < screenW / 2) margin else (screenW - vw - margin)
-        val minY = margin
-        val maxY = (screenH - vh - margin).coerceAtLeast(minY)
-        val targetY = p.y.coerceIn(minY, maxY)
+        // 底部贴边阈值（接近底部时优先贴到底部）
+        val bottomSnapThreshold = dp(64)
+        val bottomY = (screenH - vh - margin)
+        val bottomDist = bottomY - p.y
+
+        val targetX: Int
+        val targetY: Int
+        if (bottomDist <= bottomSnapThreshold) {
+            targetY = bottomY
+            val minX = margin
+            val maxX = (screenW - vw - margin).coerceAtLeast(minX)
+            targetX = p.x.coerceIn(minX, maxX)
+        } else {
+            val centerX = p.x + vw / 2
+            targetX = if (centerX < screenW / 2) margin else (screenW - vw - margin)
+            val minY = margin
+            val maxY = (screenH - vh - margin).coerceAtLeast(minY)
+            targetY = p.y.coerceIn(minY, maxY)
+        }
 
         val startX = p.x
         val startY = p.y
