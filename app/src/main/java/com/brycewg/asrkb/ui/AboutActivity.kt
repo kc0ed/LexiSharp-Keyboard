@@ -32,9 +32,7 @@ class AboutActivity : AppCompatActivity() {
     } catch (_: Exception) { null }
 
     val versionName = pInfo?.versionName ?: ""
-    val versionCodeLong = if (pInfo != null) {
-        pInfo.longVersionCode
-    } else 0L
+    val versionCodeLong = pInfo?.longVersionCode ?: 0L
     tvVersion.text = getString(R.string.about_version, "$versionName ($versionCodeLong)")
     tvPackage.text = getString(R.string.about_package, packageName)
 

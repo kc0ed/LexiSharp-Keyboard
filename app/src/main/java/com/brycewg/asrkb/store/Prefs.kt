@@ -155,9 +155,6 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_FLOATING_WRITE_COMPAT_PACKAGES, DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES) ?: DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES
         set(value) = sp.edit { putString(KEY_FLOATING_WRITE_COMPAT_PACKAGES, value) }
 
-    fun getFloatingWriteCompatPackageRules(): List<String> =
-        floatingWriteCompatPackages.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
-
     // LLM后处理设置（旧版单一字段；当存在多配置且已选择活动项时仅作回退）
     var postProcessEnabled: Boolean
         get() = sp.getBoolean(KEY_POSTPROC_ENABLED, false)
@@ -374,13 +371,6 @@ class Prefs(context: Context) {
         val strict = presets.firstOrNull { it.name.trim() == normalized }
         val match = strict ?: presets.firstOrNull { it.name.trim().equals(normalized, ignoreCase = true) }
         return match?.content
-    }
-
-    fun getActiveSpeechPreset(): SpeechPreset? {
-        val presets = getSpeechPresets()
-        if (presets.isEmpty()) return null
-        val activeId = activeSpeechPresetId
-        return presets.firstOrNull { it.id == activeId } ?: presets.firstOrNull()
     }
 
     // SiliconFlow凭证
@@ -622,8 +612,6 @@ class Prefs(context: Context) {
     fun hasOpenAiKeys(): Boolean = hasVendorKeys(AsrVendor.OpenAI)
     fun hasGeminiKeys(): Boolean = hasVendorKeys(AsrVendor.Gemini)
     fun hasSonioxKeys(): Boolean = hasVendorKeys(AsrVendor.Soniox)
-    // SenseVoice（本地）：就绪判定仅检查是否设置了模型目录
-    fun hasSenseVoiceReady(): Boolean = (sp.getString(KEY_SV_MODEL_DIR, "") ?: "").isNotBlank()
     fun hasAsrKeys(): Boolean = hasVendorKeys(asrVendor)
     fun hasLlmKeys(): Boolean {
         val p = getActiveLlmProvider()

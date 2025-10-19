@@ -98,7 +98,6 @@
 
     <!-- Custom punctuation row -->
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/rowPunct"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp">
@@ -183,7 +182,6 @@
 
     <!-- Overlay: original function row placed around middle height without increasing total panel height -->
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/rowOverlay"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
@@ -262,7 +260,6 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <LinearLayout
-        android:id="@+id/blockMic"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"

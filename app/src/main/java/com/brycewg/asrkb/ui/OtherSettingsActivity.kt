@@ -59,8 +59,8 @@ class OtherSettingsActivity : AppCompatActivity() {
     val tilSpeechPresetContent = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilSpeechPresetContent)
     val etSpeechPresetName = findViewById<TextInputEditText>(R.id.etSpeechPresetName)
     val etSpeechPresetContent = findViewById<TextInputEditText>(R.id.etSpeechPresetContent)
-    val btnSpeechPresetAdd = findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSpeechPresetAdd)
-    val btnSpeechPresetDelete = findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSpeechPresetDelete)
+    val btnSpeechPresetAdd = findViewById<MaterialButton>(R.id.btnSpeechPresetAdd)
+    val btnSpeechPresetDelete = findViewById<MaterialButton>(R.id.btnSpeechPresetDelete)
 
     var suppressSpeechPresetSpinner = false
     var updatingSpeechPresetFields = false
@@ -71,7 +71,7 @@ class OtherSettingsActivity : AppCompatActivity() {
       val displayNames = if (hasAny) {
         presets.map { preset ->
           val name = preset.name.trim()
-          if (name.isEmpty()) getString(R.string.speech_preset_untitled) else name
+            name.ifEmpty { getString(R.string.speech_preset_untitled) }
         }
       } else {
         listOf(getString(R.string.speech_preset_empty_placeholder))

@@ -458,7 +458,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                             // 初始为空场景（通过注入标记确认），忽略任何“已有文本”前后缀
                             toWrite = textOut
                         }
-                        var wrote = false
+                        var wrote: Boolean
                         if (writeCompat && compatTarget) {
                             wrote = AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
                             if (!wrote) {
@@ -534,13 +534,6 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         }
     }
 
-    private fun stopProgressAnimation() {
-        progressAnimator?.cancel()
-        progressAnimator = null
-        ballProgress?.visibility = View.GONE
-        ballProgress?.rotation = 0f
-    }
-
     override fun onFinal(text: String) {
         Log.d(TAG, "onFinal called with text: $text")
         serviceScope.launch {
@@ -602,7 +595,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                     // 初始为空场景（通过注入标记确认），忽略任何“已有文本”前后缀，直接使用最终识别结果
                     toWrite = finalText
                 }
-                var wrote = false
+                var wrote: Boolean
                 if (writeCompat && compatTarget) {
                     // 兼容性模式：直接使用“全选+粘贴”，不再先尝试 ACTION_SET_TEXT
                     wrote = AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
@@ -803,7 +796,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         var isDragging = false
         var longActionFired = false // 保留变量占位（但不再使用 2s 长按呼出输入法选择器）
         val touchSlop = dp(4)
-        val tinyMoveSlop = dp(6) // “极小范围移动”阈值
+        dp(6) // “极小范围移动”阈值
         val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
         var longPressPosted = false
         val longPressRunnable = Runnable {
@@ -995,19 +988,6 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
         val onClick: () -> Unit
     )
 
-    private fun buildCircleButton(iconRes: Int, cd: String, onClick: () -> Unit): View {
-        val iv = ImageView(this)
-        iv.setImageResource(iconRes)
-        iv.background = ContextCompat.getDrawable(this, R.drawable.bg_floating_ball)
-        val pad = dp(6)
-        iv.setPadding(pad, pad, pad, pad)
-        iv.scaleType = ImageView.ScaleType.CENTER_INSIDE
-        iv.contentDescription = cd
-        try { iv.setColorFilter(0xFF111111.toInt()) } catch (_: Throwable) { }
-        iv.setOnClickListener { hapticTapIfEnabled(iv); onClick() }
-        return iv
-    }
-
     private fun buildCapsule(iconRes: Int, label: String, cd: String, onClick: () -> Unit): View {
         val layout = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
@@ -1058,7 +1038,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
     private fun enableMoveModeFromMenu() {
         moveModeEnabled = true
         hideVendorMenu()
-        try { android.widget.Toast.makeText(this, getString(R.string.toast_move_mode_on), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
+        try { Toast.makeText(this, getString(R.string.toast_move_mode_on), Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
     }
 
     private fun togglePostprocFromMenu() {
@@ -1066,7 +1046,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
             val newVal = !prefs.postProcessEnabled
             prefs.postProcessEnabled = newVal
             val msg = getString(R.string.status_postproc, if (newVal) getString(R.string.toggle_on) else getString(R.string.toggle_off))
-            android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         } catch (_: Throwable) { }
     }
 
@@ -1123,7 +1103,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                                 try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@FloatingAsrService, prefs) } catch (_: Throwable) { }
                             }
                         }
-                        android.widget.Toast.makeText(this@FloatingAsrService, name, android.widget.Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@FloatingAsrService, name, Toast.LENGTH_SHORT).show()
                     } catch (_: Throwable) { }
                     hideVendorMenu()
                 }
@@ -1240,7 +1220,7 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 setOnClickListener {
                     try {
                         prefs.activePromptId = p.id
-                        android.widget.Toast.makeText(this@FloatingAsrService, getString(R.string.switched_preset, p.title), android.widget.Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@FloatingAsrService, getString(R.string.switched_preset, p.title), Toast.LENGTH_SHORT).show()
                     } catch (_: Throwable) { }
                     hideVendorMenu()
                 }
@@ -1299,10 +1279,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 val ok = try { mgr.uploadOnce() } catch (t: Throwable) { false }
                 handler.post {
                     try {
-                        android.widget.Toast.makeText(
+                        Toast.makeText(
                             this@FloatingAsrService,
                             getString(if (ok) R.string.sc_status_uploaded else R.string.sc_test_failed),
-                            android.widget.Toast.LENGTH_SHORT
+                            Toast.LENGTH_SHORT
                         ).show()
                     } catch (_: Throwable) { }
                 }
@@ -1317,10 +1297,10 @@ class FloatingAsrService : Service(), StreamingAsrEngine.Listener {
                 val ok = try { mgr.pullNow(updateClipboard = true).first } catch (t: Throwable) { false }
                 handler.post {
                     try {
-                        android.widget.Toast.makeText(
+                        Toast.makeText(
                             this@FloatingAsrService,
                             getString(if (ok) R.string.sc_test_success else R.string.sc_test_failed),
-                            android.widget.Toast.LENGTH_SHORT
+                            Toast.LENGTH_SHORT
                         ).show()
                     } catch (_: Throwable) { }
                 }

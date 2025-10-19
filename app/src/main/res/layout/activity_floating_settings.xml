@@ -86,16 +86,14 @@
         android:text="@string/label_floating_write_compat" />
 
       <TextView
-        android:id="@+id/tvFloatingWriteCompatDesc"
-        android:layout_width="match_parent"
+          android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:textColor="@android:color/darker_gray"
         android:text="@string/desc_floating_write_compat" />
 
       <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/tilFloatingWriteCompatPkgs"
-        android:layout_width="match_parent"
+          android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         app:helperText="@string/hint_floating_write_compat_pkgs">
@@ -119,16 +117,14 @@
         android:text="@string/label_floating_ime_visibility_compat" />
 
       <TextView
-        android:id="@+id/tvImeVisibilityCompatDesc"
-        android:layout_width="match_parent"
+          android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:textColor="@android:color/darker_gray"
         android:text="@string/desc_floating_ime_visibility_compat" />
 
       <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/tilImeVisibilityCompatPkgs"
-        android:layout_width="match_parent"
+          android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         app:helperText="@string/hint_ime_visibility_compat_pkgs">

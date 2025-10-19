@@ -51,7 +51,7 @@ import com.google.android.material.color.MaterialColors
 import com.brycewg.asrkb.LocaleHelper
 import com.brycewg.asrkb.clipboard.SyncClipboardManager
 
-class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, com.brycewg.asrkb.asr.SenseVoiceFileAsrEngine.LocalModelLoadUi {
+class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, SenseVoiceFileAsrEngine.LocalModelLoadUi {
     companion object {
         const val ACTION_REFRESH_IME_UI = "com.brycewg.asrkb.action.REFRESH_IME_UI"
     }
@@ -782,7 +782,7 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
 
         // Mic 按钮自定义尺寸（默认 72dp）
         try {
-            btnMic?.setCustomSize(dp(72f * scale))
+            btnMic?.customSize = dp(72f * scale)
         } catch (_: Throwable) {}
 
         // 状态文本左右边距（默认 90dp）

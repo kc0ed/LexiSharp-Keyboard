@@ -76,7 +76,7 @@ class App : Application() {
     private fun applyExcludeFromRecents(activity: Activity) {
         try {
             val enabled = Prefs(activity).hideRecentTaskCard
-            val am = activity.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
+            val am = activity.getSystemService(ACTIVITY_SERVICE) as ActivityManager
             am.appTasks?.forEach { it.setExcludeFromRecents(enabled) }
         } catch (_: Throwable) { }
     }

@@ -1,13 +1,11 @@
 package com.brycewg.asrkb.ui
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -42,7 +40,6 @@ class ModelDownloadService : Service() {
 
   companion object {
     private const val CHANNEL_ID = "model_download"
-    private const val CHANNEL_NAME = "Model Download"
     private const val GROUP_ID = "model_download_group"
     private const val SUMMARY_ID = 1000
 
@@ -119,7 +116,7 @@ class ModelDownloadService : Service() {
   }
 
   private suspend fun doDownloadTask(key: String, url: String, variant: String) {
-    val notifId = notifIdForKey(key)
+      notifIdForKey(key)
     val title = titleForVariant(variant)
     val cancelIntent = PendingIntent.getService(
       this,
@@ -128,7 +125,7 @@ class ModelDownloadService : Service() {
         action = ACTION_CANCEL
         putExtra(EXTRA_KEY, key)
       },
-      PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0)
+      PendingIntent.FLAG_UPDATE_CURRENT or (PendingIntent.FLAG_IMMUTABLE)
     )
 
     notifyProgress(key, title, 0, getString(R.string.sv_download_status_downloading, 0), ongoing = true, action = cancelIntent, force = true)
@@ -202,11 +199,9 @@ class ModelDownloadService : Service() {
   }
 
   private fun ensureChannel() {
-    if (Build.VERSION.SDK_INT >= 26) {
-      val ch = NotificationChannel(CHANNEL_ID, getString(R.string.notif_channel_model_download), NotificationManager.IMPORTANCE_LOW)
-      ch.description = getString(R.string.notif_channel_model_download_desc)
-      nm.createNotificationChannel(ch)
-    }
+    val ch = NotificationChannel(CHANNEL_ID, getString(R.string.notif_channel_model_download), NotificationManager.IMPORTANCE_LOW)
+    ch.description = getString(R.string.notif_channel_model_download_desc)
+    nm.createNotificationChannel(ch)
   }
 
   private fun notifIdForKey(key: String): Int = 2000 + (key.hashCode() and 0x7fffffff) % 100000
@@ -270,7 +265,7 @@ class ModelDownloadService : Service() {
       this,
       (key.hashCode() + 1),
       Intent(this, SettingsActivity::class.java),
-      PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0)
+      PendingIntent.FLAG_UPDATE_CURRENT or (PendingIntent.FLAG_IMMUTABLE)
     )
     builder.setContentIntent(pi)
 

@@ -1,11 +1,5 @@
 <resources>
-  <!-- 让 TextInputLayout 使用与按钮类似的大圆角外观 -->
-  <style name="AsrkbShapeOverlayLarge">
-    <item name="cornerFamily">rounded</item>
-    <item name="cornerSize">20dp</item>
-  </style>
 
-  <!-- 胶囊圆角（适用于 MaterialButton 的 shapeAppearanceOverlay） -->
     <!-- 胶囊圆角（适用于 MaterialButton 的 shapeAppearanceOverlay） -->
   <style name="AsrkbShapeOverlayCapsule">
     <item name="cornerFamily">rounded</item>

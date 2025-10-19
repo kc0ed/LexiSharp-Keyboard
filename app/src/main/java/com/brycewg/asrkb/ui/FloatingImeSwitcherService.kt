@@ -515,19 +515,6 @@ class FloatingImeSwitcherService : Service() {
         val onClick: () -> Unit
     )
 
-    private fun buildCircleButton(iconRes: Int, cd: String, onClick: () -> Unit): View {
-        val iv = ImageView(this)
-        iv.setImageResource(iconRes)
-        iv.background = ContextCompat.getDrawable(this, R.drawable.bg_floating_ball)
-        val pad = dp(6)
-        iv.setPadding(pad, pad, pad, pad)
-        iv.scaleType = ImageView.ScaleType.CENTER_INSIDE
-        iv.contentDescription = cd
-        try { iv.setColorFilter(0xFF111111.toInt()) } catch (_: Throwable) { }
-        iv.setOnClickListener { hapticTap(iv); onClick() }
-        return iv
-    }
-
     private fun buildCapsule(iconRes: Int, label: String, cd: String, onClick: () -> Unit): View {
         val layout = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL

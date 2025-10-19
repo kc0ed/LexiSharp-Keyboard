@@ -80,8 +80,7 @@
 
         <!-- 键盘高度 -->
         <TextView
-          android:id="@+id/labelKeyboardHeight"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_marginTop="16dp"
           android:textColor="?attr/colorOnSurface"

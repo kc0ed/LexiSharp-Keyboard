@@ -11,21 +11,14 @@ import android.util.Log
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.Toast
-import android.widget.Spinner
-import android.widget.ArrayAdapter
 import android.widget.TextView
-import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.appcompat.app.AppCompatActivity
 import com.brycewg.asrkb.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import android.view.LayoutInflater
 import com.brycewg.asrkb.store.Prefs
-import android.view.View
-import android.view.HapticFeedbackConstants
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
@@ -147,12 +140,6 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnImportSettings).setOnClickListener {
             importLauncher.launch(arrayOf("application/json", "text/plain"))
         }
-    }
-
-    private fun hapticTapIfEnabled(view: View?) {
-        try {
-            if (Prefs(this).micHapticEnabled) view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-        } catch (_: Throwable) { }
     }
 
 
@@ -366,11 +353,11 @@ class SettingsActivity : AppCompatActivity() {
 
         // 3) 通知权限（Android 13+，增强项）
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            val notifGranted = checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            val notifGranted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             if (!notifGranted) {
                 if (!askedNotifOnce) {
                     askedNotifOnce = true
-                    requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
                     return
                 }
                 // 已提示过，跳过
@@ -643,7 +630,7 @@ class SettingsActivity : AppCompatActivity() {
                 updateTime // 如果解析失败，直接显示原始时间
             }
             messageBuilder.append(
-                "${getString(R.string.update_timestamp_label, formattedTime)}"
+                getString(R.string.update_timestamp_label, formattedTime)
             )
         }
 
@@ -736,10 +723,4 @@ class SettingsActivity : AppCompatActivity() {
         return if (originalUrl.startsWith("https://github.com/")) mirrorPrefix + originalUrl else originalUrl
     }
 
-    private fun applyExcludeFromRecents(enabled: Boolean) {
-        try {
-            val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
-            am.appTasks?.forEach { it.setExcludeFromRecents(enabled) }
-        } catch (_: Throwable) { }
-    }
 }

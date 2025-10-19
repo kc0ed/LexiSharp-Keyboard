@@ -33,11 +33,10 @@
 
     <string name="settings_instructions">首次使用步骤：\n1. 点击"启用键盘"，在系统设置中启用 言犀键盘\n2. 点击"选择键盘"，切换到 言犀键盘\n3. 授予麦克风权限后，回到任意输入框，长按键盘上的麦克风按钮即可体验</string>
     <string name="btn_one_click_setup">一键设置</string>
-    <string name="btn_enable">启用键盘</string>
-    <string name="btn_choose">选择键盘</string>
     <string name="btn_show_guide">查看使用指南</string>
     <string name="btn_check_update">检查更新</string>
     <string name="settings_title">言犀键盘设置</string>
+    <string name="title_input_settings">输入设置</string>
     <string name="title_asr_settings">ASR 设置</string>
     <string name="title_ai_settings">AI 后处理设置</string>
     <string name="title_other_settings">其他设置</string>
@@ -141,7 +140,6 @@
     <string name="hint_floating_write_compat_pkgs">请填写完整包名，采用精准匹配（例如 org.telegram.messenger 或 com.ss.android.ugc.aweme）。</string>
     <string name="toast_need_accessibility_perm">请在系统设置中授予"无障碍服务"权限以支持此功能</string>
     <string name="cd_floating_asr">悬浮球语音识别</string>
-    <string name="btn_grant_all_permissions">授予所有需要的权限</string>
     <string name="toast_setup_all_done">已完成所有设置</string>
     <string name="toast_setup_enable_keyboard_first">请在系统设置中启用键盘后返回</string>
     <string name="toast_setup_choose_keyboard">请选择“言犀键盘”为当前输入法</string>
@@ -153,7 +151,6 @@
     <string name="floating_asr_completed">识别完成</string>
     <string name="floating_asr_error">识别失败: %1$s</string>
     <string name="floating_asr_copied">已复制到剪贴板</string>
-    <string name="floating_asr_inserted">已插入文本</string>
     <string name="accessibility_service_description">允许言犀键盘悬浮球将语音识别结果自动插入到当前输入框中。不会收集或上传任何数据。</string>
 
     <string name="label_llm_endpoint">OpenAI Endpoint（例如：https://api.openai.com/v1 或包含 /chat/completions）</string>
@@ -183,7 +180,6 @@
     <string name="label_radial_switch_prompt">切换 AI 后处理 Prompt</string>
     <string name="label_radial_clipboard_upload">上传粘贴板</string>
     <string name="label_radial_clipboard_pull">拉取粘贴板</string>
-    <string name="label_radial_clipboard_sync">同步粘贴板</string>
     <string name="label_choose_asr_vendor">选择 ASR 供应商</string>
     <string name="toast_move_mode_on">已进入移动模式，再次点击悬浮球退出</string>
 
@@ -236,7 +232,6 @@
     <string name="error_missing_gemini_key">未配置 Gemini API Key</string>
     <string name="error_missing_dashscope_key">未配置 DashScope API Key</string>
     <string name="error_missing_siliconflow_key">未配置 SiliconFlow API Key</string>
-    <string name="error_missing_openai_key">未配置 OpenAI API Key</string>
     <string name="error_missing_eleven_key">未配置 ElevenLabs API Key</string>
     <string name="error_missing_soniox_key">未配置 Soniox API Key</string>
     <string name="error_missing_eleven_model_id">未配置 ElevenLabs Model ID（服务端要求必填）</string>
@@ -329,6 +324,7 @@
 
     <!-- Keyboard layout option -->
     <string name="label_swap_ai_edit_switcher">交换 AI 编辑与输入法切换键位置</string>
+    <string name="label_fcitx5_return_on_switcher">Fcitx5联动-通过输入法切换键返回</string>
     <string name="label_hide_recent_task_card">后台隐藏任务卡片</string>
 
     <!-- SenseVoice 本地设置 -->
@@ -356,6 +352,15 @@
     <string name="sv_download_status_extracting">解压中…</string>
     <string name="sv_download_status_done">模型已就绪</string>
     <string name="sv_download_status_failed">下载或解压失败</string>
+    <string name="sv_loading_model">本地模型加载中…</string>
+    <string name="sv_model_ready">本地模型加载完成</string>
+    <string name="label_sv_preload">首次显示时加载模型</string>
+    <string name="label_sv_keep_alive">模型内存保留时长</string>
+    <string name="sv_keep_alive_immediate">不保留（识别后立即卸载）</string>
+    <string name="sv_keep_alive_5m">5 分钟</string>
+    <string name="sv_keep_alive_15m">15 分钟</string>
+    <string name="sv_keep_alive_30m">30 分钟</string>
+    <string name="sv_keep_alive_always">始终保持（直到参数变更）</string>
     <string name="sv_download_started_in_bg">已开始后台下载，请到通知栏查看进度</string>
     <string name="sv_clear_confirm_title">确认清除模型？</string>
     <string name="sv_clear_confirm_message">将删除已下载的模型文件，可稍后重新下载。是否继续？</string>
@@ -385,4 +390,5 @@
     <string name="sc_status_uploaded">成功上传粘贴板</string>
     <string name="btn_sc_project_home">项目主页</string>
     <string name="sc_open_browser_failed">无法打开浏览器</string>
+    <string name="hint_sc_server_base_placeholder">https://your-server.com/path</string>
 </resources>

@@ -55,6 +55,13 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+    // 由于应用在运行时支持手动切换语言，禁用 App Bundle 的按语言拆分，
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 // Kotlin 编译配置：使用 compilerOptions DSL 与 JDK 17 工具链
@@ -67,11 +74,11 @@ kotlin {
 }
 
 // 让 Java 编译任务使用本机 JDK 21 工具链，同时保持源码/目标兼容为 17
-val toolchainService = extensions.getByType(org.gradle.jvm.toolchain.JavaToolchainService::class.java)
-tasks.withType(org.gradle.api.tasks.compile.JavaCompile::class.java).configureEach {
+val toolchainService = extensions.getByType(JavaToolchainService::class.java)
+tasks.withType(JavaCompile::class.java).configureEach {
     javaCompiler.set(
         toolchainService.compilerFor {
-            languageVersion.set(org.gradle.jvm.toolchain.JavaLanguageVersion.of(21))
+            languageVersion.set(JavaLanguageVersion.of(21))
         }
     )
 }

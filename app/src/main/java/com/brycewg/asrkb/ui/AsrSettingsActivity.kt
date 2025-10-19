@@ -22,13 +22,8 @@ import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 
 class AsrSettingsActivity : AppCompatActivity() {
 
@@ -79,14 +74,14 @@ class AsrSettingsActivity : AppCompatActivity() {
     val etSfOmniPrompt = findViewById<EditText>(R.id.etSfOmniPrompt)
     val etElevenApiKey = findViewById<EditText>(R.id.etElevenApiKey)
     val etElevenModel = findViewById<EditText>(R.id.etElevenModel)
-    val tvElevenLanguageLabel = findViewById<View>(R.id.tvElevenLanguageLabel)
+      findViewById<View>(R.id.tvElevenLanguageLabel)
     val spElevenLanguage = findViewById<Spinner>(R.id.spElevenLanguage)
     val etDashApiKey = findViewById<EditText>(R.id.etDashApiKey)
     val etDashModel = findViewById<EditText>(R.id.etDashModel)
     val etDashPrompt = findViewById<EditText>(R.id.etDashPrompt)
     val spDashLanguage = findViewById<Spinner>(R.id.spDashLanguage)
-    val tvDashLanguageLabel = findViewById<View>(R.id.tvDashLanguageLabel)
-    val tvOpenAiLanguageLabel = findViewById<View>(R.id.tvOpenAiLanguageLabel)
+      findViewById<View>(R.id.tvDashLanguageLabel)
+      findViewById<View>(R.id.tvOpenAiLanguageLabel)
     val spOpenAiLanguage = findViewById<Spinner>(R.id.spOpenAiLanguage)
     val etOpenAiAsrEndpoint = findViewById<EditText>(R.id.etOpenAiAsrEndpoint)
     val etOpenAiApiKey = findViewById<EditText>(R.id.etOpenAiApiKey)
@@ -104,11 +99,11 @@ class AsrSettingsActivity : AppCompatActivity() {
     val tvVolcLanguageLabel = findViewById<View>(R.id.tvVolcLanguageLabel)
     val etSonioxApiKey = findViewById<EditText>(R.id.etSonioxApiKey)
     val switchSonioxStreaming = findViewById<MaterialSwitch>(R.id.switchSonioxStreaming)
-    val tvSonioxLanguageLabel = findViewById<View>(R.id.tvSonioxLanguageLabel)
-    val tvSonioxLanguageValue = findViewById<android.widget.TextView>(R.id.tvSonioxLanguageValue)
+      findViewById<View>(R.id.tvSonioxLanguageLabel)
+    val tvSonioxLanguageValue = findViewById<TextView>(R.id.tvSonioxLanguageValue)
     val sliderSvThreads = findViewById<Slider>(R.id.sliderSvThreads)
     val spSvModelVariant = findViewById<Spinner>(R.id.spSvModelVariant)
-    val switchSvUseNnapi = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchSvUseNnapi)
+    val switchSvUseNnapi = findViewById<MaterialSwitch>(R.id.switchSvUseNnapi)
     val spSvLanguage = findViewById<Spinner>(R.id.spSvLanguage)
     val switchSvUseItn = findViewById<MaterialSwitch>(R.id.switchSvUseItn)
     val switchSvPreload = findViewById<MaterialSwitch>(R.id.switchSvPreload)
@@ -850,72 +845,6 @@ class AsrSettingsActivity : AppCompatActivity() {
     if (ready && tv.text.isNullOrBlank()) {
       tv.text = getString(R.string.sv_download_status_done)
     }
-  }
-
-  private suspend fun downloadFile(url: String, dest: File, onProgress: (Int) -> Unit) = withContext(Dispatchers.IO) {
-    val client = OkHttpClient()
-    val req = Request.Builder().url(url).build()
-    client.newCall(req).execute().use { resp ->
-      if (!resp.isSuccessful) throw IllegalStateException("HTTP ${'$'}{resp.code}")
-      val body = resp.body ?: throw IllegalStateException("empty body")
-      val total = body.contentLength()
-      dest.outputStream().use { out ->
-        var readSum = 0L
-        val buf = ByteArray(8192)
-        body.byteStream().use { ins ->
-          while (true) {
-            val n = ins.read(buf)
-            if (n <= 0) break
-            out.write(buf, 0, n)
-            readSum += n
-            if (total > 0L) {
-              val p = ((readSum * 100) / total).toInt().coerceIn(0, 100)
-              withContext(Dispatchers.Main) { onProgress(p) }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // 严格解压：校验每个条目写入字节数与 Tar 头声明一致，异常则抛出错误
-  private suspend fun extractTarBz2Strict(file: File, outDir: File) = withContext(Dispatchers.IO) {
-    BZip2CompressorInputStream(file.inputStream().buffered(64 * 1024)).use { bz ->
-      TarArchiveInputStream(bz).use { tar ->
-        var entry = tar.nextEntry
-        val buf = ByteArray(64 * 1024)
-        while (entry != null) {
-          val outFile = File(outDir, entry.name)
-          if (entry.isDirectory) {
-            outFile.mkdirs()
-          } else {
-            outFile.parentFile?.mkdirs()
-            var written = 0L
-            java.io.BufferedOutputStream(FileOutputStream(outFile), 64 * 1024).use { bos ->
-              while (true) {
-                val n = tar.read(buf)
-                if (n <= 0) break
-                bos.write(buf, 0, n)
-                written += n
-              }
-              bos.flush()
-            }
-            // 校验写入大小
-            if (written != entry.size) {
-              // 删除当前异常文件，抛错终止
-              try { outFile.delete() } catch (_: Throwable) { }
-              throw IllegalStateException("tar entry size mismatch: ${'$'}{entry.name}")
-            }
-          }
-          entry = tar.nextEntry
-        }
-      }
-    }
-  }
-
-  // 目录拷贝回退（仅当 rename 失败时使用）
-  private suspend fun copyDirRecursively(src: File, dst: File) {
-    withContext(Dispatchers.IO) { copyDirRecursivelyInternal(src, dst) }
   }
 
   private fun copyDirRecursivelyInternal(src: File, dst: File) {

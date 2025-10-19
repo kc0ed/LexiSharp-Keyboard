@@ -137,6 +137,16 @@ class SonioxStreamAsrEngine(
     private fun startCaptureAndSendAudio() {
         audioJob?.cancel()
         audioJob = scope.launch(Dispatchers.IO) {
+            // 双重校验录音权限，确保从任意路径进入时都安全
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasPermission) {
+                listener.onError(context.getString(R.string.error_record_permission_denied))
+                running.set(false)
+                return@launch
+            }
             val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
             val readSize = maxOf(minBuffer, (sampleRate / 5) * 2) // ~200ms
             var recorder = try {
@@ -147,6 +157,9 @@ class SonioxStreamAsrEngine(
                     audioFormat,
                     readSize
                 )
+            } catch (se: SecurityException) {
+                listener.onError(context.getString(R.string.error_record_permission_denied))
+                stop(); return@launch
             } catch (t: Throwable) {
                 listener.onError(context.getString(R.string.error_audio_init_cannot, t.message ?: ""))
                 stop(); return@launch
@@ -176,7 +189,7 @@ class SonioxStreamAsrEngine(
                 else null
                 // 预热 + 探测：若无有效音频，回退到 MIC
                 run {
-                    val pre = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
+                    val pre = try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { -1 } catch (_: Throwable) { -1 }
                     val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
                     if (!hasSignal) {
                         try { recorder.stop() } catch (_: Throwable) {}
@@ -192,8 +205,8 @@ class SonioxStreamAsrEngine(
                         } catch (_: Throwable) { null }
                         if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
                             recorder = alt
-                            try { recorder.startRecording() } catch (_: Throwable) { }
-                            try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { }
+                            try { recorder.startRecording() } catch (_: SecurityException) { } catch (_: Throwable) { }
+                            try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { } catch (_: Throwable) { }
                         } else {
                             listener.onError(context.getString(R.string.error_audio_init_failed))
                             stop(); return@launch
@@ -202,7 +215,10 @@ class SonioxStreamAsrEngine(
                 }
                 val maxFrames = (2000 / 200).coerceAtLeast(1) // 预缓冲≈2s（readSize~200ms）
                 while (running.get()) {
-                    val n = recorder.read(buf, 0, buf.size)
+                    val n = try { recorder.read(buf, 0, buf.size) } catch (se: SecurityException) {
+                        listener.onError(context.getString(R.string.error_record_permission_denied))
+                        stop(); break
+                    } catch (_: Throwable) { -1 }
                     if (n > 0) {
                         if (silence?.shouldStop(buf, n) == true) {
                             try { listener.onStopped() } catch (_: Throwable) {}
@@ -234,6 +250,8 @@ class SonioxStreamAsrEngine(
                         }
                     }
                 }
+            } catch (se: SecurityException) {
+                listener.onError(context.getString(R.string.error_record_permission_denied))
             } catch (t: Throwable) {
                 listener.onError(context.getString(R.string.error_audio_error, t.message ?: ""))
             } finally {

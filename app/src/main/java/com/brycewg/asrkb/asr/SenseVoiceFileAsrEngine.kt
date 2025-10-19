@@ -53,7 +53,7 @@ class SenseVoiceFileAsrEngine(
         }
     }
 
-    protected override fun ensureReady(): Boolean {
+    override fun ensureReady(): Boolean {
         if (!super.ensureReady()) return false
         // 若未集成 sherpa-onnx Kotlin/so，则直接报错以避免无意义的录音
         if (!SenseVoiceOnnxBridge.isOnnxAvailable()) {
@@ -63,7 +63,7 @@ class SenseVoiceFileAsrEngine(
         return true
     }
 
-    protected override suspend fun recognize(pcm: ByteArray) {
+    override suspend fun recognize(pcm: ByteArray) {
         val t0 = System.currentTimeMillis()
         try {
             if (!SenseVoiceOnnxBridge.isOnnxAvailable()) {
@@ -222,9 +222,9 @@ fun preloadSenseVoiceIfConfigured(
                 if (!suppressToastOnStart) {
                     // 确保在主线程弹出 Toast，避免后台线程直接触发导致异常或卡顿
                     try {
-                        val mh = android.os.Handler(android.os.Looper.getMainLooper())
+                        val mh = Handler(Looper.getMainLooper())
                         mh.post {
-                            try { android.widget.Toast.makeText(context, context.getString(R.string.sv_loading_model), android.widget.Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
+                            try { Toast.makeText(context, context.getString(R.string.sv_loading_model), Toast.LENGTH_SHORT).show() } catch (_: Throwable) { }
                         }
                     } catch (_: Throwable) { }
                 }

@@ -35,7 +35,7 @@ class ImePickerActivity : ComponentActivity() {
                     finish()
                     if (Build.VERSION.SDK_INT >= 34) {
                         // 关闭过渡动画（API 34+）
-                        overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
+                        overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
                     } else {
                         overridePendingTransition(0, 0)
                     }

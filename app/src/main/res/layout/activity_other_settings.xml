@@ -175,8 +175,7 @@
 
     <!-- 语音预置信息功能简介 -->
     <TextView
-      android:id="@+id/tvSpeechPresetIntro"
-      android:layout_width="match_parent"
+        android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="6dp"
       android:textColor="@android:color/darker_gray"
@@ -225,7 +224,7 @@
           android:inputType="textUri"
           android:textColor="?attr/colorOnSurface"
           android:textColorHint="?attr/colorOnSurfaceVariant"
-          android:hint="https://your-server.com/path" />
+          android:hint="@string/hint_sc_server_base_placeholder" />
       </com.google.android.material.textfield.TextInputLayout>
 
       <com.google.android.material.textfield.TextInputLayout
