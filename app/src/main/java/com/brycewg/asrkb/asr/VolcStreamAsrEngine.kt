@@ -53,8 +53,11 @@ class VolcStreamAsrEngine(
 
     private val running = AtomicBoolean(false)
     private val wsReady = AtomicBoolean(false)
+    private val awaitingFinal = AtomicBoolean(false)
+    private val audioLastSent = AtomicBoolean(false)
     private var ws: WebSocket? = null
     private var audioJob: Job? = null
+    private var closeJob: Job? = null
     private val prebuffer = ArrayDeque<ByteArray>()
     private val prebufferLock = Any()
 
@@ -78,24 +81,60 @@ class VolcStreamAsrEngine(
         }
         running.set(true)
         synchronized(prebufferLock) { prebuffer.clear() }
+        audioLastSent.set(false)
         openWebSocketAndStartAudio()
     }
 
     override fun stop() {
         if (!running.get()) return
         running.set(false)
-        // 发送最后一包标记位的空音频以结束（若可能）
-        try { sendAudioFrame(byteArrayOf(), last = true) } catch (_: Throwable) { }
-        // 稍等服务端返回最终结果后再关闭连接
-        scope.launch(Dispatchers.IO) {
-            delay(200)
+        awaitingFinal.set(true)
+        // 停止采集线程
+        audioJob?.cancel()
+        audioJob = null
+
+        // 在关闭前，尽量将预缓冲音频冲刷出去，并发送“最后一包”标记，避免尾音丢失
+        closeJob?.cancel()
+        closeJob = scope.launch(Dispatchers.IO) {
+            // 若 WS 尚未就绪，等待短暂时间以完成握手（避免清空预缓冲导致空音频）
+            val wsReadyWaitMs = 500
+            var waited = 0
+            while (!wsReady.get() && waited < wsReadyWaitMs) {
+                delay(50)
+                waited += 50
+            }
+            // 就绪后冲刷预缓冲
+            if (wsReady.get()) {
+                var flushed: Array<ByteArray>? = null
+                synchronized(prebufferLock) {
+                    if (prebuffer.isNotEmpty()) {
+                        flushed = prebuffer.toTypedArray()
+                        prebuffer.clear()
+                    }
+                }
+                flushed?.forEach { b ->
+                    try { sendAudioFrame(b, last = false) } catch (_: Throwable) { }
+                }
+                // 发送最后一包标记（空载荷亦可作为结束信号）
+                if (!audioLastSent.get()) {
+                    try {
+                        sendAudioFrame(byteArrayOf(), last = true)
+                        audioLastSent.set(true)
+                    } catch (_: Throwable) { }
+                }
+            }
+
+            // 等待最终结果返回或超时再关闭连接：严格等待最终标志，兜底 10s 超时
+            val finalWaitMs = 10_000L
+            var left = finalWaitMs
+            while (awaitingFinal.get() && left > 0) {
+                delay(50)
+                left -= 50
+            }
             try { ws?.close(1000, "stop") } catch (_: Throwable) { }
             ws = null
             wsReady.set(false)
         }
-        audioJob?.cancel()
-        audioJob = null
-        synchronized(prebufferLock) { prebuffer.clear() }
     }
 
     private fun openWebSocketAndStartAudio() {
@@ -129,6 +168,10 @@ class VolcStreamAsrEngine(
                     )
                     webSocket.send(ByteString.of(*frame))
                     wsReady.set(true)
+                    // 若用户在握手期间已 stop()，此处立即冲刷预缓冲并发送最后标记，避免尾段丢失
+                    if (!running.get() && awaitingFinal.get()) {
+                        flushPrebufferAndSendLast()
+                    }
                 } catch (t: Throwable) {
                     listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
                     stop()
@@ -292,6 +335,30 @@ class VolcStreamAsrEngine(
         }
     }
 
+    private fun flushPrebufferAndSendLast() {
+        if (!wsReady.get()) return
+        var flushedCount = 0
+        synchronized(prebufferLock) {
+            flushedCount = prebuffer.size
+        }
+        var flushed: Array<ByteArray>? = null
+        synchronized(prebufferLock) {
+            if (prebuffer.isNotEmpty()) {
+                flushed = prebuffer.toTypedArray()
+                prebuffer.clear()
+            }
+        }
+        flushed?.forEach { b ->
+            try { sendAudioFrame(b, last = false) } catch (_: Throwable) { }
+        }
+        if (!audioLastSent.get()) {
+            try {
+                sendAudioFrame(byteArrayOf(), last = true)
+                audioLastSent.set(true)
+            } catch (_: Throwable) { }
+        }
+    }
+
     private fun sendAudioFrame(pcm: ByteArray, last: Boolean) {
         val webSocket = ws ?: return
         if (!wsReady.get()) return
@@ -374,11 +441,19 @@ class VolcStreamAsrEngine(
                 val text = parseTextFromJson(String(payload, Charsets.UTF_8))
                 if (text.isNotBlank()) {
                     val isFinal = (flags and FLAG_SERVER_FINAL_MASK) == FLAG_SERVER_FINAL_MASK
-                    // 当已调用 stop() 且收到的并非最终结果时，忽略该条以避免重复提交
+                    // 停止后仅接受最终结果；录音中允许 partial
                     if (!running.get() && !isFinal) return
-                    if (isFinal) listener.onFinal(text) else listener.onPartial(text)
                     if (isFinal) {
+                        try { listener.onFinal(text) } catch (_: Throwable) { }
                         running.set(false)
+                        awaitingFinal.set(false)
+                        scope.launch(Dispatchers.IO) {
+                            try { ws?.close(1000, "final") } catch (_: Throwable) { }
+                            ws = null
+                            wsReady.set(false)
+                        }
+                    } else {
+                        listener.onPartial(text)
                     }
                 }
             }
@@ -470,4 +545,3 @@ class VolcStreamAsrEngine(
         private const val FLAG_SERVER_FINAL_MASK = 0x3 // 服务端最终结果标志
     }
 }
-
