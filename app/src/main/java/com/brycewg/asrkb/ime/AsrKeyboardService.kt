@@ -205,11 +205,11 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
         // Refresh custom punctuation labels
         applyPunctuationLabels()
         refreshPermissionUi()
-        // Keep system toolbar/nav colors in sync with our panel background
-        syncSystemBarsToKeyboardBackground(rootView)
-        // 重新按偏好应用键盘高度缩放
-        applyKeyboardHeightScale(rootView)
-        // 重新按偏好应用按钮位置交换
+        // 避免在弹出动画阶段频繁变更高度与系统栏颜色，降低闪烁概率
+        // 将系统栏颜色同步推迟到布局完成后执行
+        try { rootView?.post { syncSystemBarsToKeyboardBackground(rootView) } } catch (_: Throwable) { }
+        // 键盘高度缩放仅在创建时应用；如用户在设置中修改，会通过广播即时刷新
+        // 仅更新可能发生改变的按钮位置（轻量级）
         applyButtonSwapAccordingToPrefs(rootView)
 
         // 若正在录音（点按切换开启），恢复预览为 composing
@@ -664,13 +664,13 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, co
         // Apply visibility based on settings
         btnImeSwitcher?.visibility = View.VISIBLE
 
-        // 应用键盘高度缩放
+        // 应用键盘高度缩放（仅在创建时执行，避免弹出动画阶段的高度抖动）
         applyKeyboardHeightScale(view)
 
         updateUiIdle()
         refreshPermissionUi()
-        // Align system toolbar/navigation bar color to our surface color so they match
-        syncSystemBarsToKeyboardBackground(view)
+        // 同步系统导航栏颜色：放到首次布局完成后执行，避免动画阶段闪烁
+        try { view.post { syncSystemBarsToKeyboardBackground(view) } } catch (_: Throwable) { }
         return view
     }
 
