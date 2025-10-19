@@ -310,6 +310,74 @@ class Prefs(context: Context) {
             return found?.content ?: (llmPrompt.ifBlank { DEFAULT_LLM_PROMPT })
         }
 
+    // 语音预置信息（触发短语 -> 替换内容）
+    var speechPresetsJson: String
+        get() = sp.getString(KEY_SPEECH_PRESETS, "") ?: ""
+        set(value) = sp.edit { putString(KEY_SPEECH_PRESETS, value) }
+
+    var activeSpeechPresetId: String
+        get() = sp.getString(KEY_SPEECH_PRESET_ACTIVE_ID, "") ?: ""
+        set(value) = sp.edit { putString(KEY_SPEECH_PRESET_ACTIVE_ID, value) }
+
+    fun getSpeechPresets(): List<SpeechPreset> {
+        if (speechPresetsJson.isBlank()) return emptyList()
+        return try {
+            val arr = org.json.JSONArray(speechPresetsJson)
+            val list = mutableListOf<SpeechPreset>()
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val id = o.optString("id").ifBlank { java.util.UUID.randomUUID().toString() }
+                val name = o.optString("name").trim()
+                if (name.isEmpty()) continue
+                val content = o.optString("content")
+                list.add(SpeechPreset(id, name, content))
+            }
+            list
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    fun setSpeechPresets(list: List<SpeechPreset>) {
+        val sanitized = list.mapNotNull { p ->
+            val name = p.name.trim()
+            if (name.isEmpty()) {
+                null
+            } else {
+                val id = p.id.ifBlank { java.util.UUID.randomUUID().toString() }
+                SpeechPreset(id, name, p.content)
+            }
+        }
+        val arr = org.json.JSONArray()
+        sanitized.forEach { p ->
+            val o = org.json.JSONObject()
+            o.put("id", p.id)
+            o.put("name", p.name)
+            o.put("content", p.content)
+            arr.put(o)
+        }
+        speechPresetsJson = arr.toString()
+        if (sanitized.none { it.id == activeSpeechPresetId }) {
+            activeSpeechPresetId = sanitized.firstOrNull()?.id ?: ""
+        }
+    }
+
+    fun findSpeechPresetReplacement(original: String): String? {
+        val normalized = original.trim()
+        if (normalized.isEmpty()) return null
+        val presets = getSpeechPresets()
+        val strict = presets.firstOrNull { it.name.trim() == normalized }
+        val match = strict ?: presets.firstOrNull { it.name.trim().equals(normalized, ignoreCase = true) }
+        return match?.content
+    }
+
+    fun getActiveSpeechPreset(): SpeechPreset? {
+        val presets = getSpeechPresets()
+        if (presets.isEmpty()) return null
+        val activeId = activeSpeechPresetId
+        return presets.firstOrNull { it.id == activeId } ?: presets.firstOrNull()
+    }
+
     // SiliconFlow凭证
     var sfApiKey: String by stringPref(KEY_SF_API_KEY, "")
 
@@ -657,6 +725,8 @@ class Prefs(context: Context) {
         private const val KEY_LLM_PROMPT = "llm_prompt"
         private const val KEY_LLM_PROMPT_PRESETS = "llm_prompt_presets"
         private const val KEY_LLM_PROMPT_ACTIVE_ID = "llm_prompt_active_id"
+        private const val KEY_SPEECH_PRESETS = "speech_presets"
+        private const val KEY_SPEECH_PRESET_ACTIVE_ID = "speech_preset_active_id"
         private const val KEY_ASR_VENDOR = "asr_vendor"
         private const val KEY_SF_API_KEY = "sf_api_key"
         private const val KEY_SF_MODEL = "sf_model"
