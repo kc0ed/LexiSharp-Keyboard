@@ -220,7 +220,7 @@ English | [简体中文](README.md)
 
 ### 🟣 Floating Ball Voice Recognition Feature ⭐
 
-> **Killer Feature**: Perfectly solves the pain point of voice input working with regular input methods!
+> Perfectly solves the pain point of voice input working with regular input methods!
 
 <details open>
 <summary><b>Feature Highlights</b></summary>
@@ -256,6 +256,7 @@ English | [简体中文](README.md)
 - 🔘 **Idle State**: Microphone icon shows in gray
 - 🔴 **Recording**: Icon turns red
 - 🔵 **AI Processing**: Icon turns blue
+- **Function Menu**: Long press the floating ball to bring up the function menu, including options to switch to AI post-processing, switch input methods, etc.
 
 </details>
 
@@ -294,6 +295,9 @@ In some apps, input fields expose background placeholder text to Accessibility, 
 ✅ Enjoy the best of both worlds: familiar typing experience + high-quality voice recognition
 ✅ Switch to LexiSharp Keyboard when needed for more smart ASR features
 ```
+
+If you use Fcitx5, you can call up LexiSharp Keyboard through the voice recognition button and return to Fcitx5 through the LexiSharp Keyboard switch button.
+(Requires enabling Fcitx5 linkage in LexiSharp Keyboard settings and ensuring Google voice input service is disabled)
 
 </details>
 
@@ -334,7 +338,7 @@ The settings page supports configuration switching by vendor, showing only corre
 **Configuration Parameters**:
 
 - `API Key`: Starts with `sk-`
-- `Endpoint`: API address
+- `Endpoint`: Full API address
 - `Model`: Model name
 
 > ⚠️ Single upload limit: 25MB
@@ -353,8 +357,6 @@ The settings page supports configuration switching by vendor, showing only corre
 - `API Key`: Bearer Token
 - `Model Name`: Model name
 
-**Endpoint**: `https://api.siliconflow.cn/v1/audio/transcriptions`
-
 **Mutilmodal**: Support Qwen3-Omni series
 
 </td>
@@ -366,8 +368,6 @@ The settings page supports configuration switching by vendor, showing only corre
 
 - `API Key`: API key
 - `Model ID`: Model ID
-
-**Endpoint**: `https://api.elevenlabs.io/v1/speech-to-text`
 
 </td>
 </tr>
@@ -416,12 +416,6 @@ The settings page supports configuration switching by vendor, showing only corre
 
 - `API Key`: API key
 - `Recognition Language`: Multi-language support
-
-**Endpoints**:
-
-- File Upload: `https://api.soniox.com/v1/files`
-- Transcription: `https://api.soniox.com/v1/transcriptions`
-- WebSocket: `wss://stt-rt.soniox.com/transcribe-websocket`
 
 > 📝 Non-streaming mode Uses OSS relay, slightly higher latency
 
@@ -482,11 +476,12 @@ The settings page supports configuration switching by vendor, showing only corre
 </details>
 
 <details>
-<summary><b>Input Settings</b></summary>
+<summary><b>Speech Preset Information</b></summary>
 
-- **Pinyin Input**: Full Pinyin / Xiaohe Shuangpin
-- **Auto Conversion**: Pinyin auto-conversion time interval
-- **Custom Keys**: 5 customizable punctuation keys
+- Function Description: When speech recognition result exactly matches a "name", it is automatically replaced with its "content", helping to quickly input common phrases, signatures, addresses, employee numbers, etc.
+- Matching Rules: First perform strict case-sensitive matching, if no match then perform case-insensitive matching; replacement is only triggered when the entire text is identical to the name.
+- Usage: Add or delete entries in "Other Settings → Speech Preset Information", select entries to edit through the dropdown, and fill in "name" and "content" separately.
+- Example: Name "My Address" → Content "Shanghai, Xuhui District..."; when you say "My Address" and recognition is completed, it will be directly replaced with the preset content.
 
 </details>
 
@@ -512,76 +507,16 @@ The settings page supports configuration switching by vendor, showing only corre
 
 ---
 
-<details>
-<summary><h2>🔧 Technical Architecture</h2></summary>
-
-### 📦 Core Components
-
-<details>
-<summary><b>ASR Engine Layer</b></summary>
-
-- `AsrEngine.kt` - ASR engine base interface
-- `AsrVendor.kt` - ASR vendor enumeration
-- `VolcFileAsrEngine.kt` - Volcengine implementation
-- `OpenAiFileAsrEngine.kt` - OpenAI Whisper implementation
-- `SiliconFlowFileAsrEngine.kt` - SiliconFlow implementation
-- `ElevenLabsFileAsrEngine.kt` - ElevenLabs implementation
-- `DashscopeFileAsrEngine.kt` - Alibaba Cloud Bailian implementation
-- `GeminiFileAsrEngine.kt` - Google Gemini implementation
-- `SonioxFileAsrEngine.kt` - Soniox file recognition implementation
-- `SonioxStreamAsrEngine.kt` - Soniox streaming recognition implementation
-- `LlmPostProcessor.kt` - LLM post-processor
-
-</details>
-
-<details>
-<summary><b>Input Method Service Layer</b></summary>
-
-- `AsrKeyboardService.kt` - Main keyboard service (InputMethodService)
-- `FloatingAsrService.kt` - Floating ball voice recognition service
-- `FloatingImeSwitcherService.kt` - Floating IME switching service
-- `AsrAccessibilityService.kt` - Accessibility service (text insertion)
-
-</details>
-
-<details>
-<summary><b>User Interface Layer</b></summary>
-
-- `SettingsActivity.kt` - Settings interface
-- `PermissionActivity.kt` - Permission request interface
-- `ImePickerActivity.kt` - Input method picker
-
-</details>
-
-<details>
-<summary><b>Data Storage Layer</b></summary>
-
-- `Prefs.kt` - Runtime configuration management
-- `PromptPreset.kt` - Prompt preset management
-
-</details>
-
 ### 🎨 Tech Stack
 
 ```
 Kotlin 1.9.24
-Android SDK 34 (Min SDK 24)
+Android SDK 34 (Min SDK 29)
 Material Design 3
 Coroutines (async processing)
 OkHttp (network requests)
 SharedPreferences (data storage)
 ```
-
-### 🔊 Audio Processing
-
-```
-Format: PCM 16kHz / 16-bit / Mono
-Encoding: WAV container
-Transmission: HTTP/HTTPS
-Compression: GZIP support
-```
-
-</details>
 
 ---
 
@@ -632,7 +567,7 @@ Welcome to join our Telegram group to exchange experiences, report issues, or sh
 
 ## ☕ Support & Appreciation
 
-If this project helps you, feel free to buy me a coffee ☕️
+If this project helps you, please give it a Star ⭐️ and feel free to buy me a coffee ☕️
 
 <div align="center">
 <img src="images/wechat.jpg" alt="WeChat Appreciation Code" width="300"/>

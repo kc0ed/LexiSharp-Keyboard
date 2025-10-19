@@ -218,7 +218,7 @@
 
 ### 🟣 悬浮球语音识别功能 ⭐
 
-> **杀手级功能**：完美解决语音输入与常规输入法配合使用的痛点！
+> 完美解决语音输入与常规输入法配合使用的痛点！
 
 <details open>
 <summary><b>功能亮点</b></summary>
@@ -254,6 +254,7 @@
 - 🔘 **空闲状态**：麦克风图标显示为灰色
 - 🔴 **录音中**：图标变为红色
 - 🔵 **AI 处理中**：图标变为蓝色
+- **功能菜单**：长按悬浮球可呼出功能菜单，包括切换到 AI 后处理、切换输入法等选项
 
 </details>
 
@@ -290,6 +291,9 @@
 ✅ 享受两全其美的输入体验：熟悉的打字手感 + 高质量的语音识别
 ✅ 需要时切换到言犀键盘，享受更多智能 ASR 功能
 ```
+
+如果你使用 Fctix5,可以通过语音识别按钮唤出言犀键盘,并可以通过言犀键盘切换按钮返回到 Fcitx5
+(需要在言犀键盘设置中开启 Fcitx5 联动,并且保证 Google 语音输入服务被禁用)
 
 </details>
 
@@ -330,7 +334,7 @@
 **配置参数**:
 
 - `API Key`: 以 `sk-` 开头
-- `Endpoint`: API 地址
+- `Endpoint`: 完整 API 地址
 - `Model`: 模型名称
 
 > ⚠️ 单次上传上限 25MB
@@ -349,8 +353,6 @@
 - `API Key`: Bearer Token
 - `Model Name`: 模型名称
 
-**端点**: `https://api.siliconflow.cn/v1/audio/transcriptions`
-
 **支持语音多模态**: 可使用 Qwen3-Omni 系列进行语音识别
 
 </td>
@@ -362,8 +364,6 @@
 
 - `API Key`: API 密钥
 - `Model ID`: 模型 ID
-
-**端点**: `https://api.elevenlabs.io/v1/speech-to-text`
 
 </td>
 </tr>
@@ -412,12 +412,6 @@
 
 - `API Key`: API 密钥
 - `识别语言`: 支持多语言选择
-
-**端点**:
-
-- 文件上传: `https://api.soniox.com/v1/files`
-- 转写接口: `https://api.soniox.com/v1/transcriptions`
-- WebSocket: `wss://stt-rt.soniox.com/transcribe-websocket`
 
 > 📝 非流式识别采用官方中转，延迟稍高
 
@@ -478,11 +472,12 @@
 </details>
 
 <details>
-<summary><b>输入设置</b></summary>
+<summary><b>语音预置信息</b></summary>
 
-- **拼音输入**: 全拼 / 小鹤双拼
-- **自动转换**: 拼音自动转换时间间隔
-- **自定义按键**: 5 个自定义标点符号按键
+- 功能说明：当语音识别结果与某个“名称”完全一致时，自动用其“内容”替换，帮助快速输入常用短语、签名、地址、工号等。
+- 匹配规则：先进行严格大小写匹配，若未命中再进行不区分大小写匹配；仅当整段文本与名称相同才会触发替换。
+- 使用方式：在“其他设置 → 语音预置信息”中新增或删除条目，通过下拉选择要编辑的条目，分别填写“名称”和“内容”。
+- 示例：名称“我的地址” → 内容“上海市徐汇区…”；当你说出“我的地址”并完成识别后，将直接替换为预设内容。
 
 </details>
 
@@ -508,76 +503,16 @@
 
 ---
 
-<details>
-<summary><h2>🔧 技术架构</h2></summary>
-
-### 📦 核心组件
-
-<details>
-<summary><b>ASR 引擎层</b></summary>
-
-- `AsrEngine.kt` - ASR 引擎基础接口
-- `AsrVendor.kt` - ASR 供应商枚举
-- `VolcFileAsrEngine.kt` - 火山引擎实现
-- `OpenAiFileAsrEngine.kt` - OpenAI Whisper 实现
-- `SiliconFlowFileAsrEngine.kt` - SiliconFlow 实现
-- `ElevenLabsFileAsrEngine.kt` - ElevenLabs 实现
-- `DashscopeFileAsrEngine.kt` - 阿里云百炼实现
-- `GeminiFileAsrEngine.kt` - Google Gemini 实现
-- `SonioxFileAsrEngine.kt` - Soniox 文件识别实现
-- `SonioxStreamAsrEngine.kt` - Soniox 流式识别实现
-- `LlmPostProcessor.kt` - LLM 后处理器
-
-</details>
-
-<details>
-<summary><b>输入法服务层</b></summary>
-
-- `AsrKeyboardService.kt` - 主键盘服务 (InputMethodService)
-- `FloatingAsrService.kt` - 悬浮球语音识别服务
-- `FloatingImeSwitcherService.kt` - 悬浮输入法切换服务
-- `AsrAccessibilityService.kt` - 无障碍服务（文本插入）
-
-</details>
-
-<details>
-<summary><b>用户界面层</b></summary>
-
-- `SettingsActivity.kt` - 设置界面
-- `PermissionActivity.kt` - 权限请求界面
-- `ImePickerActivity.kt` - 输入法选择器
-
-</details>
-
-<details>
-<summary><b>数据存储层</b></summary>
-
-- `Prefs.kt` - 运行时配置管理
-- `PromptPreset.kt` - 提示词预设管理
-
-</details>
-
 ### 🎨 技术栈
 
 ```
 Kotlin 1.9.24
-Android SDK 34 (Min SDK 24)
+Android SDK 34 (Min SDK 29)
 Material Design 3
 Coroutines (异步处理)
 OkHttp (网络请求)
 SharedPreferences (数据存储)
 ```
-
-### 🔊 音频处理
-
-```
-格式: PCM 16kHz / 16-bit / Mono
-编码: WAV 封装
-传输: HTTP/HTTPS
-压缩: 支持 GZIP
-```
-
-</details>
 
 ---
 
@@ -588,29 +523,6 @@ SharedPreferences (数据存储)
 ```
 Apache 2.0 License - 自由使用、修改、分发，需保留版权声明
 ```
-
----
-
-<details>
-<summary><h2>🤝 贡献指南</h2></summary>
-
-欢迎提交 Issue 和 Pull Request 来改进项目！
-
-### 提交代码前请确保：
-
-- ✅ 代码通过所有测试
-- ✅ 遵循项目代码规范（Kotlin 标准）
-- ✅ 添加必要的注释和文档
-- ✅ 更新相关的 README 文档
-- ✅ 使用 Conventional Commits 格式
-
-</details>
-
----
-
-## 🌟 Star History
-
-如果这个项目对你有帮助，请给个 Star ⭐️
 
 ---
 
@@ -628,7 +540,7 @@ Apache 2.0 License - 自由使用、修改、分发，需保留版权声明
 
 ## ☕ 赞赏支持
 
-如果这个项目对你有帮助，欢迎请我喝杯咖啡 ☕️
+如果这个项目对你有帮助，请给个 Star ⭐️ 也欢迎请我喝杯咖啡 ☕️
 
 <div align="center">
 <img src="images/wechat.jpg" alt="微信赞赏码" width="300"/>
