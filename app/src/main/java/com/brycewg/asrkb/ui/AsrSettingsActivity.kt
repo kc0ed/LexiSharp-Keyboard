@@ -112,6 +112,7 @@ class AsrSettingsActivity : AppCompatActivity() {
     val tvSvLanguage = findViewById<TextView>(R.id.tvSvLanguageValue)
     val switchSvUseItn = findViewById<MaterialSwitch>(R.id.switchSvUseItn)
     val switchSvPreload = findViewById<MaterialSwitch>(R.id.switchSvPreload)
+    val switchSvPseudoStreaming = findViewById<MaterialSwitch>(R.id.switchSvPseudoStreaming)
     val spSvKeepAlive = findViewById<Spinner>(R.id.spSvKeepAlive)
     val tvSvKeepAlive = findViewById<TextView>(R.id.tvSvKeepAliveValue)
     val btnSvDownload = findViewById<MaterialButton>(R.id.btnSvDownloadModel)
@@ -487,6 +488,13 @@ class AsrSettingsActivity : AppCompatActivity() {
           try { com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(this@AsrSettingsActivity, prefs) } catch (_: Throwable) { }
         }
       }
+    }
+
+    // SenseVoice 伪流式开关
+    switchSvPseudoStreaming.isChecked = prefs.svPseudoStreamingEnabled
+    switchSvPseudoStreaming.setOnCheckedChangeListener { btn, isChecked ->
+      hapticTapIfEnabled(btn)
+      prefs.svPseudoStreamingEnabled = isChecked
     }
 
     // 模型保留时长（点击弹出单选）

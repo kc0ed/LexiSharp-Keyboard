@@ -252,7 +252,7 @@ fun findSvModelDir(root: java.io.File?): java.io.File? {
 /**
  * 通过反射探测 sherpa-onnx 是否可用；未引入依赖时不产生编译时引用。
  */
-private object SenseVoiceOnnxBridge {
+object SenseVoiceOnnxBridge {
     private val mainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
     @Volatile private var pendingUnload: Runnable? = null
     @Volatile private var cachedKey: String? = null
@@ -509,6 +509,51 @@ private object SenseVoiceOnnxBridge {
             f.isAccessible = true
             (f.get(target) as? String)
         } catch (_: Throwable) { null }
+    }
+
+    // --- 供伪流式会话使用的简化桥接 ---
+    // 调用前请先通过 prepare() 确保 cachedRecognizer 已创建
+    @Synchronized
+    fun createStreamOrNull(): Any? {
+        return try {
+            val recognizer = cachedRecognizer ?: return null
+            if (clsOfflineRecognizer == null) {
+                clsOfflineRecognizer = Class.forName("com.k2fsa.sherpa.onnx.OfflineRecognizer")
+            }
+            val m = clsOfflineRecognizer!!.getMethod("createStream")
+            m.invoke(recognizer)
+        } catch (_: Throwable) { null }
+    }
+
+    fun acceptWaveform(stream: Any, samples: FloatArray, sampleRate: Int) {
+        try {
+            val clsStream = (cachedStreamClass ?: stream.javaClass).also { cachedStreamClass = it }
+            try {
+                clsStream.getMethod("acceptWaveform", FloatArray::class.java, Int::class.javaPrimitiveType)
+                    .invoke(stream, samples, sampleRate)
+            } catch (_: Throwable) {
+                clsStream.getMethod("acceptWaveform", FloatArray::class.java)
+                    .invoke(stream, samples)
+            }
+        } catch (_: Throwable) { }
+    }
+
+    fun decodeAndGetText(stream: Any): String? {
+        return try {
+            val recognizer = cachedRecognizer ?: return null
+            val clsStream = (cachedStreamClass ?: stream.javaClass).also { cachedStreamClass = it }
+            if (clsOfflineRecognizer == null) {
+                clsOfflineRecognizer = Class.forName("com.k2fsa.sherpa.onnx.OfflineRecognizer")
+            }
+            clsOfflineRecognizer!!.getMethod("decode", clsStream).invoke(recognizer, stream)
+            val result = clsOfflineRecognizer!!.getMethod("getResult", clsStream).invoke(recognizer, stream)
+            tryGetStringField(result, "text") ?: result?.toString()
+        } catch (_: Throwable) { null }
+    }
+
+    fun releaseStream(stream: Any?) {
+        if (stream == null) return
+        try { stream.javaClass.getMethod("release").invoke(stream) } catch (_: Throwable) { }
     }
 }
 

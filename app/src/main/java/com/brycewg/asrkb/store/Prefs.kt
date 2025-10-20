@@ -555,6 +555,21 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_SV_KEEP_ALIVE_MINUTES, -1)
         set(value) = sp.edit { putInt(KEY_SV_KEEP_ALIVE_MINUTES, value) }
 
+    // SenseVoice：伪流式识别开关（容错：若历史上被以字符串写入，做解析回退）
+    var svPseudoStreamingEnabled: Boolean
+        get() = try {
+            sp.getBoolean(KEY_SV_PSEUDO_STREAMING_ENABLED, false)
+        } catch (_: ClassCastException) {
+            val s = sp.getString(KEY_SV_PSEUDO_STREAMING_ENABLED, null)
+            when {
+                s == null -> false
+                s.equals("true", ignoreCase = true) -> true
+                s == "1" -> true
+                else -> false
+            }
+        }
+        set(value) = sp.edit { putBoolean(KEY_SV_PSEUDO_STREAMING_ENABLED, value) }
+
     // --- 供应商配置通用化 ---
     private data class VendorField(val key: String, val required: Boolean = false, val default: String = "")
 
@@ -767,6 +782,7 @@ class Prefs(context: Context) {
         private const val KEY_SV_USE_ITN = "sv_use_itn"
         private const val KEY_SV_PRELOAD_ENABLED = "sv_preload_enabled"
         private const val KEY_SV_KEEP_ALIVE_MINUTES = "sv_keep_alive_minutes"
+        private const val KEY_SV_PSEUDO_STREAMING_ENABLED = "sv_pseudo_streaming_enabled"
 
         // SyncClipboard keys
         private const val KEY_SC_ENABLED = "syncclip_enabled"
@@ -935,6 +951,7 @@ class Prefs(context: Context) {
         o.put(KEY_SV_USE_ITN, svUseItn)
         o.put(KEY_SV_PRELOAD_ENABLED, svPreloadEnabled)
         o.put(KEY_SV_KEEP_ALIVE_MINUTES, svKeepAliveMinutes)
+        o.put(KEY_SV_PSEUDO_STREAMING_ENABLED, svPseudoStreamingEnabled)
         // SyncClipboard 配置
         o.put(KEY_SC_ENABLED, syncClipboardEnabled)
         o.put(KEY_SC_SERVER_BASE, syncClipboardServerBase)
@@ -1040,6 +1057,7 @@ class Prefs(context: Context) {
             optBool(KEY_SV_USE_ITN)?.let { svUseItn = it }
             optBool(KEY_SV_PRELOAD_ENABLED)?.let { svPreloadEnabled = it }
             optInt(KEY_SV_KEEP_ALIVE_MINUTES)?.let { svKeepAliveMinutes = it }
+            optBool(KEY_SV_PSEUDO_STREAMING_ENABLED)?.let { svPseudoStreamingEnabled = it }
             // SyncClipboard 配置
             optBool(KEY_SC_ENABLED)?.let { syncClipboardEnabled = it }
             optString(KEY_SC_SERVER_BASE)?.let { syncClipboardServerBase = it }

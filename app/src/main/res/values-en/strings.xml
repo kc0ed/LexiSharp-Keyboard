@@ -369,6 +369,7 @@
     <string name="sv_keep_alive_15m">15 minutes</string>
     <string name="sv_keep_alive_30m">30 minutes</string>
     <string name="sv_keep_alive_always">Always keep (until parameters change)</string>
+    <string name="label_sv_pseudo_streaming">Pseudo-streaming (real-time while recording)</string>
     <string name="label_sv_threads">Threads (1-8)</string>
     <string name="label_sv_use_nnapi">Enable NNAPI (experimental; try with 4 threads)</string>
     <string name="label_sv_language">Recognition language</string>

@@ -989,8 +989,16 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
                 }
             } else null
             AsrVendor.SenseVoice -> {
-                // 本地引擎无需鉴权；占位实现会在依赖缺失时给出提示
-                SenseVoiceFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+                // 本地引擎无需鉴权；根据开关选择伪流式或非流式
+                if (prefs.svPseudoStreamingEnabled) {
+                    com.brycewg.asrkb.asr.LocalModelPseudoStreamAsrEngine(
+                        this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService
+                    )
+                } else {
+                    SenseVoiceFileAsrEngine(
+                        this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration
+                    )
+                }
             }
         }
     }
@@ -1031,8 +1039,9 @@ class AsrKeyboardService : InputMethodService(), StreamingAsrEngine.Listener, Se
                         else SonioxFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
             AsrVendor.SenseVoice -> when (current) {
-                is SenseVoiceFileAsrEngine -> current
-                else -> SenseVoiceFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+                is com.brycewg.asrkb.asr.LocalModelPseudoStreamAsrEngine -> if (prefs.svPseudoStreamingEnabled) current else SenseVoiceFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
+                is SenseVoiceFileAsrEngine -> if (!prefs.svPseudoStreamingEnabled) current else com.brycewg.asrkb.asr.LocalModelPseudoStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService)
+                else -> if (prefs.svPseudoStreamingEnabled) com.brycewg.asrkb.asr.LocalModelPseudoStreamAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService) else SenseVoiceFileAsrEngine(this@AsrKeyboardService, serviceScope, prefs, this@AsrKeyboardService, this@AsrKeyboardService::onAsrRequestDuration)
             }
         }
     }

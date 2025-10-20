@@ -429,7 +429,6 @@ The settings page supports configuration switching by vendor, showing only corre
 - `Thread Count`: Adjustable from 1-8 threads
 - `Recognition Language`: auto/zh/en/ja/ko/yue
 - `Use ITN`: Inverse Text Normalization
-- `Use NNAPI`: Hardware acceleration (experimental)
 - `Model Keep-Alive Duration`: Control model memory usage
 
 > 💡 Powered by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)

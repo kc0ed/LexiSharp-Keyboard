@@ -361,6 +361,7 @@
     <string name="sv_keep_alive_15m">15 分钟</string>
     <string name="sv_keep_alive_30m">30 分钟</string>
     <string name="sv_keep_alive_always">始终保持（直到参数变更）</string>
+    <string name="label_sv_pseudo_streaming">伪流式识别（录音中实时转写）</string>
     <string name="sv_download_started_in_bg">已开始后台下载，请到通知栏查看进度</string>
     <string name="sv_clear_confirm_title">确认清除模型？</string>
     <string name="sv_clear_confirm_message">将删除已下载的模型文件，可稍后重新下载。是否继续？</string>
