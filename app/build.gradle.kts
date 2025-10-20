@@ -62,6 +62,18 @@ android {
             enableSplit = false
         }
     }
+    // - 排除不需要的 JNI 库：
+    //   * libonnxruntime4j_jni.so（ORT-Java 绑定，不使用，且常见 16KB 对齐问题）
+    //   * libsherpa-onnx-c-api.so / libsherpa-onnx-cxx-api.so（C/C++ 接口，本项目走 JNI 不需要）
+    packaging {
+        jniLibs {
+            excludes += listOf(
+                "**/libonnxruntime4j_jni.so",
+                "**/libsherpa-onnx-c-api.so",
+                "**/libsherpa-onnx-cxx-api.so"
+            )
+        }
+    }
 }
 
 // Kotlin 编译配置：使用 compilerOptions DSL 与 JDK 17 工具链

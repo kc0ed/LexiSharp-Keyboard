@@ -108,7 +108,6 @@ class AsrSettingsActivity : AppCompatActivity() {
     val sliderSvThreads = findViewById<Slider>(R.id.sliderSvThreads)
     val spSvModelVariant = findViewById<Spinner>(R.id.spSvModelVariant)
     val tvSvModelVariant = findViewById<TextView>(R.id.tvSvModelVariantValue)
-    val switchSvUseNnapi = findViewById<MaterialSwitch>(R.id.switchSvUseNnapi)
     val spSvLanguage = findViewById<Spinner>(R.id.spSvLanguage)
     val tvSvLanguage = findViewById<TextView>(R.id.tvSvLanguageValue)
     val switchSvUseItn = findViewById<MaterialSwitch>(R.id.switchSvUseItn)
@@ -430,15 +429,6 @@ class AsrSettingsActivity : AppCompatActivity() {
         override fun onStartTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
         override fun onStopTrackingTouch(slider: Slider) { hapticTapIfEnabled(slider) }
       })
-    }
-    switchSvUseNnapi.isChecked = prefs.svUseNnapi
-    switchSvUseNnapi.setOnCheckedChangeListener { btn, isChecked ->
-      hapticTapIfEnabled(btn)
-      if (prefs.svUseNnapi != isChecked) {
-        prefs.svUseNnapi = isChecked
-        // 参数变更即预卸载
-        try { com.brycewg.asrkb.asr.unloadSenseVoiceRecognizer() } catch (_: Throwable) { }
-      }
     }
 
     // SenseVoice 语言与 ITN（点击弹出单选）

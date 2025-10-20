@@ -536,17 +536,13 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_SV_NUM_THREADS, 2).coerceIn(1, 8)
         set(value) = sp.edit { putInt(KEY_SV_NUM_THREADS, value.coerceIn(1, 8)) }
 
-    var svUseNnapi: Boolean
-        get() = sp.getBoolean(KEY_SV_USE_NNAPI, false)
-        set(value) = sp.edit { putBoolean(KEY_SV_USE_NNAPI, value) }
-
     // SenseVoice：语言（auto/zh/en/ja/ko/yue）与 ITN 开关
     var svLanguage: String
         get() = sp.getString(KEY_SV_LANGUAGE, "auto") ?: "auto"
         set(value) = sp.edit { putString(KEY_SV_LANGUAGE, value.trim().ifBlank { "auto" }) }
 
     var svUseItn: Boolean
-        get() = sp.getBoolean(KEY_SV_USE_ITN, false)
+        get() = sp.getBoolean(KEY_SV_USE_ITN, true)
         set(value) = sp.edit { putBoolean(KEY_SV_USE_ITN, value) }
 
     // SenseVoice：首次显示时预加载（默认关闭）
@@ -767,7 +763,6 @@ class Prefs(context: Context) {
         private const val KEY_SV_MODEL_DIR = "sv_model_dir"
         private const val KEY_SV_MODEL_VARIANT = "sv_model_variant"
         private const val KEY_SV_NUM_THREADS = "sv_num_threads"
-        private const val KEY_SV_USE_NNAPI = "sv_use_nnapi"
         private const val KEY_SV_LANGUAGE = "sv_language"
         private const val KEY_SV_USE_ITN = "sv_use_itn"
         private const val KEY_SV_PRELOAD_ENABLED = "sv_preload_enabled"
@@ -936,7 +931,6 @@ class Prefs(context: Context) {
         o.put(KEY_SV_MODEL_DIR, svModelDir)
         o.put(KEY_SV_MODEL_VARIANT, svModelVariant)
         o.put(KEY_SV_NUM_THREADS, svNumThreads)
-        o.put(KEY_SV_USE_NNAPI, svUseNnapi)
         o.put(KEY_SV_LANGUAGE, svLanguage)
         o.put(KEY_SV_USE_ITN, svUseItn)
         o.put(KEY_SV_PRELOAD_ENABLED, svPreloadEnabled)
@@ -1042,7 +1036,6 @@ class Prefs(context: Context) {
             optString(KEY_SV_MODEL_DIR)?.let { svModelDir = it }
             optString(KEY_SV_MODEL_VARIANT)?.let { svModelVariant = it }
             optInt(KEY_SV_NUM_THREADS)?.let { svNumThreads = it.coerceIn(1, 8) }
-            optBool(KEY_SV_USE_NNAPI)?.let { svUseNnapi = it }
             optString(KEY_SV_LANGUAGE)?.let { svLanguage = it }
             optBool(KEY_SV_USE_ITN)?.let { svUseItn = it }
             optBool(KEY_SV_PRELOAD_ENABLED)?.let { svPreloadEnabled = it }
