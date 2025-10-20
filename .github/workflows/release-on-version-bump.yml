@@ -163,29 +163,30 @@ jobs:
             echo "这是首个发布版本。" >> changelog.md
             echo "" >> changelog.md
             echo "### 所有提交" >> changelog.md
-            git log --pretty=format:"- %s (%h) - %an" --no-merges >> changelog.md
+            # 过滤 chore/docs 且单行展示提交信息
+            git log --no-merges \
+              --grep='^chore' --grep='^docs' --invert-grep \
+              --pretty=format:"- %s | 提交:%h | 作者:%an | 时间:%ai" >> changelog.md
 
             # 生成简短版本用于 version.json
             echo "首个发布版本" > release_notes_short.txt
           else
             echo "## 📝 更新日志 ($PREV_TAG → $CURRENT_TAG)" > changelog.md
             echo "" >> changelog.md
-            echo "### 🎯 版本信息" >> changelog.md
-            echo "- **版本号**: ${{ steps.version.outputs.version_name }}" >> changelog.md
-            echo "- **版本代码**: ${{ steps.version.outputs.version_code }}" >> changelog.md
-            echo "- **上一版本**: ${{ steps.version.outputs.prev_version_name }} (code: ${{ steps.version.outputs.prev_version_code }})" >> changelog.md
-            echo "" >> changelog.md
 
             echo "### 📋 本次更新内容" >> changelog.md
             echo "" >> changelog.md
 
-            # 获取详细的 commit 信息
-            git log $PREV_TAG..HEAD --pretty=format:"- **%s**%n  - 提交: %h | 作者: %an | 时间: %ai%n" --no-merges >> changelog.md
+            # 获取详细的 commit 信息（过滤 chore/docs，且单行展示，不换行）
+            git log $PREV_TAG..HEAD --no-merges \
+              --grep='^chore' --grep='^docs' --invert-grep \
+              --pretty=format:"- %s | 提交:%h | 作者:%an | 时间:%ai" >> changelog.md
 
             echo "" >> changelog.md
             echo "" >> changelog.md
             echo "### 📊 统计信息" >> changelog.md
-            COMMIT_COUNT=$(git rev-list $PREV_TAG..HEAD --count)
+            # 统计同样基于过滤后的提交集
+            COMMIT_COUNT=$(git log $PREV_TAG..HEAD --no-merges --grep='^chore' --grep='^docs' --invert-grep --pretty=oneline | wc -l | tr -d ' ')
             echo "- 提交数量: $COMMIT_COUNT" >> changelog.md
             FILES_CHANGED=$(git diff --shortstat $PREV_TAG..HEAD | sed 's/^[[:space:]]*//')
             if [ -n "$FILES_CHANGED" ]; then
@@ -194,7 +195,9 @@ jobs:
 
             # 生成简短版本用于 version.json（只包含 commit 标题）
             echo "本次更新包含 $COMMIT_COUNT 个提交:" > release_notes_short.txt
-            git log $PREV_TAG..HEAD --pretty=format:"- %s" --no-merges >> release_notes_short.txt
+            git log $PREV_TAG..HEAD --no-merges \
+              --grep='^chore' --grep='^docs' --invert-grep \
+              --pretty=format:"- %s" >> release_notes_short.txt
           fi
 
           # 不再通过 $GITHUB_OUTPUT 传递多行内容，以避免分隔符解析问题。
