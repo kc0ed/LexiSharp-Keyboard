@@ -2,7 +2,7 @@
   "version": "3.1.7",
   "version_code": 74,
   "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.1.7",
-  "release_notes": "本次更新包含 7 个提交:\n- chore(build): 更新应用版本号\n- feat(asr): 添加 SenseVoice 本地模型伪流式识别模式\n- chore: auto-update version.json to 3.1.5 [skip ci]\n- feat(asr): 大幅优化模型推理速度;移除 SenseVoice NNAPI 支持并更新依赖\n- feat(ui): 在外部切换模式下，选择输入法后自动关闭设置页\n- docs(readme): 更新 README，新增贡献者和感谢名单",
+  "release_notes": "本次更新包含 1 个提交:\n- ci(workflow): 改进发布工作流的更新日志生成逻辑",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-20T15:03:42Z"
+  "update_time": "2025-10-20T15:41:38Z"
 }
