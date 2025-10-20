@@ -145,6 +145,8 @@ class SettingsActivity : AppCompatActivity() {
 
     private var autoShownImePicker = false
     private val handler = Handler(Looper.getMainLooper())
+    // 当以“外部切换”模式进入时，选择后自动关闭设置页（仅用焦点信号判定）
+    private var autoCloseAfterImePicker = false
     private var pendingOneClick = false
     private var oneClickPickerShown = false
     private var askedEnableImeOnce = false
@@ -186,20 +188,49 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private var imePickerShown = false
+    private var imePickerLostFocusOnce = false
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+
+        // 若处于外部切换流程：利用“焦点丢失→恢复”的信号判断选择器关闭
+        if (autoCloseAfterImePicker && imePickerShown) {
+            if (!hasFocus) {
+                // 系统输入法选择器置前导致本页失去焦点
+                imePickerLostFocusOnce = true
+                return
+            } else if (imePickerLostFocusOnce) {
+                // 选择器关闭，本页重新获得焦点 → 可安全收尾
+                handler.postDelayed({
+                    if (!isFinishing && !isDestroyed) {
+                        finish()
+                        try { overridePendingTransition(0, 0) } catch (_: Throwable) { }
+                    }
+                }, 250L)
+                // 只触发一次
+                imePickerShown = false
+                imePickerLostFocusOnce = false
+                return
+            }
+        }
+
         if (!hasFocus) return
         if (autoShownImePicker) return
         if (intent?.getBooleanExtra(EXTRA_AUTO_SHOW_IME_PICKER, false) != true) return
         autoShownImePicker = true
+        autoCloseAfterImePicker = true
         // 延迟到窗口获得焦点后调用，稳定性更好
         handler.post {
             try {
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showInputMethodPicker()
+                // 标记：已弹出选择器
+                imePickerShown = true
+                imePickerLostFocusOnce = false
             } catch (_: Throwable) { }
         }
     }
+
 
     private fun startOneClickSetupFlow() {
         pendingOneClick = true
