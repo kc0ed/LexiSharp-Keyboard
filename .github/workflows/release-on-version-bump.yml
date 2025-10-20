@@ -163,10 +163,11 @@ jobs:
             echo "这是首个发布版本。" >> changelog.md
             echo "" >> changelog.md
             echo "### 所有提交" >> changelog.md
-            # 过滤 chore/docs 且单行展示提交信息
+            # 过滤 chore/docs；提交哈希可点击；去掉时间；单行展示
+            REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
             git log --no-merges \
               --grep='^chore' --grep='^docs' --invert-grep \
-              --pretty=format:"- %s | 提交:%h | 作者:%an | 时间:%ai" >> changelog.md
+              --pretty=format:"- %s | 提交:[%h]($REPO_URL/commit/%H) | 作者:%an" >> changelog.md
 
             # 生成简短版本用于 version.json
             echo "首个发布版本" > release_notes_short.txt
@@ -177,10 +178,11 @@ jobs:
             echo "### 📋 本次更新内容" >> changelog.md
             echo "" >> changelog.md
 
-            # 获取详细的 commit 信息（过滤 chore/docs，且单行展示，不换行）
+            # 获取详细的 commit 信息（过滤 chore/docs；哈希可点击；去掉时间；单行展示）
+            REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
             git log $PREV_TAG..HEAD --no-merges \
               --grep='^chore' --grep='^docs' --invert-grep \
-              --pretty=format:"- %s | 提交:%h | 作者:%an | 时间:%ai" >> changelog.md
+              --pretty=format:"- %s | 提交:[%h]($REPO_URL/commit/%H) | 作者:%an" >> changelog.md
 
             echo "" >> changelog.md
             echo "" >> changelog.md
