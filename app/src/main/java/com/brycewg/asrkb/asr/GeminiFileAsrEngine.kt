@@ -2,6 +2,7 @@ package com.brycewg.asrkb.asr
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -20,13 +21,20 @@ class GeminiFileAsrEngine(
     scope: CoroutineScope,
     prefs: Prefs,
     listener: StreamingAsrEngine.Listener,
-    onRequestDuration: ((Long) -> Unit)? = null
+    onRequestDuration: ((Long) -> Unit)? = null,
+    httpClient: OkHttpClient? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
+
+    companion object {
+        private const val TAG = "GeminiFileAsrEngine"
+        private const val GEM_BASE = "https://generativelanguage.googleapis.com/v1beta"
+        private const val DEFAULT_GEM_PROMPT = "请将以下音频逐字转写为文本，不要输出解释或前后缀。输入语言可能是中文、英文或其他语言"
+    }
 
     // Gemini：官方约 9.5 小时，本地限制为 4 小时
     override val maxRecordDurationMillis: Int = 4 * 60 * 60 * 1000
 
-    private val http: OkHttpClient = OkHttpClient.Builder()
+    private val http: OkHttpClient = httpClient ?: OkHttpClient.Builder()
         .callTimeout(90, TimeUnit.SECONDS)
         .build()
 
@@ -81,6 +89,9 @@ class GeminiFileAsrEngine(
         }
     }
 
+    /**
+     * 构建 Gemini API 请求体
+     */
     private fun buildGeminiRequestBody(base64Wav: String, prompt: String): String {
         val inlineAudio = JSONObject().apply {
             put("inline_data", JSONObject().apply {
@@ -102,6 +113,9 @@ class GeminiFileAsrEngine(
         }.toString()
     }
 
+    /**
+     * 从响应体中提取错误信息
+     */
     private fun extractGeminiError(body: String): String {
         if (body.isBlank()) return ""
         return try {
@@ -112,11 +126,15 @@ class GeminiFileAsrEngine(
                 val status = e?.optString("status").orEmpty()
                 listOf(status, msg).filter { it.isNotBlank() }.joinToString(": ")
             } else body.take(200).trim()
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to parse Gemini error", t)
             body.take(200).trim()
         }
     }
 
+    /**
+     * 从 Gemini 响应中解析转写文本
+     */
     private fun parseGeminiText(body: String): String {
         if (body.isBlank()) return ""
         return try {
@@ -133,11 +151,9 @@ class GeminiFileAsrEngine(
                 if (t.isNotEmpty()) { txt = t; break }
             }
             txt
-        } catch (_: Throwable) { "" }
-    }
-
-    companion object {
-        private const val GEM_BASE = "https://generativelanguage.googleapis.com/v1beta"
-        private const val DEFAULT_GEM_PROMPT = "请将以下音频逐字转写为文本，不要输出解释或前后缀。输入语言可能是中文、英文或其他语言"
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to parse Gemini response", t)
+            ""
+        }
     }
 }

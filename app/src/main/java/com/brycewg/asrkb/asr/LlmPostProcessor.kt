@@ -1,5 +1,6 @@
 package com.brycewg.asrkb.asr
 
+import android.util.Log
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,6 +19,37 @@ import java.util.concurrent.TimeUnit
 class LlmPostProcessor(private val client: OkHttpClient? = null) {
   private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
+  companion object {
+    private const val TAG = "LlmPostProcessor"
+    private const val DEFAULT_TIMEOUT_SECONDS = 30L
+  }
+
+  /**
+   * LLM 请求配置
+   */
+  private data class LlmRequestConfig(
+    val apiKey: String,
+    val endpoint: String,
+    val model: String,
+    val temperature: Double
+  )
+
+  /**
+   * 从 Prefs 获取活动的 LLM 配置
+   */
+  private fun getActiveConfig(prefs: Prefs): LlmRequestConfig {
+    val active = prefs.getActiveLlmProvider()
+    return LlmRequestConfig(
+      apiKey = active?.apiKey ?: prefs.llmApiKey,
+      endpoint = active?.endpoint ?: prefs.llmEndpoint,
+      model = active?.model ?: prefs.llmModel,
+      temperature = (active?.temperature ?: prefs.llmTemperature).toDouble()
+    )
+  }
+
+  /**
+   * 解析 URL，自动添加 /chat/completions 后缀
+   */
   private fun resolveUrl(base: String): String {
     val raw = base.trim()
     if (raw.isEmpty()) return Prefs.DEFAULT_LLM_ENDPOINT.trimEnd('/') + "/chat/completions"
@@ -26,84 +58,163 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
     return if (withScheme.endsWith("/chat/completions") || withScheme.endsWith("/responses")) withScheme else "$withScheme/chat/completions"
   }
 
-  suspend fun process(input: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
-    if (input.isBlank()) return@withContext input
-    val active = prefs.getActiveLlmProvider()
-    val apiKey = active?.apiKey ?: prefs.llmApiKey
-    val endpoint = active?.endpoint ?: prefs.llmEndpoint
-    val model = active?.model ?: prefs.llmModel
-    val temperature = (active?.temperature ?: prefs.llmTemperature).toDouble()
-    val prompt = prefs.activePromptContent.ifBlank { Prefs.DEFAULT_LLM_PROMPT }
+  /**
+   * 构建标准的 OpenAI Chat Completions 请求
+   *
+   * @param config LLM 配置
+   * @param messages 消息列表（JSONArray）
+   * @return 构建好的 Request 对象
+   */
+  private fun buildRequest(
+    config: LlmRequestConfig,
+    messages: JSONArray
+  ): Request {
+    val url = resolveUrl(config.endpoint)
 
-    val url = resolveUrl(endpoint)
     val reqJson = JSONObject().apply {
-      put("model", model)
-      put("temperature", temperature)
-      put("messages", JSONArray().apply {
-        put(JSONObject().apply {
-          put("role", "system")
-          put("content", prompt)
-        })
-        put(JSONObject().apply {
-          put("role", "user")
-          put("content", input)
-        })
-      })
+      put("model", config.model)
+      put("temperature", config.temperature)
+      put("messages", messages)
     }.toString()
 
     val body = reqJson.toRequestBody(jsonMedia)
-    val http = (client ?: OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build())
     val builder = Request.Builder()
       .url(url)
       .addHeader("Content-Type", "application/json")
       .post(body)
-    if (apiKey.isNotBlank()) {
-      builder.addHeader("Authorization", "Bearer $apiKey")
-    }
-    val req = builder.build()
 
-    val resp = http.newCall(req).execute()
-    if (!resp.isSuccessful) {
-      resp.close()
-      return@withContext input
+    if (config.apiKey.isNotBlank()) {
+      builder.addHeader("Authorization", "Bearer ${config.apiKey}")
     }
-    val text = try {
-      val s = resp.body?.string() ?: return@withContext input
-      val obj = JSONObject(s)
+
+    return builder.build()
+  }
+
+  /**
+   * 获取或创建 OkHttpClient
+   */
+  private fun getHttpClient(): OkHttpClient {
+    return client ?: OkHttpClient.Builder()
+      .callTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+      .build()
+  }
+
+  /**
+   * 从响应 JSON 中提取文本内容
+   *
+   * 支持标准 OpenAI 格式和自定义 output_text 字段
+   *
+   * @param responseJson 响应的 JSON 字符串
+   * @param fallback 提取失败时的回退文本
+   * @return 提取的文本或 fallback
+   */
+  private fun extractTextFromResponse(responseJson: String, fallback: String): String {
+    return try {
+      val obj = JSONObject(responseJson)
       when {
         obj.has("choices") -> {
           val choices = obj.getJSONArray("choices")
           if (choices.length() > 0) {
             val msg = choices.getJSONObject(0).optJSONObject("message")
-            msg?.optString("content")?.ifBlank { input } ?: input
-          } else input
+            msg?.optString("content")?.ifBlank { fallback } ?: fallback
+          } else fallback
         }
-        obj.has("output_text") -> obj.optString("output_text", input)
-        else -> input
+        obj.has("output_text") -> obj.optString("output_text", fallback)
+        else -> fallback
       }
-    } catch (_: Throwable) {
+    } catch (t: Throwable) {
+      Log.e(TAG, "Failed to extract text from response", t)
+      fallback
+    }
+  }
+
+  /**
+   * 使用 LLM 处理识别文本
+   *
+   * 根据配置的提示词对输入文本进行后处理（例如：去除口语化、纠错、格式化）。
+   *
+   * @param input 待处理的文本
+   * @param prefs 应用偏好设置
+   * @return 处理后的文本，失败时返回原始输入
+   */
+  suspend fun process(input: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
+    if (input.isBlank()) {
+      Log.d(TAG, "Input is blank, skipping processing")
+      return@withContext input
+    }
+
+    val config = getActiveConfig(prefs)
+    val prompt = prefs.activePromptContent.ifBlank { Prefs.DEFAULT_LLM_PROMPT }
+
+    val messages = JSONArray().apply {
+      put(JSONObject().apply {
+        put("role", "system")
+        put("content", prompt)
+      })
+      put(JSONObject().apply {
+        put("role", "user")
+        put("content", input)
+      })
+    }
+
+    val req = buildRequest(config, messages)
+    val http = getHttpClient()
+
+    val resp = try {
+      http.newCall(req).execute()
+    } catch (t: Throwable) {
+      Log.e(TAG, "HTTP request failed during process()", t)
+      return@withContext input
+    }
+
+    if (!resp.isSuccessful) {
+      Log.w(TAG, "LLM request failed with code ${resp.code}")
+      resp.close()
+      return@withContext input
+    }
+
+    val text = try {
+      val responseBody = resp.body?.string()
+      if (responseBody == null) {
+        Log.w(TAG, "Response body is null")
+        resp.close()
+        return@withContext input
+      }
+      extractTextFromResponse(responseBody, input)
+    } catch (t: Throwable) {
+      Log.e(TAG, "Failed to parse response during process()", t)
       input
     } finally {
       resp.close()
     }
+
+    Log.d(TAG, "Text processing completed, output length: ${text.length}")
     return@withContext text
   }
 
   /**
    * 使用自然语言指令编辑现有文本，兼容 Chat Completions API。
-   * 返回编辑后的文本；任何失败时返回原始文本不变。
+   *
+   * 根据用户提供的编辑指令对原文进行修改，例如：
+   * - "将口语化改为书面语"
+   * - "纠正错别字"
+   * - "把列表换成逗号分隔的一行"
+   *
+   * @param original 原始文本
+   * @param instruction 编辑指令
+   * @param prefs 应用偏好设置
+   * @return 编辑后的文本，失败时返回原始文本不变
    */
   suspend fun editText(original: String, instruction: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
-    if (original.isBlank() || instruction.isBlank()) return@withContext original
-    val active = prefs.getActiveLlmProvider()
-    val apiKey = active?.apiKey ?: prefs.llmApiKey
-    val endpoint = active?.endpoint ?: prefs.llmEndpoint
-    val model = active?.model ?: prefs.llmModel
-    val temperature = (active?.temperature ?: prefs.llmTemperature).toDouble()
+    if (original.isBlank() || instruction.isBlank()) {
+      Log.d(TAG, "Original or instruction is blank, skipping edit")
+      return@withContext original
+    }
 
-    val url = resolveUrl(endpoint)
+    val config = getActiveConfig(prefs)
+
     val systemPrompt = """
-      你是一个精确的中文文本编辑助手。你的任务是根据“编辑指令”对“原文”进行最小必要修改。
+      你是一个精确的中文文本编辑助手。你的任务是根据"编辑指令"对"原文"进行最小必要修改。
       规则：
       - 只输出最终结果文本，不要输出任何解释、前后缀或引号。
       - 如指令含糊、矛盾或不可执行，原样返回原文。
@@ -139,52 +250,49 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
       $original
     """.trimIndent()
 
-    val reqJson = JSONObject().apply {
-      put("model", model)
-      put("temperature", temperature)
-      put("messages", JSONArray().apply {
-        put(JSONObject().apply {
-          put("role", "system")
-          put("content", systemPrompt)
-        })
-        put(JSONObject().apply {
-          put("role", "user")
-          put("content", userContent)
-        })
+    val messages = JSONArray().apply {
+      put(JSONObject().apply {
+        put("role", "system")
+        put("content", systemPrompt)
       })
-    }.toString()
-
-    val body = reqJson.toRequestBody(jsonMedia)
-    val http = (client ?: OkHttpClient.Builder().callTimeout(30, TimeUnit.SECONDS).build())
-    val builder = Request.Builder()
-      .url(url)
-      .addHeader("Content-Type", "application/json")
-      .post(body)
-    if (apiKey.isNotBlank()) {
-      builder.addHeader("Authorization", "Bearer $apiKey")
+      put(JSONObject().apply {
+        put("role", "user")
+        put("content", userContent)
+      })
     }
-    val req = builder.build()
 
-    val resp = http.newCall(req).execute()
+    val req = buildRequest(config, messages)
+    val http = getHttpClient()
+
+    val resp = try {
+      http.newCall(req).execute()
+    } catch (t: Throwable) {
+      Log.e(TAG, "HTTP request failed during editText()", t)
+      return@withContext original
+    }
+
     if (!resp.isSuccessful) {
+      Log.w(TAG, "LLM edit request failed with code ${resp.code}")
       resp.close()
       return@withContext original
     }
+
     val out = try {
-      val s = resp.body?.string() ?: return@withContext original
-      val obj = JSONObject(s)
-      when {
-        obj.has("choices") -> {
-          val choices = obj.getJSONArray("choices")
-          if (choices.length() > 0) {
-            val msg = choices.getJSONObject(0).optJSONObject("message")
-            msg?.optString("content")?.ifBlank { original } ?: original
-          } else original
-        }
-        obj.has("output_text") -> obj.optString("output_text", original)
-        else -> original
+      val responseBody = resp.body?.string()
+      if (responseBody == null) {
+        Log.w(TAG, "Response body is null during editText()")
+        resp.close()
+        return@withContext original
       }
-    } catch (_: Throwable) { original } finally { resp.close() }
+      extractTextFromResponse(responseBody, original)
+    } catch (t: Throwable) {
+      Log.e(TAG, "Failed to parse response during editText()", t)
+      original
+    } finally {
+      resp.close()
+    }
+
+    Log.d(TAG, "Text editing completed, output length: ${out.length}")
     return@withContext out
   }
 }

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
@@ -13,13 +14,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import android.os.SystemClock
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * 基于 sherpa-onnx OfflineRecognizer 的“伪流式”本地识别：
+ * 基于 sherpa-onnx OfflineRecognizer 的"伪流式"本地识别：
  * - 录音中每 ~200ms 投送一帧 PCM -> Float 到离线流，并调用 decode 获取当前转写，回调 onPartial。
  * - 停止录音后进行一次最终 decode 并回调 onFinal。
  * - 依赖 LocalModelOnnxBridge 以反射方式调用，避免编译期耦合。
@@ -31,11 +34,16 @@ class LocalModelPseudoStreamAsrEngine(
     private val listener: StreamingAsrEngine.Listener
 ) : StreamingAsrEngine {
 
+    companion object {
+        private const val TAG = "LocalModelPseudoStreamAsrEngine"
+    }
+
     private val running = AtomicBoolean(false)
     private val closing = AtomicBoolean(false)
+    private val svManager = SenseVoiceOnnxManager.getInstance()
     private var audioJob: Job? = null
     private var currentStream: Any? = null
-    private val streamLock = Any()
+    private val streamMutex = Mutex()
     private var lastDecodeUptimeMs: Long = 0L
     private var lastEmitUptimeMs: Long = 0L
     // 控制解码与预览的最小间隔（降低 JNI 频繁分配与主线程压力）
@@ -63,7 +71,7 @@ class LocalModelPseudoStreamAsrEngine(
             listener.onError(context.getString(R.string.error_record_permission_denied))
             return
         }
-        if (!SenseVoiceOnnxBridge.isOnnxAvailable()) {
+        if (!svManager.isOnnxAvailable()) {
             listener.onError(context.getString(R.string.error_local_asr_not_ready))
             return
         }
@@ -99,7 +107,8 @@ class LocalModelPseudoStreamAsrEngine(
                 val alwaysKeep = keepMinutes < 0
                 if (closing.get()) return@launch
 
-                val ok = SenseVoiceOnnxBridge.prepare(
+                Log.d(TAG, "Preparing SenseVoice model at $modelPath")
+                val ok = svManager.prepare(
                     assetManager = null,
                     tokens = tokensPath,
                     model = modelPath,
@@ -109,171 +118,147 @@ class LocalModelPseudoStreamAsrEngine(
                     numThreads = try { prefs.svNumThreads } catch (_: Throwable) { 2 },
                     keepAliveMs = keepMs,
                     alwaysKeep = alwaysKeep,
-                    onLoadStart = { try { (listener as? SenseVoiceFileAsrEngine.LocalModelLoadUi)?.onLocalModelLoadStart() } catch (_: Throwable) { } },
-                    onLoadDone = { try { (listener as? SenseVoiceFileAsrEngine.LocalModelLoadUi)?.onLocalModelLoadDone() } catch (_: Throwable) { } },
+                    onLoadStart = { try { (listener as? SenseVoiceFileAsrEngine.LocalModelLoadUi)?.onLocalModelLoadStart() } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to notify load start", t)
+                    } },
+                    onLoadDone = { try { (listener as? SenseVoiceFileAsrEngine.LocalModelLoadUi)?.onLocalModelLoadDone() } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to notify load done", t)
+                    } },
                 )
-                if (!ok || closing.get()) return@launch
+                if (!ok || closing.get()) {
+                    Log.w(TAG, "Model preparation failed or cancelled")
+                    return@launch
+                }
 
-                val stream = SenseVoiceOnnxBridge.createStreamOrNull()
+                Log.d(TAG, "Creating recognition stream")
+                val stream = svManager.createStreamOrNull()
                 if (stream == null || closing.get()) {
-                    if (stream != null) try { SenseVoiceOnnxBridge.releaseStream(stream) } catch (_: Throwable) { }
+                    if (stream != null) try {
+                        svManager.releaseStream(stream)
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to release stream", t)
+                    }
                     listener.onError(context.getString(R.string.error_local_asr_not_ready))
                     return@launch
                 }
                 currentStream = stream
                 running.set(true)
+                Log.d(TAG, "Starting audio capture and decode")
                 startCaptureAndDecode(stream)
             } catch (t: Throwable) {
-                try { listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: "")) } catch (_: Throwable) { }
+                Log.e(TAG, "Failed to start engine: ${t.message}", t)
+                try {
+                    listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
+                } catch (notifyError: Throwable) {
+                    Log.e(TAG, "Failed to notify error", notifyError)
+                }
             }
         }
     }
 
     override fun stop() {
         if (!running.get()) return
+        Log.d(TAG, "Stopping engine")
         closing.set(true)
         running.set(false)
         audioJob?.cancel()
         audioJob = null
         val s = currentStream
         if (s != null) {
-            try {
-                // 最后一轮 decode 获取最终文本
-                val finalText = synchronized(streamLock) {
-                    // 若 deliverChunk 仍在解码，此处等待其完成，随后执行最终解码
-                    SenseVoiceOnnxBridge.decodeAndGetText(s)
+            // 在后台协程中完成最终解码与资源释放，避免在主线程阻塞
+            scope.launch(Dispatchers.Default) {
+                try {
+                    val finalText = streamMutex.withLock { svManager.decodeAndGetText(s) }
+                    Log.d(TAG, "Final result length: ${finalText?.length ?: 0}")
+                    try {
+                        if (!finalText.isNullOrBlank()) {
+                            listener.onFinal(finalText.trim())
+                        } else {
+                            listener.onFinal("")
+                        }
+                    } catch (notifyError: Throwable) {
+                        Log.e(TAG, "Failed to notify final result", notifyError)
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to get final result", t)
+                    try { listener.onFinal("") } catch (_: Throwable) { /* ignore */ }
+                } finally {
+                    try {
+                        streamMutex.withLock { svManager.releaseStream(s) }
+                        Log.d(TAG, "Released recognition stream")
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to release stream", t)
+                    }
+                    currentStream = null
+                    closing.set(false)
                 }
-                if (finalText != null) listener.onFinal(finalText.trim()) else listener.onFinal("")
-            } catch (_: Throwable) {
-                // ignore
-            } finally {
-                synchronized(streamLock) {
-                    try { SenseVoiceOnnxBridge.releaseStream(s) } catch (_: Throwable) { }
-                }
-                currentStream = null
-                closing.set(false)
             }
         }
     }
 
+    /**
+     * 启动音频采集并进行实时解码
+     *
+     * 使用 AudioCaptureManager 简化音频采集逻辑，包括：
+     * - 权限检查和 AudioRecord 初始化
+     * - 音频源回退（VOICE_RECOGNITION -> MIC）
+     * - 预热逻辑（兼容模式 vs 非兼容模式）
+     */
     private fun startCaptureAndDecode(stream: Any) {
         audioJob?.cancel()
         audioJob = scope.launch(Dispatchers.IO) {
-            // 双重校验录音权限
-            val hasPermission = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!hasPermission) {
+            // 将帧间隔从 ~200ms 缩小到 ~120ms，以降低预览延迟
+            val targetChunkMs = 120
+            val audioManager = AudioCaptureManager(
+                context = context,
+                sampleRate = sampleRate,
+                channelConfig = channelConfig,
+                audioFormat = audioFormat,
+                chunkMillis = targetChunkMs,
+                prefs = prefs
+            )
+
+            if (!audioManager.hasPermission()) {
+                Log.e(TAG, "Missing RECORD_AUDIO permission")
                 listener.onError(context.getString(R.string.error_record_permission_denied))
                 running.set(false)
                 return@launch
             }
 
-            val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-            // 将帧间隔从 ~200ms 缩小到 ~120ms，以降低预览延迟
-            val targetChunkMs = 120
-            val frameBytes = ((sampleRate * targetChunkMs) / 1000) * 2 // 16-bit 单声道
-            val bufferSize = maxOf(minBuffer, frameBytes)
-            var recorder = try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                    sampleRate,
-                    channelConfig,
-                    audioFormat,
-                    bufferSize
-                )
-            } catch (_: Throwable) { null }
-            if (recorder == null || recorder.state != AudioRecord.STATE_INITIALIZED) {
-                try { recorder?.release() } catch (_: Throwable) {}
-                recorder = try {
-                    AudioRecord(
-                        MediaRecorder.AudioSource.MIC,
-                        sampleRate,
-                        channelConfig,
-                        audioFormat,
-                        bufferSize
-                    )
-                } catch (_: Throwable) { null }
-                if (recorder == null || recorder.state != AudioRecord.STATE_INITIALIZED) {
-                    listener.onError(context.getString(R.string.error_audio_init_failed))
-                    stop(); return@launch
-                }
-            }
-
-            // 至此 recorder 非空且已初始化，使用非空局部变量 rec 以规避智能转换问题
-            var rec: AudioRecord = recorder!!
-
-            try {
-                rec.startRecording()
-            } catch (_: SecurityException) {
-                listener.onError(context.getString(R.string.error_record_permission_denied))
-                stop(); return@launch
-            } catch (t: Throwable) {
-                listener.onError(context.getString(R.string.error_audio_error, t.message ?: ""))
-                stop(); return@launch
-            }
-
-            val buf = ByteArray(frameBytes)
-            val silence = if (prefs.autoStopOnSilenceEnabled)
+            val silenceDetector = if (prefs.autoStopOnSilenceEnabled)
                 SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
             else null
 
-            // 预热（与其他流式实现保持一致）
-            run {
-                val compat = try { prefs.audioCompatPreferMic } catch (_: Throwable) { false }
-                if (compat) {
-                    val warmupFrames = 3
-                    repeat(warmupFrames) {
-                        val n = try { rec.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-                        if (n > 0) deliverChunk(stream, buf, n)
-                    }
-                } else {
-                    val pre = try { rec.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-                    val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
-                    if (pre > 0) deliverChunk(stream, buf, pre)
-                    if (!hasSignal) {
-                        try { rec.stop() } catch (_: Throwable) {}
-                        try { rec.release() } catch (_: Throwable) {}
-                        val alt = try {
-                            AudioRecord(
-                                MediaRecorder.AudioSource.MIC,
-                                sampleRate,
-                                channelConfig,
-                                audioFormat,
-                                bufferSize
-                            )
-                        } catch (_: Throwable) { null }
-                        if (alt == null || alt.state != AudioRecord.STATE_INITIALIZED) {
-                            listener.onError(context.getString(R.string.error_audio_init_failed))
-                            stop(); return@launch
+            try {
+                Log.d(TAG, "Starting audio capture with chunk size ${targetChunkMs}ms")
+                audioManager.startCapture().collect { audioChunk ->
+                    if (!running.get()) return@collect
+
+                    // 静音自动判停
+                    if (silenceDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
+                        Log.d(TAG, "Silence detected, stopping recording")
+                        try { listener.onStopped() } catch (t: Throwable) {
+                            Log.e(TAG, "Failed to notify stopped", t)
                         }
-                        rec = alt
-                        try { rec.startRecording() } catch (_: Throwable) { }
-                        val pre2 = try { rec.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-                        if (pre2 > 0) deliverChunk(stream, buf, pre2)
+                        stop()
+                        return@collect
                     }
+
+                    // 投送音频块到离线流并尝试解码
+                    deliverChunk(stream, audioChunk, audioChunk.size)
+                }
+            } catch (t: Throwable) {
+                if (t is kotlinx.coroutines.CancellationException) {
+                    Log.d(TAG, "Audio streaming cancelled: ${t.message}")
+                } else {
+                    Log.e(TAG, "Audio streaming failed: ${t.message}", t)
+                    listener.onError(context.getString(R.string.error_audio_error, t.message ?: ""))
                 }
             }
-
-            // 主循环：采集 -> 推入 -> 解码 -> 输出预览
-            while (running.get()) {
-                val n = try { rec.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-                if (n > 0) {
-                    if (silence?.shouldStop(buf, n) == true) {
-                        try { listener.onStopped() } catch (_: Throwable) { }
-                        stop(); break
-                    }
-                    deliverChunk(stream, buf, n)
-                }
-            }
-
-            try { rec.stop() } catch (_: Throwable) {}
-            try { rec.release() } catch (_: Throwable) {}
         }
     }
 
-    private fun deliverChunk(stream: Any, bytes: ByteArray, len: Int) {
+    private suspend fun deliverChunk(stream: Any, bytes: ByteArray, len: Int) {
         if (!running.get() || closing.get()) return
         if (currentStream !== stream) return
         val floats = pcmToFloatArray(bytes, len)
@@ -281,22 +266,37 @@ class LocalModelPseudoStreamAsrEngine(
         val now = SystemClock.uptimeMillis()
         var text: String? = null
         try {
-            synchronized(streamLock) {
+            streamMutex.withLock {
                 if (!running.get() || closing.get()) return
                 if (currentStream !== stream) return
-                try { SenseVoiceOnnxBridge.acceptWaveform(stream, floats, sampleRate) } catch (_: Throwable) { }
+                try {
+                    svManager.acceptWaveform(stream, floats, sampleRate)
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to accept waveform", t)
+                }
                 val shouldDecode = closing.get() || (now - lastDecodeUptimeMs) >= decodeIntervalMs
                 if (shouldDecode) {
-                    text = try { SenseVoiceOnnxBridge.decodeAndGetText(stream) } catch (_: Throwable) { null }
+                    text = try {
+                        svManager.decodeAndGetText(stream)
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to decode text", t)
+                        null
+                    }
                     lastDecodeUptimeMs = now
                 }
             }
-        } catch (_: Throwable) { }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error in deliverChunk", t)
+        }
         if (!text.isNullOrBlank() && running.get() && !closing.get()) {
             val trimmed = text!!.trim()
             val needEmit = (now - lastEmitUptimeMs) >= emitIntervalMs && trimmed != lastEmittedText
             if (needEmit) {
-                try { listener.onPartial(trimmed) } catch (_: Throwable) { }
+                try {
+                    listener.onPartial(trimmed)
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to notify partial result", t)
+                }
                 lastEmitUptimeMs = now
                 lastEmittedText = trimmed
             }

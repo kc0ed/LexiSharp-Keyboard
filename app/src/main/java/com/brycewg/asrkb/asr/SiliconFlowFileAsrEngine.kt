@@ -2,6 +2,7 @@ package com.brycewg.asrkb.asr
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -24,13 +25,18 @@ class SiliconFlowFileAsrEngine(
     scope: CoroutineScope,
     prefs: Prefs,
     listener: StreamingAsrEngine.Listener,
-    onRequestDuration: ((Long) -> Unit)? = null
+    onRequestDuration: ((Long) -> Unit)? = null,
+    httpClient: OkHttpClient? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
+
+    companion object {
+        private const val TAG = "SiliconFlowFileAsrEngine"
+    }
 
     // SiliconFlow：未明确限制，本地限制为 20 分钟
     override val maxRecordDurationMillis: Int = 20 * 60 * 1000
 
-    private val http: OkHttpClient = OkHttpClient.Builder()
+    private val http: OkHttpClient = httpClient ?: OkHttpClient.Builder()
         // 普通转写可能较慢：放宽连接/读/写与总超时，避免长音频或排队导致的 SocketTimeout
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
@@ -132,6 +138,9 @@ class SiliconFlowFileAsrEngine(
     }
 
 
+    /**
+     * 构建 SiliconFlow Chat Completions API 请求体
+     */
     private fun buildSfChatCompletionsBody(model: String, base64Wav: String, prompt: String): String {
         val audioPart = JSONObject().apply {
             put("type", "audio_url")
@@ -156,6 +165,9 @@ class SiliconFlowFileAsrEngine(
         }.toString()
     }
 
+    /**
+     * 从 SiliconFlow Chat 响应中解析转写文本
+     */
     private fun parseSfChatText(body: String): String {
         if (body.isBlank()) return ""
         return try {
@@ -181,6 +193,9 @@ class SiliconFlowFileAsrEngine(
                 }
                 else -> ""
             }
-        } catch (_: Throwable) { "" }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to parse SiliconFlow chat response", t)
+            ""
+        }
     }
 }

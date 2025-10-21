@@ -1,6 +1,7 @@
 package com.brycewg.asrkb.asr
 
 import android.content.Context
+import android.util.Log
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -22,13 +23,18 @@ class ElevenLabsFileAsrEngine(
     scope: CoroutineScope,
     prefs: Prefs,
     listener: StreamingAsrEngine.Listener,
-    onRequestDuration: ((Long) -> Unit)? = null
+    onRequestDuration: ((Long) -> Unit)? = null,
+    httpClient: OkHttpClient? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
+
+    companion object {
+        private const val TAG = "ElevenLabsFileAsrEngine"
+    }
 
     // ElevenLabs：未明确限制，本地限制为 20 分钟
     override val maxRecordDurationMillis: Int = 20 * 60 * 1000
 
-    private val http: OkHttpClient = OkHttpClient.Builder()
+    private val http: OkHttpClient = httpClient ?: OkHttpClient.Builder()
         .callTimeout(60, TimeUnit.SECONDS)
         .build()
 
@@ -98,6 +104,9 @@ class ElevenLabsFileAsrEngine(
         }
     }
 
+    /**
+     * 从响应体中提取错误提示信息
+     */
     private fun extractErrorHint(body: String): String {
         if (body.isBlank()) return ""
         return try {
@@ -108,7 +117,8 @@ class ElevenLabsFileAsrEngine(
                 obj.has("error") -> obj.optString("error").trim()
                 else -> body.take(200).trim()
             }
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            Log.d(TAG, "Trying to parse error as array", t)
             try {
                 val arr = org.json.JSONArray(body)
                 val msgs = mutableListOf<String>()
@@ -126,12 +136,16 @@ class ElevenLabsFileAsrEngine(
                     }
                 }
                 if (msgs.isNotEmpty()) msgs.joinToString("; ") else body.take(200).trim()
-            } catch (_: Throwable) {
+            } catch (e: Throwable) {
+                Log.e(TAG, "Failed to parse error hint", e)
                 body.take(200).trim()
             }
         }
     }
 
+    /**
+     * 从响应体中解析转写文本
+     */
     private fun parseTextFromResponse(body: String): String {
         if (body.isBlank()) return ""
         return try {
@@ -152,7 +166,8 @@ class ElevenLabsFileAsrEngine(
                 }
                 else -> ""
             }
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to parse text from response", t)
             ""
         }
     }

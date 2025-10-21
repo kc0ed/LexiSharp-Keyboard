@@ -1,18 +1,15 @@
 package com.brycewg.asrkb.asr
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.media.AudioFormat
-import android.media.AudioRecord
-import android.media.MediaRecorder
-import androidx.core.content.ContextCompat
+import android.util.Log
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
@@ -30,6 +27,10 @@ abstract class BaseFileAsrEngine(
     protected val listener: StreamingAsrEngine.Listener,
     protected val onRequestDuration: ((Long) -> Unit)? = null
 ) : StreamingAsrEngine {
+
+    companion object {
+        private const val TAG = "BaseFileAsrEngine"
+    }
 
     private val running = AtomicBoolean(false)
     private var audioJob: Job? = null
@@ -55,8 +56,11 @@ abstract class BaseFileAsrEngine(
         running.set(true)
         audioJob?.cancel()
         processingJob?.cancel()
-        // 使用无界队列以避免在停止录音前的最后一段被 trySend 丢弃
-        val chan = Channel<ByteArray>(capacity = Channel.UNLIMITED)
+        // 使用有界队列并在溢出时丢弃最旧的数据，避免内存溢出
+        val chan = Channel<ByteArray>(
+            capacity = 10,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
         segmentChan = chan
         // 顺序消费识别请求，确保结果按段落顺序提交
         processingJob = scope.launch(Dispatchers.IO) {
@@ -65,7 +69,14 @@ abstract class BaseFileAsrEngine(
                     try {
                         recognize(seg)
                     } catch (t: Throwable) {
-                        try { listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: "")) } catch (_: Throwable) {}
+                        Log.e(TAG, "Recognition failed for segment", t)
+                        try {
+                            listener.onError(
+                                context.getString(R.string.error_recognize_failed_with_reason, t.message ?: "")
+                            )
+                        } catch (e: Throwable) {
+                            Log.e(TAG, "Failed to notify recognition error", e)
+                        }
                     }
                 }
             } finally {
@@ -78,103 +89,128 @@ abstract class BaseFileAsrEngine(
                 recordAndEnqueueSegments(chan)
             } finally {
                 running.set(false)
-                try { chan.close() } catch (_: Throwable) {}
+                try {
+                    chan.close()
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to close channel", t)
+                }
                 audioJob = null
             }
         }
     }
 
     override fun stop() {
-        running.set(false)
+        val wasRunning = running.getAndSet(false)
+        // 主动停止采集：取消录音协程以触发 finally 冲刷尾段并关闭通道
+        try {
+            audioJob?.cancel()
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to cancel audio job on stop", t)
+        }
+        // 通知 UI 录音已结束（与静音判停一致），便于及时切换到“识别中”
+        if (wasRunning) {
+            try {
+                listener.onStopped()
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to notify onStopped on stop", t)
+            }
+        }
     }
 
     /**
      * 识别前的准备校验，可在子类中扩展，如检查 API Key 是否配置。
+     *
+     * 注意：权限检查已由 AudioCaptureManager 处理，此处保留是为了向后兼容。
      */
     protected open fun ensureReady(): Boolean {
-        val hasPermission = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!hasPermission) {
-            listener.onError(context.getString(R.string.error_record_permission_denied))
-            return false
-        }
         return true
     }
 
     /**
      * 连续录音并按 [maxRecordDurationMillis] 切分，将片段依次投递到 [chan]。
-     * - 段间不停止/重建 AudioRecord，尽量保证采集连续。
-     * - 仅在静音判停或用户停止时回调 onStopped()，切段不打断 UI 的“正在聆听”。
+     *
+     * 使用 AudioCaptureManager 封装音频采集逻辑，简化代码并提高可维护性。
+     * - 段间不停止/重建 AudioRecord，尽量保证采集连续
+     * - 仅在静音判停或用户停止时回调 onStopped()，切段不打断 UI 的"正在聆听"
      */
-    private fun recordAndEnqueueSegments(chan: Channel<ByteArray>) {
-        // 权限兜底
-        val granted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!granted) {
-            try { listener.onError(context.getString(R.string.error_record_permission_denied)) } catch (_: Throwable) {}
+    private suspend fun recordAndEnqueueSegments(chan: Channel<ByteArray>) {
+        val audioManager = AudioCaptureManager(
+            context = context,
+            sampleRate = sampleRate,
+            channelConfig = channelConfig,
+            audioFormat = audioFormat,
+            chunkMillis = chunkMillis,
+            prefs = prefs
+        )
+
+        // 权限检查
+        if (!audioManager.hasPermission()) {
+            Log.w(TAG, "Missing RECORD_AUDIO permission")
+            try {
+                listener.onError(context.getString(R.string.error_record_permission_denied))
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to notify permission error", t)
+            }
             return
         }
 
-        val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-        val chunkBytes = ((sampleRate * chunkMillis) / 1000) * bytesPerSample
-        val bufferSize = maxOf(minBuffer, chunkBytes)
-
-        var recorder: AudioRecord? = try {
-            AudioRecord(
-                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+        // 静音检测器（如果启用）
+        val silenceDetector = if (prefs.autoStopOnSilenceEnabled) {
+            SilenceDetector(
                 sampleRate,
-                channelConfig,
-                audioFormat,
-                bufferSize
+                prefs.autoStopSilenceWindowMs,
+                prefs.autoStopSilenceSensitivity
             )
-        } catch (t: Throwable) {
-            try { listener.onError(context.getString(R.string.error_audio_init_cannot, t.message ?: "")) } catch (_: Throwable) {}
-            null
-        }
-        if (recorder != null && recorder.state != AudioRecord.STATE_INITIALIZED) {
-            try { recorder.release() } catch (_: Throwable) {}
-            recorder = try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
-                    sampleRate,
-                    channelConfig,
-                    audioFormat,
-                    bufferSize
-                )
-            } catch (_: Throwable) { null }
-            if (recorder == null || recorder.state != AudioRecord.STATE_INITIALIZED) {
-                try { listener.onError(context.getString(R.string.error_audio_init_failed)) } catch (_: Throwable) {}
-                return
-            }
-        }
-        var activeRecorder = recorder ?: return
+        } else null
 
+        // 计算分段阈值
+        val maxBytes = (maxRecordDurationMillis / 1000.0 * sampleRate * bytesPerSample).toInt()
         val currentSeg = ByteArrayOutputStream()
-        val pendingList: java.util.ArrayDeque<ByteArray> = java.util.ArrayDeque()
+        val pendingList = java.util.ArrayDeque<ByteArray>()
+
         try {
-            try { activeRecorder.startRecording() } catch (_: SecurityException) {
-                try { listener.onError(context.getString(R.string.error_record_permission_denied)) } catch (_: Throwable) {}
-                return
-            } catch (t: Throwable) {
-                try { listener.onError(context.getString(R.string.error_audio_error, t.message ?: "")) } catch (_: Throwable) {}
-                return
-            }
+            audioManager.startCapture().collect { audioChunk ->
+                if (!running.get()) return@collect
 
-            val buf = ByteArray(chunkBytes)
-            val warmed = warmupRecorder(activeRecorder, buf, bufferSize, currentSeg) ?: return
-            activeRecorder = warmed
+                currentSeg.write(audioChunk)
 
-            val silenceDetector = if (prefs.autoStopOnSilenceEnabled)
-                SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
-            else null
-            val maxBytes = (maxRecordDurationMillis / 1000.0 * sampleRate * bytesPerSample).toInt()
+                // 静音自动判停：结束录音，推送最后一段
+                if (silenceDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
+                    running.set(false)
+                    Log.d(TAG, "Silence detected, stopping recording")
+                    try {
+                        listener.onStopped()
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to notify stopped", t)
+                    }
 
-            while (true) {
-                if (!running.get()) break
+                    val last = currentSeg.toByteArray()
+                    if (last.isNotEmpty()) {
+                        // 刷出已有待发送
+                        while (!pendingList.isEmpty()) {
+                            val head = pendingList.peekFirst() ?: break
+                            val ok = chan.trySend(head).isSuccess
+                            if (ok) {
+                                pendingList.removeFirst()
+                            } else break
+                        }
+                        // 尝试直接投递最后一段；不成则加入待发送
+                        val ok2 = chan.trySend(last).isSuccess
+                        if (!ok2) {
+                            pendingList.addLast(last)
+                        }
+                        // 已投递/入队最后一段后，重置缓冲，避免 finally 重复推送
+                        currentSeg.reset()
+                        Log.d(TAG, "Final segment enqueued (${last.size} bytes)")
+                    }
+                    // 取消录音协程，尽快退出采集循环并在 finally 中完成清理
+                    try {
+                        audioJob?.cancel()
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to cancel audio job after silence stop", t)
+                    }
+                    return@collect
+                }
 
                 // 尝试非阻塞地刷出待发送片段（若存在）
                 while (!pendingList.isEmpty()) {
@@ -182,143 +218,76 @@ abstract class BaseFileAsrEngine(
                     val r = chan.trySend(head)
                     if (r.isSuccess) {
                         pendingList.removeFirst()
+                        Log.d(TAG, "Pending segment sent (${head.size} bytes)")
                     } else break
                 }
 
-                val read = try { activeRecorder.read(buf, 0, buf.size) } catch (t: Throwable) {
-                    try { listener.onError(context.getString(R.string.error_audio_error, t.message ?: "")) } catch (_: Throwable) {}
-                    return
-                }
-                if (read > 0) {
-                    currentSeg.write(buf, 0, read)
+                // 达到上限：切出一个片段，不打断录音
+                if (currentSeg.size() >= maxBytes) {
+                    val out = currentSeg.toByteArray()
+                    currentSeg.reset()
+                    Log.d(TAG, "Segment threshold reached, cutting segment (${out.size} bytes)")
 
-                    // 静音自动判停：结束录音，推送最后一段
-                    if (silenceDetector?.shouldStop(buf, read) == true) {
-                        running.set(false)
-                        try { listener.onStopped() } catch (_: Throwable) {}
-                        val last = currentSeg.toByteArray()
-                        if (last.isNotEmpty()) {
-                            // 刷出已有待发送
-                            while (!pendingList.isEmpty()) {
-                                val head = pendingList.peekFirst() ?: break
-                                val ok = chan.trySend(head).isSuccess
-                                if (ok) pendingList.removeFirst() else break
-                            }
-                            // 尝试直接投递最后一段；不成则加入待发送
-                            val ok2 = chan.trySend(last).isSuccess
-                            if (!ok2) pendingList.addLast(last)
-                            // 关键：已投递/入队最后一段后，重置缓冲，避免 finally 重复推送
-                            currentSeg.reset()
-                        }
-                        break
+                    // 先尝试刷出之前的待发送段
+                    while (!pendingList.isEmpty()) {
+                        val head = pendingList.peekFirst() ?: break
+                        val ok = chan.trySend(head).isSuccess
+                        if (ok) {
+                            pendingList.removeFirst()
+                        } else break
                     }
 
-                    // 达到上限：切出一个片段，不打断录音
-                    if (currentSeg.size() >= maxBytes) {
-                        val out = currentSeg.toByteArray()
-                        currentSeg.reset()
-                        // 先尝试刷出之前的待发送段
-                        while (!pendingList.isEmpty()) {
-                            val head = pendingList.peekFirst() ?: break
-                            val ok = chan.trySend(head).isSuccess
-                            if (ok) pendingList.removeFirst() else break
-                        }
-                        // 再投递当前片段；不成则加入待发送队列
-                        val ok2 = chan.trySend(out).isSuccess
-                        if (!ok2) pendingList.addLast(out)
+                    // 再投递当前片段；不成则加入待发送队列
+                    val ok2 = chan.trySend(out).isSuccess
+                    if (!ok2) {
+                        pendingList.addLast(out)
+                        Log.d(TAG, "Segment queued for later sending")
+                    } else {
+                        Log.d(TAG, "Segment sent immediately")
                     }
                 }
             }
+        } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException) {
+                Log.d(TAG, "Audio capture cancelled: ${t.message}")
+            } else {
+                Log.e(TAG, "Audio capture failed", t)
+                try {
+                    listener.onError(context.getString(R.string.error_audio_error, t.message ?: ""))
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Failed to notify audio error", e)
+                }
+            }
         } finally {
-            try { activeRecorder.stop() } catch (_: Throwable) {}
-            try { activeRecorder.release() } catch (_: Throwable) {}
-
             // 录音结束后，推送任何遗留的待发送段与缓冲
+            Log.d(TAG, "Cleaning up: ${pendingList.size} pending segments, ${currentSeg.size()} bytes in buffer")
             while (!pendingList.isEmpty()) {
                 try {
                     val head = pendingList.removeFirst()
                     chan.trySend(head)
-                } catch (_: Throwable) { break }
-            }
-            val tail2 = currentSeg.toByteArray()
-            if (tail2.isNotEmpty()) {
-                try { chan.trySend(tail2) } catch (_: Throwable) {}
-            }
-        }
-    }
-
-    private fun warmupRecorder(
-        current: AudioRecord,
-        buf: ByteArray,
-        bufferSize: Int,
-        pcmBuffer: ByteArrayOutputStream
-    ): AudioRecord? {
-        val granted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
-        if (!granted) {
-            listener.onError(context.getString(R.string.error_record_permission_denied))
-            return null
-        }
-
-        var recorder = current
-        val compat = try { prefs.audioCompatPreferMic } catch (_: Throwable) { false }
-        if (compat) {
-            // 兼容模式：不在预热阶段重建；连续多帧作为暖机并写入缓冲，避免会话闪断
-            val warmupFrames = 3
-            var i = 0
-            while (i < warmupFrames) {
-                val n = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-                if (n > 0) {
-                    try { pcmBuffer.write(buf, 0, n) } catch (_: Throwable) { }
-                }
-                i++
-            }
-            return recorder
-        } else {
-            val preRead = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-            var hasSignal = false
-            if (preRead > 0) {
-                hasSignal = hasNonZeroAmplitude(buf, preRead)
-            }
-            if (!hasSignal) {
-                try { recorder.stop() } catch (_: Throwable) {}
-                try { recorder.release() } catch (_: Throwable) {}
-                val newRecorder = try {
-                    AudioRecord(
-                        MediaRecorder.AudioSource.MIC,
-                        sampleRate,
-                        channelConfig,
-                        audioFormat,
-                        bufferSize
-                    )
-                } catch (_: Throwable) { null }
-                if (newRecorder == null || newRecorder.state != AudioRecord.STATE_INITIALIZED) {
-                    listener.onError(context.getString(R.string.error_audio_init_failed))
-                    return null
-                }
-                recorder = newRecorder
-                try { recorder.startRecording() } catch (_: SecurityException) {
-                    listener.onError(context.getString(R.string.error_record_permission_denied))
-                    try { recorder.release() } catch (_: Throwable) {}
-                    return null
                 } catch (t: Throwable) {
-                    listener.onError(
-                        context.getString(R.string.error_audio_error, t.message ?: "")
-                    )
-                    try { recorder.release() } catch (_: Throwable) {}
-                    return null
+                    Log.e(TAG, "Failed to send pending segment during cleanup", t)
+                    break
                 }
-                val pre2 = try { recorder.read(buf, 0, buf.size) } catch (_: Throwable) { -1 }
-                if (pre2 > 0) pcmBuffer.write(buf, 0, pre2)
-            } else if (preRead > 0) {
-                pcmBuffer.write(buf, 0, preRead)
             }
-            return recorder
+            val tail = currentSeg.toByteArray()
+            if (tail.isNotEmpty()) {
+                try {
+                    chan.trySend(tail)
+                    Log.d(TAG, "Final buffer sent (${tail.size} bytes)")
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to send final buffer during cleanup", t)
+                }
+            }
         }
     }
 
+    /**
+     * 将 PCM 格式音频转换为 WAV 格式
+     *
+     * @param pcm PCM 音频数据
+     * @return WAV 格式音频数据
+     */
     protected fun pcmToWav(pcm: ByteArray): ByteArray {
         val channels = 1
         val bitsPerSample = 16
@@ -344,12 +313,18 @@ abstract class BaseFileAsrEngine(
         return out.toByteArray()
     }
 
+    /**
+     * 将整数转换为小端序字节数组（4字节）
+     */
     private fun intToBytesLE(v: Int): ByteArray {
         val bb = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN)
         bb.putInt(v)
         return bb.array()
     }
 
+    /**
+     * 将短整数转换为小端序字节数组（2字节）
+     */
     private fun shortToBytesLE(v: Int): ByteArray {
         val bb = ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN)
         bb.putShort(v.toShort())
@@ -358,6 +333,8 @@ abstract class BaseFileAsrEngine(
 
     /**
      * 交由子类实现具体的识别流程，如上传音频并解析结果。
+     *
+     * @param pcm PCM 格式音频数据
      */
     protected abstract suspend fun recognize(pcm: ByteArray)
 }

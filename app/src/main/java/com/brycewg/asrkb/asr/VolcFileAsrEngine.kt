@@ -2,6 +2,7 @@ package com.brycewg.asrkb.asr
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -22,13 +23,19 @@ class VolcFileAsrEngine(
     scope: CoroutineScope,
     prefs: Prefs,
     listener: StreamingAsrEngine.Listener,
-    onRequestDuration: ((Long) -> Unit)? = null
+    onRequestDuration: ((Long) -> Unit)? = null,
+    httpClient: OkHttpClient? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
+
+    companion object {
+        private const val TAG = "VolcFileAsrEngine"
+        private const val DEFAULT_FILE_RESOURCE = "volc.bigasr.auc_turbo"
+    }
 
     // 火山引擎非流式：服务端上限 2h，本地稳妥限制为 1h
     override val maxRecordDurationMillis: Int = 60 * 60 * 1000
 
-    private val http: OkHttpClient = OkHttpClient.Builder()
+    private val http: OkHttpClient = httpClient ?: OkHttpClient.Builder()
         .callTimeout(60, TimeUnit.SECONDS)
         .build()
 
@@ -79,6 +86,9 @@ class VolcFileAsrEngine(
         }
     }
 
+    /**
+     * 构建火山引擎 API 请求体
+     */
     private fun buildRequestJson(base64Audio: String): String {
         val user = JSONObject().apply {
             put("uid", prefs.appKey)
@@ -97,9 +107,5 @@ class VolcFileAsrEngine(
             put("audio", audio)
             put("request", request)
         }.toString()
-    }
-
-    companion object {
-        private const val DEFAULT_FILE_RESOURCE = "volc.bigasr.auc_turbo"
     }
 }

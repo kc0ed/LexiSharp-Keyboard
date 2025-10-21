@@ -265,29 +265,29 @@ class AsrSessionManager(
                 if (prefs.volcStreamingEnabled) {
                     VolcStreamAsrEngine(context, serviceScope, prefs, this)
                 } else {
-                    VolcFileAsrEngine(context, serviceScope, prefs, this) {}
+                    VolcFileAsrEngine(context, serviceScope, prefs, this, onRequestDuration = { })
                 }
             } else null
             AsrVendor.SiliconFlow -> if (prefs.hasSfKeys()) {
-                SiliconFlowFileAsrEngine(context, serviceScope, prefs, this) {}
+                SiliconFlowFileAsrEngine(context, serviceScope, prefs, this, onRequestDuration = { })
             } else null
             AsrVendor.ElevenLabs -> if (prefs.hasElevenKeys()) {
-                ElevenLabsFileAsrEngine(context, serviceScope, prefs, this) {}
+                ElevenLabsFileAsrEngine(context, serviceScope, prefs, this, onRequestDuration = { })
             } else null
             AsrVendor.OpenAI -> if (prefs.hasOpenAiKeys()) {
-                OpenAiFileAsrEngine(context, serviceScope, prefs, this) {}
+                OpenAiFileAsrEngine(context, serviceScope, prefs, this, onRequestDuration = { })
             } else null
             AsrVendor.DashScope -> if (prefs.hasDashKeys()) {
-                DashscopeFileAsrEngine(context, serviceScope, prefs, this) {}
+                DashscopeFileAsrEngine(context, serviceScope, prefs, this, onRequestDuration = { })
             } else null
             AsrVendor.Gemini -> if (prefs.hasGeminiKeys()) {
-                GeminiFileAsrEngine(context, serviceScope, prefs, this) {}
+                GeminiFileAsrEngine(context, serviceScope, prefs, this, onRequestDuration = { })
             } else null
             AsrVendor.Soniox -> if (prefs.hasSonioxKeys()) {
                 if (prefs.sonioxStreamingEnabled) {
                     SonioxStreamAsrEngine(context, serviceScope, prefs, this)
                 } else {
-                    SonioxFileAsrEngine(context, serviceScope, prefs, this) {}
+                    SonioxFileAsrEngine(context, serviceScope, prefs, this, onRequestDuration = { })
                 }
             } else null
             AsrVendor.SenseVoice -> {

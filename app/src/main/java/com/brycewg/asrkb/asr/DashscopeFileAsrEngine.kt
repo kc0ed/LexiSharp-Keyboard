@@ -1,6 +1,7 @@
 package com.brycewg.asrkb.asr
 
 import android.content.Context
+import android.util.Log
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -23,13 +24,18 @@ class DashscopeFileAsrEngine(
     scope: CoroutineScope,
     prefs: Prefs,
     listener: StreamingAsrEngine.Listener,
-    onRequestDuration: ((Long) -> Unit)? = null
+    onRequestDuration: ((Long) -> Unit)? = null,
+    httpClient: OkHttpClient? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
+
+    companion object {
+        private const val TAG = "DashscopeFileAsrEngine"
+    }
 
     // DashScope：官方限制 3 分钟
     override val maxRecordDurationMillis: Int = 3 * 60 * 1000
 
-    private val http: OkHttpClient = OkHttpClient.Builder()
+    private val http: OkHttpClient = httpClient ?: OkHttpClient.Builder()
         .callTimeout(90, TimeUnit.SECONDS)
         .build()
 
@@ -183,6 +189,9 @@ class DashscopeFileAsrEngine(
         }
     }
 
+    /**
+     * 从 DashScope 响应体中解析转写文本
+     */
     private fun parseDashscopeText(body: String): String {
         if (body.isBlank()) return ""
         return try {
@@ -201,10 +210,19 @@ class DashscopeFileAsrEngine(
                 }
             }
             txt
-        } catch (_: Throwable) { "" }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to parse DashScope response", t)
+            ""
+        }
     }
 
+    /**
+     * 获取文件名的安全方法
+     */
     private fun File.nameIfExists(): String {
-        return try { name } catch (_: Throwable) { "upload.wav" }
+        return try { name } catch (t: Throwable) {
+            Log.e(TAG, "Failed to get file name", t)
+            "upload.wav"
+        }
     }
 }

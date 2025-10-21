@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
@@ -36,6 +37,10 @@ class SonioxStreamAsrEngine(
     private val prefs: Prefs,
     private val listener: StreamingAsrEngine.Listener
 ) : StreamingAsrEngine {
+
+    companion object {
+        private const val TAG = "SonioxStreamAsrEngine"
+    }
 
     private val http: OkHttpClient = OkHttpClient.Builder()
         .pingInterval(15, TimeUnit.SECONDS)
@@ -103,13 +108,16 @@ class SonioxStreamAsrEngine(
             .build()
         ws = http.newWebSocket(req, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                Log.d(TAG, "WebSocket opened, sending config")
                 try {
                     // 发送配置
                     val config = buildConfigJson()
                     webSocket.send(config)
                     // 标记 WS 已就绪，录音线程将冲刷预缓冲并进入实时发送
                     wsReady.set(true)
+                    Log.d(TAG, "WebSocket ready, audio streaming can begin")
                 } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to send config", t)
                     listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
                     stop()
                 }
@@ -121,171 +129,112 @@ class SonioxStreamAsrEngine(
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                 // Soniox 文档为文本 JSON 响应；此处保底兼容
-                try { handleMessage(bytes.utf8()) } catch (_: Throwable) { }
+                try { handleMessage(bytes.utf8()) } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to decode binary message", t)
+                }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                if (running.get()) listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
+                Log.e(TAG, "WebSocket failed: ${t.message}", t)
+                if (running.get()) {
+                    listener.onError(context.getString(R.string.error_recognize_failed_with_reason, t.message ?: ""))
+                }
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                // no-op
+                Log.d(TAG, "WebSocket closed with code $code: $reason")
             }
         })
     }
 
+    /**
+     * 启动音频采集流并发送到 WebSocket
+     *
+     * 使用 AudioCaptureManager 简化音频采集逻辑，包括：
+     * - 权限检查和 AudioRecord 初始化
+     * - 音频源回退（VOICE_RECOGNITION -> MIC）
+     * - 预热逻辑（兼容模式 vs 非兼容模式）
+     */
     private fun startCaptureAndSendAudio() {
         audioJob?.cancel()
         audioJob = scope.launch(Dispatchers.IO) {
-            // 双重校验录音权限，确保从任意路径进入时都安全
-            val hasPermission = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!hasPermission) {
+            val chunkMillis = 200
+            val audioManager = AudioCaptureManager(
+                context = context,
+                sampleRate = sampleRate,
+                channelConfig = channelConfig,
+                audioFormat = audioFormat,
+                chunkMillis = chunkMillis,
+                prefs = prefs
+            )
+
+            if (!audioManager.hasPermission()) {
+                Log.e(TAG, "Missing RECORD_AUDIO permission")
                 listener.onError(context.getString(R.string.error_record_permission_denied))
                 running.set(false)
                 return@launch
             }
-            val minBuffer = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
-            val readSize = maxOf(minBuffer, (sampleRate / 5) * 2) // ~200ms
-            var recorder = try {
-                AudioRecord(
-                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                    sampleRate,
-                    channelConfig,
-                    audioFormat,
-                    readSize
-                )
-            } catch (se: SecurityException) {
-                listener.onError(context.getString(R.string.error_record_permission_denied))
-                stop(); return@launch
-            } catch (t: Throwable) {
-                listener.onError(context.getString(R.string.error_audio_init_cannot, t.message ?: ""))
-                stop(); return@launch
-            }
-            if (recorder.state != AudioRecord.STATE_INITIALIZED) {
-                try { recorder.release() } catch (_: Throwable) {}
-                val alt = try {
-                    AudioRecord(
-                        MediaRecorder.AudioSource.MIC,
-                        sampleRate,
-                        channelConfig,
-                        audioFormat,
-                        readSize
-                    )
-                } catch (_: Throwable) { null }
-                if (alt == null || alt.state != AudioRecord.STATE_INITIALIZED) {
-                    listener.onError(context.getString(R.string.error_audio_init_failed))
-                    stop(); return@launch
-                }
-                recorder = alt
-            }
+
+            val silenceDetector = if (prefs.autoStopOnSilenceEnabled)
+                SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
+            else null
+
+            val maxFrames = (2000 / chunkMillis).coerceAtLeast(1) // 预缓冲≈2s
+
             try {
-                recorder.startRecording()
-                val buf = ByteArray(readSize)
-                val silence = if (prefs.autoStopOnSilenceEnabled)
-                    SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
-                else null
-                // 预热 + 探测：兼容模式下稳定会话并写入预缓冲；非兼容模式保留回退机制
-                val maxFrames = (2000 / 200).coerceAtLeast(1) // 预缓冲≈2s（readSize~200ms）
-                run {
-                    val compat = try { prefs.audioCompatPreferMic } catch (_: Throwable) { false }
-                    if (compat) {
-                        val warmupFrames = 3
-                        repeat(warmupFrames) {
-                            val pre = try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { -1 } catch (_: Throwable) { -1 }
-                            if (pre > 0) {
-                                val chunk = buf.copyOfRange(0, pre)
-                                synchronized(prebufferLock) {
-                                    prebuffer.addLast(chunk)
-                                    while (prebuffer.size > maxFrames) prebuffer.removeFirst()
-                                }
-                            }
+                Log.d(TAG, "Starting audio capture with chunk size ${chunkMillis}ms")
+                audioManager.startCapture().collect { audioChunk ->
+                    if (!running.get()) return@collect
+
+                    // 静音自动判停
+                    if (silenceDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
+                        Log.d(TAG, "Silence detected, stopping recording")
+                        try { listener.onStopped() } catch (t: Throwable) {
+                            Log.e(TAG, "Failed to notify stopped", t)
+                        }
+                        stop()
+                        return@collect
+                    }
+
+                    if (!wsReady.get()) {
+                        // WS 未就绪：写入预缓冲
+                        synchronized(prebufferLock) {
+                            prebuffer.addLast(audioChunk)
+                            while (prebuffer.size > maxFrames) prebuffer.removeFirst()
                         }
                     } else {
-                        val pre = try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { -1 } catch (_: Throwable) { -1 }
-                        val hasSignal = pre > 0 && hasNonZeroAmplitude(buf, pre)
-                        if (pre > 0) {
-                            val chunk = buf.copyOfRange(0, pre)
-                            synchronized(prebufferLock) {
-                                prebuffer.addLast(chunk)
-                                while (prebuffer.size > maxFrames) prebuffer.removeFirst()
+                        // WS 就绪：先冲刷预缓冲，再发送当前块
+                        var flushed: Array<ByteArray>? = null
+                        synchronized(prebufferLock) {
+                            if (prebuffer.isNotEmpty()) {
+                                flushed = prebuffer.toTypedArray()
+                                prebuffer.clear()
                             }
                         }
-                        if (!hasSignal) {
-                            try { recorder.stop() } catch (_: Throwable) {}
-                            try { recorder.release() } catch (_: Throwable) {}
-                            val alt = try {
-                                AudioRecord(
-                                    MediaRecorder.AudioSource.MIC,
-                                    sampleRate,
-                                    channelConfig,
-                                    audioFormat,
-                                    readSize
-                                )
-                            } catch (_: Throwable) { null }
-                            if (alt != null && alt.state == AudioRecord.STATE_INITIALIZED) {
-                                recorder = alt
-                                try { recorder.startRecording() } catch (_: SecurityException) { } catch (_: Throwable) { }
-                                val pre2 = try { recorder.read(buf, 0, buf.size) } catch (_: SecurityException) { -1 } catch (_: Throwable) { -1 }
-                                if (pre2 > 0) {
-                                    val chunk2 = buf.copyOfRange(0, pre2)
-                                    synchronized(prebufferLock) {
-                                        prebuffer.addLast(chunk2)
-                                        while (prebuffer.size > maxFrames) prebuffer.removeFirst()
-                                    }
+                        val socket = ws
+                        if (socket != null) {
+                            flushed?.forEach { b ->
+                                try {
+                                    socket.send(ByteString.of(*b))
+                                } catch (t: Throwable) {
+                                    Log.e(TAG, "Failed to send buffered audio frame", t)
                                 }
-                            } else {
-                                listener.onError(context.getString(R.string.error_audio_init_failed))
-                                stop(); return@launch
+                            }
+                            try {
+                                socket.send(ByteString.of(*audioChunk))
+                            } catch (t: Throwable) {
+                                Log.e(TAG, "Failed to send audio frame", t)
                             }
                         }
                     }
                 }
-                while (running.get()) {
-                    val n = try { recorder.read(buf, 0, buf.size) } catch (se: SecurityException) {
-                        listener.onError(context.getString(R.string.error_record_permission_denied))
-                        stop(); break
-                    } catch (_: Throwable) { -1 }
-                    if (n > 0) {
-                        if (silence?.shouldStop(buf, n) == true) {
-                            try { listener.onStopped() } catch (_: Throwable) {}
-                            stop()
-                            break
-                        }
-                        val chunk = buf.copyOfRange(0, n)
-                        if (!wsReady.get()) {
-                            synchronized(prebufferLock) {
-                                prebuffer.addLast(chunk)
-                                while (prebuffer.size > maxFrames) prebuffer.removeFirst()
-                            }
-                        } else {
-                            // 冲刷预缓冲后继续实时发送
-                            var flushed: Array<ByteArray>? = null
-                            synchronized(prebufferLock) {
-                                if (prebuffer.isNotEmpty()) {
-                                    flushed = prebuffer.toTypedArray()
-                                    prebuffer.clear()
-                                }
-                            }
-                            val socket = ws
-                            if (socket != null) {
-                                flushed?.forEach { b ->
-                                    try { socket.send(ByteString.of(*b)) } catch (_: Throwable) { }
-                                }
-                                try { socket.send(ByteString.of(*chunk)) } catch (_: Throwable) { }
-                            }
-                        }
-                    }
-                }
-            } catch (se: SecurityException) {
-                listener.onError(context.getString(R.string.error_record_permission_denied))
             } catch (t: Throwable) {
-                listener.onError(context.getString(R.string.error_audio_error, t.message ?: ""))
-            } finally {
-                try { recorder.stop() } catch (_: Throwable) {}
-                try { recorder.release() } catch (_: Throwable) {}
+                if (t is kotlinx.coroutines.CancellationException) {
+                    Log.d(TAG, "Audio streaming cancelled: ${t.message}")
+                } else {
+                    Log.e(TAG, "Audio streaming failed: ${t.message}", t)
+                    listener.onError(context.getString(R.string.error_audio_error, t.message ?: ""))
+                }
             }
         }
     }
@@ -320,6 +269,7 @@ class SonioxStreamAsrEngine(
             if (o.has("error_code")) {
                 val code = o.optInt("error_code")
                 val msg = o.optString("error_message")
+                Log.e(TAG, "ASR server error: $code - $msg")
                 listener.onError("ASR Error $code: $msg")
                 return
             }
@@ -366,12 +316,15 @@ class SonioxStreamAsrEngine(
             val finished = o.optBoolean("finished", false)
             if (finished) {
                 val finalText = stripEndMarker(finalTextBuffer.toString().ifBlank { preview })
+                Log.d(TAG, "Received final result, length: ${finalText.length}")
                 // 即使最终文本为空也通知上层，避免 UI 卡在处理中态
-                try { listener.onFinal(finalText) } catch (_: Throwable) { }
+                try { listener.onFinal(finalText) } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to notify final result", t)
+                }
                 running.set(false)
             }
-        } catch (_: Throwable) {
-            // ignore malformed
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to parse message: $json", t)
         }
     }
 

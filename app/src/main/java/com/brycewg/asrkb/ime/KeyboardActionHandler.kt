@@ -398,15 +398,15 @@ class KeyboardActionHandler(
     // ========== 私有方法：状态转换 ==========
 
     private fun transitionToState(newState: KeyboardState) {
-        // 进入 Processing 前，清理可能存在的预览 composing，避免视觉残留/重复提交
-        if (newState is KeyboardState.Processing) {
-            try {
-                val ic = getCurrentInputConnection()
-                inputHelper.finishComposingText(ic)
-            } catch (_: Throwable) { }
-        }
+        // 不在进入 Processing 时主动 finishComposing，保留预览供最终结果做差量合并
         currentState = newState
-        asrManager.setCurrentState(newState)
+        // 仅在携带文本上下文的状态下同步到 AsrSessionManager，
+        // 避免切到 Processing 后丢失 partialText 影响最终合并
+        when (newState) {
+            is KeyboardState.Listening,
+            is KeyboardState.AiEditListening -> asrManager.setCurrentState(newState)
+            else -> { /* keep previous contextual state in AsrSessionManager */ }
+        }
         uiListener?.onStateChanged(newState)
     }
 

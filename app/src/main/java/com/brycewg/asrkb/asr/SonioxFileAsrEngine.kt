@@ -1,6 +1,7 @@
 package com.brycewg.asrkb.asr
 
 import android.content.Context
+import android.util.Log
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -25,13 +26,18 @@ class SonioxFileAsrEngine(
     scope: CoroutineScope,
     prefs: Prefs,
     listener: StreamingAsrEngine.Listener,
-    onRequestDuration: ((Long) -> Unit)? = null
+    onRequestDuration: ((Long) -> Unit)? = null,
+    httpClient: OkHttpClient? = null
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
+
+    companion object {
+        private const val TAG = "SonioxFileAsrEngine"
+    }
 
     // Soniox：未明确限制，本地限制为 1 小时
     override val maxRecordDurationMillis: Int = 60 * 60 * 1000
 
-    private val http: OkHttpClient = OkHttpClient.Builder()
+    private val http: OkHttpClient = httpClient ?: OkHttpClient.Builder()
         .callTimeout(120, TimeUnit.SECONDS)
         .build()
 
@@ -172,6 +178,9 @@ class SonioxFileAsrEngine(
         }
     }
 
+    /**
+     * 从响应体中提取错误提示信息
+     */
     private fun extractErrorHint(body: String): String {
         if (body.isBlank()) return ""
         return try {
@@ -181,11 +190,15 @@ class SonioxFileAsrEngine(
                 o.has("message") -> o.optString("message").trim()
                 else -> body.take(200).trim()
             }
-        } catch (_: Throwable) {
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to parse error hint", t)
             body.take(200).trim()
         }
     }
 
+    /**
+     * 从 Soniox 响应中解析转写文本
+     */
     private fun parseTokensToText(body: String): String {
         return try {
             val o = JSONObject(body)
@@ -197,6 +210,9 @@ class SonioxFileAsrEngine(
                 if (text.isNotEmpty()) sb.append(text)
             }
             sb.toString().trim()
-        } catch (_: Throwable) { "" }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to parse tokens to text", t)
+            ""
+        }
     }
 }
