@@ -1,12 +1,23 @@
 package com.brycewg.asrkb.store
 
 import android.content.Context
+import android.util.Log
 import androidx.core.content.edit
 import com.brycewg.asrkb.asr.AsrVendor
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlin.reflect.KProperty
 
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("asr_prefs", Context.MODE_PRIVATE)
+
+    // --- JSON 配置：宽松模式（容忍未知键，优雅处理格式错误）---
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        encodeDefaults = true
+    }
 
     // --- 小工具：统一的偏好项委托，减少重复 getter/setter 代码 ---
     private fun stringPref(key: String, default: String = "") = object {
@@ -15,6 +26,39 @@ class Prefs(context: Context) {
 
         operator fun setValue(thisRef: Prefs, property: KProperty<*>, value: String) {
             sp.edit { putString(key, value.trim()) }
+        }
+    }
+
+    private fun booleanPref(key: String, default: Boolean = false) = object {
+        operator fun getValue(thisRef: Prefs, property: KProperty<*>): Boolean =
+            sp.getBoolean(key, default)
+
+        operator fun setValue(thisRef: Prefs, property: KProperty<*>, value: Boolean) {
+            sp.edit { putBoolean(key, value) }
+        }
+    }
+
+    private fun intPref(key: String, default: Int = 0, range: IntRange? = null) = object {
+        operator fun getValue(thisRef: Prefs, property: KProperty<*>): Int {
+            val value = sp.getInt(key, default)
+            return if (range != null) value.coerceIn(range) else value
+        }
+
+        operator fun setValue(thisRef: Prefs, property: KProperty<*>, value: Int) {
+            val coerced = if (range != null) value.coerceIn(range) else value
+            sp.edit { putInt(key, coerced) }
+        }
+    }
+
+    private fun floatPref(key: String, default: Float = 0f, range: ClosedFloatingPointRange<Float>? = null) = object {
+        operator fun getValue(thisRef: Prefs, property: KProperty<*>): Float {
+            val value = sp.getFloat(key, default)
+            return if (range != null) value.coerceIn(range) else value
+        }
+
+        operator fun setValue(thisRef: Prefs, property: KProperty<*>, value: Float) {
+            val coerced = if (range != null) value.coerceIn(range) else value
+            sp.edit { putFloat(key, coerced) }
         }
     }
 
@@ -190,6 +234,7 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_LLM_ACTIVE_ID, "") ?: ""
         set(value) = sp.edit { putString(KEY_LLM_ACTIVE_ID, value) }
 
+    @Serializable
     data class LlmProvider(
         val id: String,
         val name: String,
@@ -214,37 +259,21 @@ class Prefs(context: Context) {
             if (activeLlmId.isBlank()) activeLlmId = migrated.id
         }
         return try {
-            val arr = org.json.JSONArray(llmProvidersJson)
-            val list = mutableListOf<LlmProvider>()
-            for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                val id = o.optString("id").ifBlank { continue }
-                val name = o.optString("name").ifBlank { id }
-                val endpoint = o.optString("endpoint", DEFAULT_LLM_ENDPOINT)
-                val apiKey = o.optString("apiKey", "")
-                val model = o.optString("model", DEFAULT_LLM_MODEL)
-                val temp = o.optDouble("temperature", DEFAULT_LLM_TEMPERATURE.toDouble()).toFloat()
-                list.add(LlmProvider(id, name, endpoint, apiKey, model, temp))
-            }
-            list
-        } catch (_: Throwable) { emptyList() }
+            json.decodeFromString<List<LlmProvider>>(llmProvidersJson)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse LlmProviders JSON", e)
+            emptyList()
+        }
     }
 
     fun setLlmProviders(list: List<LlmProvider>) {
-        val arr = org.json.JSONArray()
-        list.forEach { p ->
-            val o = org.json.JSONObject()
-            o.put("id", p.id)
-            o.put("name", p.name)
-            o.put("endpoint", p.endpoint)
-            o.put("apiKey", p.apiKey)
-            o.put("model", p.model)
-            o.put("temperature", p.temperature.toDouble())
-            arr.put(o)
-        }
-        llmProvidersJson = arr.toString()
-        if (list.none { it.id == activeLlmId }) {
-            activeLlmId = list.firstOrNull()?.id ?: ""
+        try {
+            llmProvidersJson = json.encodeToString(list)
+            if (list.none { it.id == activeLlmId }) {
+                activeLlmId = list.firstOrNull()?.id ?: ""
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to serialize LlmProviders", e)
         }
     }
 
@@ -278,34 +307,23 @@ class Prefs(context: Context) {
             return defaults
         }
         return try {
-            val arr = org.json.JSONArray(promptPresetsJson)
-            val list = mutableListOf<PromptPreset>()
-            for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                val id = o.optString("id").ifBlank { java.util.UUID.randomUUID().toString() }
-                val title = o.optString("title").ifBlank { "未命名预设" }
-                val content = o.optString("content")
-                list.add(PromptPreset(id, title, content))
-            }
+            val list = json.decodeFromString<List<PromptPreset>>(promptPresetsJson)
             if (list.isEmpty()) buildDefaultPromptPresets() else list
-        } catch (_: Throwable) {
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse PromptPresets JSON", e)
             buildDefaultPromptPresets()
         }
     }
 
     fun setPromptPresets(list: List<PromptPreset>) {
-        val arr = org.json.JSONArray()
-        list.forEach { p ->
-            val o = org.json.JSONObject()
-            o.put("id", p.id)
-            o.put("title", p.title)
-            o.put("content", p.content)
-            arr.put(o)
-        }
-        promptPresetsJson = arr.toString()
-        // 确保活动ID有效
-        if (list.none { it.id == activePromptId }) {
-            activePromptId = list.firstOrNull()?.id ?: ""
+        try {
+            promptPresetsJson = json.encodeToString(list)
+            // 确保活动ID有效
+            if (list.none { it.id == activePromptId }) {
+                activePromptId = list.firstOrNull()?.id ?: ""
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to serialize PromptPresets", e)
         }
     }
 
@@ -329,18 +347,9 @@ class Prefs(context: Context) {
     fun getSpeechPresets(): List<SpeechPreset> {
         if (speechPresetsJson.isBlank()) return emptyList()
         return try {
-            val arr = org.json.JSONArray(speechPresetsJson)
-            val list = mutableListOf<SpeechPreset>()
-            for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                val id = o.optString("id").ifBlank { java.util.UUID.randomUUID().toString() }
-                val name = o.optString("name").trim()
-                if (name.isEmpty()) continue
-                val content = o.optString("content")
-                list.add(SpeechPreset(id, name, content))
-            }
-            list
-        } catch (_: Throwable) {
+            json.decodeFromString<List<SpeechPreset>>(speechPresetsJson)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse SpeechPresets JSON", e)
             emptyList()
         }
     }
@@ -355,17 +364,13 @@ class Prefs(context: Context) {
                 SpeechPreset(id, name, p.content)
             }
         }
-        val arr = org.json.JSONArray()
-        sanitized.forEach { p ->
-            val o = org.json.JSONObject()
-            o.put("id", p.id)
-            o.put("name", p.name)
-            o.put("content", p.content)
-            arr.put(o)
-        }
-        speechPresetsJson = arr.toString()
-        if (sanitized.none { it.id == activeSpeechPresetId }) {
-            activeSpeechPresetId = sanitized.firstOrNull()?.id ?: ""
+        try {
+            speechPresetsJson = json.encodeToString(sanitized)
+            if (sanitized.none { it.id == activeSpeechPresetId }) {
+                activeSpeechPresetId = sanitized.firstOrNull()?.id ?: ""
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to serialize SpeechPresets", e)
         }
     }
 
@@ -463,23 +468,24 @@ class Prefs(context: Context) {
             return if (single.isNotEmpty()) listOf(single) else emptyList()
         }
         return try {
-            val arr = org.json.JSONArray(raw)
-            val list = mutableListOf<String>()
-            for (i in 0 until arr.length()) {
-                val v = arr.optString(i).trim()
-                if (v.isNotEmpty()) list.add(v)
-            }
-            list.distinct()
-        } catch (_: Throwable) { emptyList() }
+            json.decodeFromString<List<String>>(raw).filter { it.isNotBlank() }.distinct()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse Soniox languages JSON, falling back to single value", e)
+            // 回退到旧的单一字段
+            val single = sonioxLanguage.trim()
+            if (single.isNotEmpty()) listOf(single) else emptyList()
+        }
     }
 
     fun setSonioxLanguages(list: List<String>) {
         val distinct = list.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
-        val arr = org.json.JSONArray()
-        distinct.forEach { arr.put(it) }
-        sonioxLanguagesJson = arr.toString()
-        // 兼容旧字段：保留第一个；为空则清空
-        sonioxLanguage = distinct.firstOrNull() ?: ""
+        try {
+            sonioxLanguagesJson = json.encodeToString(distinct)
+            // 兼容旧字段：保留第一个；为空则清空
+            sonioxLanguage = distinct.firstOrNull() ?: ""
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to serialize Soniox languages", e)
+        }
     }
 
     // 火山引擎：流式识别开关（与文件模式共享凭证）
@@ -555,18 +561,28 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_SV_KEEP_ALIVE_MINUTES, -1)
         set(value) = sp.edit { putInt(KEY_SV_KEEP_ALIVE_MINUTES, value) }
 
-    // SenseVoice：伪流式识别开关（容错：若历史上被以字符串写入，做解析回退）
+    // SenseVoice：伪流式识别开关（容错：若历史上被以字符串写入，做解析回退并修正）
     var svPseudoStreamingEnabled: Boolean
         get() = try {
             sp.getBoolean(KEY_SV_PSEUDO_STREAMING_ENABLED, false)
-        } catch (_: ClassCastException) {
+        } catch (e: ClassCastException) {
+            // 检测到类型不匹配，说明历史数据以字符串形式存储
+            Log.w(TAG, "Detected legacy string value for svPseudoStreamingEnabled, migrating to boolean", e)
             val s = sp.getString(KEY_SV_PSEUDO_STREAMING_ENABLED, null)
-            when {
+            val boolValue = when {
                 s == null -> false
                 s.equals("true", ignoreCase = true) -> true
                 s == "1" -> true
                 else -> false
             }
+            // 一次性数据迁移：写回正确的布尔类型
+            try {
+                sp.edit { putBoolean(KEY_SV_PSEUDO_STREAMING_ENABLED, boolValue) }
+                Log.i(TAG, "Successfully migrated svPseudoStreamingEnabled to boolean: $boolValue")
+            } catch (migrateError: Exception) {
+                Log.e(TAG, "Failed to migrate svPseudoStreamingEnabled to boolean", migrateError)
+            }
+            boolValue
         }
         set(value) = sp.edit { putBoolean(KEY_SV_PSEUDO_STREAMING_ENABLED, value) }
 
@@ -698,6 +714,8 @@ class Prefs(context: Context) {
         set(value) = sp.edit { putString(KEY_SC_LAST_UP_HASH, value) }
 
     companion object {
+        private const val TAG = "Prefs"
+
         private const val KEY_APP_KEY = "app_key"
         private const val KEY_ACCESS_KEY = "access_key"
         private const val KEY_TRIM_FINAL_TRAILING_PUNCT = "trim_final_trailing_punct"
@@ -966,6 +984,7 @@ class Prefs(context: Context) {
     fun importJsonString(json: String): Boolean {
         return try {
             val o = org.json.JSONObject(json)
+            Log.i(TAG, "Starting import of settings from JSON")
             fun optBool(key: String, default: Boolean? = null): Boolean? =
                 if (o.has(key)) o.optBoolean(key) else default
             fun optString(key: String, default: String? = null): String? =
@@ -1065,8 +1084,10 @@ class Prefs(context: Context) {
             optString(KEY_SC_PASSWORD)?.let { syncClipboardPassword = it }
             optBool(KEY_SC_AUTO_PULL)?.let { syncClipboardAutoPullEnabled = it }
             optInt(KEY_SC_PULL_INTERVAL_SEC)?.let { syncClipboardPullIntervalSec = it }
+            Log.i(TAG, "Successfully imported settings from JSON")
             true
-        } catch (_: Throwable) {
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to import settings from JSON", e)
             false
         }
     }

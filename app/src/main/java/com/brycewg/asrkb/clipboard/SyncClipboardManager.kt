@@ -4,21 +4,34 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.text.TextUtils
+import android.util.Base64
+import android.util.Log
+import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
-import java.util.concurrent.TimeUnit
 import java.security.MessageDigest
-import android.util.Base64
-import com.brycewg.asrkb.store.Prefs
+import java.util.concurrent.TimeUnit
+
+/**
+ * 剪贴板同步数据载荷
+ */
+@Serializable
+private data class ClipboardPayload(
+  val File: String = "",
+  val Clipboard: String,
+  val Type: String = "Text"
+)
 
 /**
  * 在 IME 面板可见期间启用：
@@ -37,6 +50,7 @@ class SyncClipboardManager(
     fun onPulledNewContent(text: String)
     fun onUploadSuccess()
   }
+
   private val clipboard by lazy { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
   private val client by lazy {
     OkHttpClient.Builder()
@@ -44,6 +58,11 @@ class SyncClipboardManager(
       .readTimeout(8, TimeUnit.SECONDS)
       .writeTimeout(8, TimeUnit.SECONDS)
       .build()
+  }
+  private val json by lazy { Json { ignoreUnknownKeys = true } }
+
+  companion object {
+    private const val TAG = "SyncClipboardManager"
   }
 
   private var pullJob: Job? = null
@@ -59,7 +78,13 @@ class SyncClipboardManager(
       return@OnPrimaryClipChangedListener
     }
     if (!prefs.syncClipboardEnabled) return@OnPrimaryClipChangedListener
-    scope.launch(Dispatchers.IO) { try { uploadCurrentClipboardText() } catch (_: Throwable) { } }
+    scope.launch(Dispatchers.IO) {
+      try {
+        uploadCurrentClipboardText()
+      } catch (e: Throwable) {
+        Log.e(TAG, "Failed to upload clipboard text on change", e)
+      }
+    }
   }
 
   fun start() {
@@ -69,7 +94,11 @@ class SyncClipboardManager(
   }
 
   fun stop() {
-    try { if (listenerRegistered) clipboard.removePrimaryClipChangedListener(clipListener) } catch (_: Throwable) { }
+    try {
+      if (listenerRegistered) clipboard.removePrimaryClipChangedListener(clipListener)
+    } catch (e: Throwable) {
+      Log.e(TAG, "Failed to remove clipboard listener", e)
+    }
     listenerRegistered = false
     pullJob?.cancel()
     pullJob = null
@@ -82,7 +111,9 @@ class SyncClipboardManager(
       try {
         clipboard.addPrimaryClipChangedListener(clipListener)
         listenerRegistered = true
-      } catch (_: Throwable) { }
+      } catch (e: Throwable) {
+        Log.e(TAG, "Failed to add clipboard listener", e)
+      }
     }
   }
 
@@ -92,7 +123,11 @@ class SyncClipboardManager(
     val intervalSec = prefs.syncClipboardPullIntervalSec.coerceIn(1, 600)
     pullJob = scope.launch(Dispatchers.IO) {
       while (isActive && prefs.syncClipboardEnabled && prefs.syncClipboardAutoPullEnabled) {
-        try { pullNow(updateClipboard = true) } catch (_: Throwable) { }
+        try {
+          pullNow(updateClipboard = true)
+        } catch (e: Throwable) {
+          Log.e(TAG, "Failed to pull clipboard in loop", e)
+        }
         delay(intervalSec * 1000L)
       }
     }
@@ -132,17 +167,33 @@ class SyncClipboardManager(
   }
 
   private fun readClipboardText(): String? {
-    val clip = try { clipboard.primaryClip } catch (_: Throwable) { null } ?: return null
+    val clip = try {
+      clipboard.primaryClip
+    } catch (e: Throwable) {
+      Log.e(TAG, "Failed to read clipboard", e)
+      null
+    } ?: return null
     if (clip.itemCount <= 0) return null
     val item = clip.getItemAt(0)
-    val text = try { item.coerceToText(context)?.toString() } catch (_: Throwable) { null }
+    val text = try {
+      item.coerceToText(context)?.toString()
+    } catch (e: Throwable) {
+      Log.e(TAG, "Failed to coerce clipboard item to text", e)
+      null
+    }
     return text?.takeIf { it.isNotEmpty() }
   }
 
   private fun writeClipboardText(text: String) {
     val clip = ClipData.newPlainText("SyncClipboard", text)
     suppressNextChange = true
-    try { clipboard.setPrimaryClip(clip) } catch (_: Throwable) { suppressNextChange = false }
+    try {
+      clipboard.setPrimaryClip(clip)
+    } catch (e: Throwable) {
+      Log.e(TAG, "Failed to write clipboard text", e)
+    } finally {
+      suppressNextChange = false
+    }
   }
 
   private fun uploadCurrentClipboardText() {
@@ -154,9 +205,15 @@ class SyncClipboardManager(
     // 若与最近一次成功上传（或最近一次拉取写入）相同，则跳过上传，避免重复
     try {
       val newHash = sha256Hex(text)
-      val last = try { prefs.syncClipboardLastUploadedHash } catch (_: Throwable) { "" }
+      val last = try { prefs.syncClipboardLastUploadedHash } catch (e: Throwable) {
+        Log.e(TAG, "Failed to read last uploaded hash", e)
+        ""
+      }
       if (newHash == last) return
-    } catch (_: Throwable) { /* ignore and continue */ }
+    } catch (e: Throwable) {
+      Log.e(TAG, "Failed to compute hash for clipboard text", e)
+      // 继续尝试上传
+    }
     // 先按文档尝试明文；失败则回退标准 Basic Base64
     if (!uploadText(url, auth1, text)) {
       uploadText(url, auth2, text)
@@ -164,29 +221,41 @@ class SyncClipboardManager(
   }
 
   private fun uploadText(url: String, auth: String, text: String): Boolean {
-    val bodyJson = JSONObject().apply {
-      put("File", "")
-      put("Clipboard", text)
-      put("Type", "Text")
-    }.toString()
-    val req = Request.Builder()
-      .url(url)
-      .header("Authorization", auth)
-      .put(bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType()))
-      .build()
-    client.newCall(req).execute().use { resp ->
-      if (resp.isSuccessful) {
-        // 记录最近一次成功上传内容的哈希，便于后续对比
-        try { prefs.syncClipboardLastUploadedHash = sha256Hex(text) } catch (_: Throwable) { }
-        try { listener?.onUploadSuccess() } catch (_: Throwable) { }
-        return true
+    return try {
+      val payload = ClipboardPayload(Clipboard = text)
+      val bodyJson = json.encodeToString(payload)
+      val req = Request.Builder()
+        .url(url)
+        .header("Authorization", auth)
+        .put(bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType()))
+        .build()
+      client.newCall(req).execute().use { resp ->
+        if (resp.isSuccessful) {
+          // 记录最近一次成功上传内容的哈希，便于后续对比
+          try {
+            prefs.syncClipboardLastUploadedHash = sha256Hex(text)
+          } catch (e: Throwable) {
+            Log.e(TAG, "Failed to save uploaded hash", e)
+          }
+          try {
+            listener?.onUploadSuccess()
+          } catch (e: Throwable) {
+            Log.e(TAG, "Failed to notify upload success listener", e)
+          }
+          true
+        } else {
+          Log.w(TAG, "Upload failed with status: ${resp.code}")
+          false
+        }
       }
-      return false
+    } catch (e: Throwable) {
+      Log.e(TAG, "Failed to upload clipboard text", e)
+      false
     }
   }
 
   /**
-   * 一次性上传当前系统粘贴板文本（不进行“与上次一致”跳过判断）。
+   * 一次性上传当前系统粘贴板文本（不进行"与上次一致"跳过判断）。
    * 返回是否成功。
    */
   fun uploadOnce(): Boolean {
@@ -198,50 +267,133 @@ class SyncClipboardManager(
     return try {
       val ok = if (!uploadText(url, auth1, text)) uploadText(url, auth2, text) else true
       ok
-    } catch (_: Throwable) { false }
+    } catch (e: Throwable) {
+      Log.e(TAG, "uploadOnce failed", e)
+      false
+    }
+  }
+
+  /**
+   * 执行带认证回退的请求
+   * 先尝试明文认证，失败则回退到 Base64 认证
+   */
+  private fun <T> executeRequestWithAuthFallback(
+    requestBuilder: (auth: String) -> Request,
+    responseHandler: (okhttp3.Response) -> T?
+  ): T? {
+    val auth1 = authHeaderPlain() ?: return null
+    val auth2 = authHeaderB64() ?: return null
+
+    // 尝试明文认证
+    try {
+      val req1 = requestBuilder(auth1)
+      client.newCall(req1).execute().use { resp ->
+        if (resp.isSuccessful) {
+          return responseHandler(resp)
+        }
+        Log.w(TAG, "Plain auth failed with status: ${resp.code}")
+      }
+    } catch (e: Throwable) {
+      Log.e(TAG, "Plain auth request failed", e)
+    }
+
+    // 回退到 Base64 认证
+    try {
+      val req2 = requestBuilder(auth2)
+      client.newCall(req2).execute().use { resp ->
+        if (resp.isSuccessful) {
+          return responseHandler(resp)
+        }
+        Log.w(TAG, "Base64 auth failed with status: ${resp.code}")
+      }
+    } catch (e: Throwable) {
+      Log.e(TAG, "Base64 auth request failed", e)
+    }
+
+    return null
   }
 
   fun pullNow(updateClipboard: Boolean): Pair<Boolean, String?> {
     val url = buildUrl() ?: return false to null
-    val auth1 = authHeaderPlain() ?: return false to null
-    val auth2 = authHeaderB64() ?: return false to null
-    fun doReq(auth: String): Pair<Boolean, String?> {
-      val req = Request.Builder()
-        .url(url)
-        .header("Authorization", auth)
-        .get()
-        .build()
-      client.newCall(req).execute().use { resp ->
-        if (!resp.isSuccessful) return false to null
-        val body = resp.body?.string()?.takeIf { it.isNotEmpty() } ?: return false to null
-        val o = try { JSONObject(body) } catch (_: Throwable) { return false to null }
-        val type = o.optString("Type")
-        if (!TextUtils.equals(type, "Text")) return false to null
-        val text = o.optString("Clipboard", null) ?: return false to null
-        // 计算服务端文本哈希并与上次拉取缓存对比，未变化则避免读取系统剪贴板
-        val newServerHash = try { sha256Hex(text) } catch (_: Throwable) { null }
-        val prevServerHash = lastPulledServerHash
-        lastPulledServerHash = newServerHash
-        if (updateClipboard) {
-          if (newServerHash != null && newServerHash == prevServerHash) {
-            // 服务端内容未变化：跳过本地剪贴板读取以降低读取频率
-            return true to text
+
+    val result = try {
+      executeRequestWithAuthFallback(
+        requestBuilder = { auth ->
+          Request.Builder()
+            .url(url)
+            .header("Authorization", auth)
+            .get()
+            .build()
+        },
+        responseHandler = { resp ->
+          val body = resp.body?.string()?.takeIf { it.isNotEmpty() }
+          if (body == null) {
+            Log.w(TAG, "Pull response body is empty")
+            return@executeRequestWithAuthFallback null
           }
-          val cur = readClipboardText()
-          if (text.isNotEmpty() && text != cur) {
-            writeClipboardText(text)
-            // 将此次拉取的内容也记录到“最近一次上传哈希”，避免后续补上传（减少不必要的上传）
-            try { prefs.syncClipboardLastUploadedHash = sha256Hex(text) } catch (_: Throwable) { }
-            try { listener?.onPulledNewContent(text) } catch (_: Throwable) { }
+
+          val payload = try {
+            json.decodeFromString<ClipboardPayload>(body)
+          } catch (e: Throwable) {
+            Log.e(TAG, "Failed to parse clipboard payload", e)
+            return@executeRequestWithAuthFallback null
           }
+
+          if (!TextUtils.equals(payload.Type, "Text")) {
+            Log.w(TAG, "Unsupported payload type: ${payload.Type}")
+            return@executeRequestWithAuthFallback null
+          }
+
+          val text = payload.Clipboard
+          if (text.isBlank()) {
+            Log.w(TAG, "Clipboard text is blank")
+            return@executeRequestWithAuthFallback null
+          }
+
+          // 计算服务端文本哈希并与上次拉取缓存对比，未变化则避免读取系统剪贴板
+          val newServerHash = try {
+            sha256Hex(text)
+          } catch (e: Throwable) {
+            Log.e(TAG, "Failed to compute hash for pulled text", e)
+            null
+          }
+          val prevServerHash = lastPulledServerHash
+          lastPulledServerHash = newServerHash
+
+          if (updateClipboard) {
+            if (newServerHash != null && newServerHash == prevServerHash) {
+              // 服务端内容未变化：跳过本地剪贴板读取以降低读取频率
+              return@executeRequestWithAuthFallback text
+            }
+            val cur = readClipboardText()
+            if (text.isNotEmpty() && text != cur) {
+              writeClipboardText(text)
+              // 将此次拉取的内容也记录到"最近一次上传哈希"，避免后续补上传（减少不必要的上传）
+              try {
+                prefs.syncClipboardLastUploadedHash = sha256Hex(text)
+              } catch (e: Throwable) {
+                Log.e(TAG, "Failed to save pulled hash", e)
+              }
+              try {
+                listener?.onPulledNewContent(text)
+              } catch (e: Throwable) {
+                Log.e(TAG, "Failed to notify pulled content listener", e)
+              }
+            }
+          }
+          text
         }
-        return true to text
-      }
+      )
+    } catch (e: Throwable) {
+      Log.e(TAG, "pullNow failed", e)
+      null
     }
-    val r1 = doReq(auth1)
-    if (r1.first) return r1
-    val r2 = doReq(auth2)
-    return r2
+
+    return if (result != null) {
+      true to result
+    } else {
+      false to null
+    }
   }
 
   /**
@@ -253,14 +405,26 @@ class SyncClipboardManager(
     val auth2 = authHeaderB64() ?: return
     val text = readClipboardText() ?: return
     if (text.isEmpty()) return
-    val newHash = sha256Hex(text)
-    val last = try { prefs.syncClipboardLastUploadedHash } catch (_: Throwable) { "" }
+    val newHash = try {
+      sha256Hex(text)
+    } catch (e: Throwable) {
+      Log.e(TAG, "Failed to compute hash for proactive upload", e)
+      return
+    }
+    val last = try {
+      prefs.syncClipboardLastUploadedHash
+    } catch (e: Throwable) {
+      Log.e(TAG, "Failed to read last uploaded hash", e)
+      ""
+    }
     if (newHash != last) {
       try {
         if (!uploadText(url, auth1, text)) {
           uploadText(url, auth2, text)
         }
-      } catch (_: Throwable) { }
+      } catch (e: Throwable) {
+        Log.e(TAG, "proactiveUploadIfChanged failed", e)
+      }
     }
   }
 }
