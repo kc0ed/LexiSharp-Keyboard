@@ -874,36 +874,41 @@ class AsrSettingsActivity : AppCompatActivity() {
         )
         visMap.forEach { (vendor, views) ->
             val vis = if (vendor == state.selectedVendor) View.VISIBLE else View.GONE
-            views.forEach { it.visibility = vis }
+            views.forEach { v ->
+                if (v.visibility != vis) v.visibility = vis
+            }
         }
     }
 
     private fun updateSilenceOptionsVisibility(enabled: Boolean) {
         val vis = if (enabled) View.VISIBLE else View.GONE
-        tvSilenceWindowLabel.visibility = vis
-        sliderSilenceWindow.visibility = vis
-        tvSilenceSensitivityLabel.visibility = vis
-        sliderSilenceSensitivity.visibility = vis
-        btnSilenceCalibrate.visibility = vis
+        if (tvSilenceWindowLabel.visibility != vis) tvSilenceWindowLabel.visibility = vis
+        if (sliderSilenceWindow.visibility != vis) sliderSilenceWindow.visibility = vis
+        if (tvSilenceSensitivityLabel.visibility != vis) tvSilenceSensitivityLabel.visibility = vis
+        if (sliderSilenceSensitivity.visibility != vis) sliderSilenceSensitivity.visibility = vis
+        if (btnSilenceCalibrate.visibility != vis) btnSilenceCalibrate.visibility = vis
     }
 
     private fun updateSfOmniVisibility(enabled: Boolean) {
-        findViewById<View>(R.id.tilSfOmniPrompt).visibility =
-            if (enabled) View.VISIBLE else View.GONE
+        val til = findViewById<View>(R.id.tilSfOmniPrompt)
+        val vis = if (enabled) View.VISIBLE else View.GONE
+        if (til.visibility != vis) til.visibility = vis
     }
 
     private fun updateOpenAiPromptVisibility(enabled: Boolean) {
-        findViewById<View>(R.id.tilOpenAiPrompt).visibility =
-            if (enabled) View.VISIBLE else View.GONE
+        val til = findViewById<View>(R.id.tilOpenAiPrompt)
+        val vis = if (enabled) View.VISIBLE else View.GONE
+        if (til.visibility != vis) til.visibility = vis
     }
 
     private fun updateVolcStreamOptionsVisibility(enabled: Boolean) {
         val vis = if (enabled) View.VISIBLE else View.GONE
-        findViewById<MaterialSwitch>(R.id.switchVolcVad).visibility = vis
-        findViewById<MaterialSwitch>(R.id.switchVolcNonstream).visibility = vis
-        findViewById<MaterialSwitch>(R.id.switchVolcFirstCharAccel).visibility = vis
-        findViewById<TextView>(R.id.tvVolcLanguageValue).visibility = vis
-        findViewById<View>(R.id.tvVolcLanguageLabel).visibility = vis
+        fun setIfChanged(v: View) { if (v.visibility != vis) v.visibility = vis }
+        setIfChanged(findViewById<MaterialSwitch>(R.id.switchVolcVad))
+        setIfChanged(findViewById<MaterialSwitch>(R.id.switchVolcNonstream))
+        setIfChanged(findViewById<MaterialSwitch>(R.id.switchVolcFirstCharAccel))
+        setIfChanged(findViewById<TextView>(R.id.tvVolcLanguageValue))
+        setIfChanged(findViewById<View>(R.id.tvVolcLanguageLabel))
     }
 
     private fun updateSvDownloadUiVisibility() {

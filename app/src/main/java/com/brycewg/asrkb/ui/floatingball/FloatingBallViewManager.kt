@@ -95,14 +95,19 @@ class FloatingBallViewManager(
                 colorSecondaryContainer
             )
 
-            // 设置 ProgressBar 颜色
+            // 设置 ProgressBar 颜色（轻量且同步）
             setupProgressBarColor(colorSecondary)
 
-            // 设置波纹背景
-            setupRippleBackgrounds(colorSecondary)
-
-            // 设置处理中旋转动画
-            setupProcessingSpinner(ballContainer, colorSecondary)
+            // 将相对更重的初始化（波纹背景/自定义进度指示器）延后到下一帧，
+            // 以降低 addView 当帧的主线程压力，避免与 IME 显示竞争导致掉帧。
+            view.post {
+                try { setupRippleBackgrounds(colorSecondary) } catch (e: Throwable) {
+                    Log.w(TAG, "Deferred ripple setup failed", e)
+                }
+                try { setupProcessingSpinner(ballContainer, colorSecondary) } catch (e: Throwable) {
+                    Log.w(TAG, "Deferred spinner setup failed", e)
+                }
+            }
 
             // 绑定点击和拖动监听
             ballIcon?.setOnClickListener(onClickListener)

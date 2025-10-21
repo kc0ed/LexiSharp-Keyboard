@@ -12,9 +12,10 @@
     app:titleCentered="true"
     app:title="@string/title_ai_settings" />
 
-  <ScrollView
+  <androidx.core.widget.NestedScrollView
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
     android:fillViewport="true">
 
     <LinearLayout
@@ -226,6 +227,6 @@
           android:text="@string/btn_delete_preset" />
       </LinearLayout>
     </LinearLayout>
-  </ScrollView>
+  </androidx.core.widget.NestedScrollView>
 
 </LinearLayout>
