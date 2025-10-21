@@ -21,6 +21,7 @@
     <string name="status_ai_processing">AI后处理中…</string>
     <string name="status_ai_edit_listening">请说出编辑指令…</string>
     <string name="status_ai_editing">AI编辑中…</string>
+    <string name="status_cancelled">已取消</string>
     <string name="status_last_request_ms">上次识别耗时：%1$d ms</string>
     <string name="status_reverted_to_raw">已切换为原始识别结果</string>
     <string name="status_undone">已撤回最近改动</string>

@@ -149,14 +149,6 @@ class SyncClipboardManager(
     return sb.toString()
   }
 
-  private fun authHeaderPlain(): String? {
-    val u = prefs.syncClipboardUsername
-    val p = prefs.syncClipboardPassword
-    if (u.isBlank() || p.isBlank()) return null
-    // 按文档要求：Authorization: Basic 用户名:密码（非 Base64）
-    return "Basic $u:$p"
-  }
-
   private fun authHeaderB64(): String? {
     val u = prefs.syncClipboardUsername
     val p = prefs.syncClipboardPassword
@@ -198,8 +190,7 @@ class SyncClipboardManager(
 
   private fun uploadCurrentClipboardText() {
     val url = buildUrl() ?: return
-    val auth1 = authHeaderPlain() ?: return
-    val auth2 = authHeaderB64() ?: return
+    val authB64 = authHeaderB64() ?: return
     val text = readClipboardText() ?: return
     if (text.isEmpty()) return
     // 若与最近一次成功上传（或最近一次拉取写入）相同，则跳过上传，避免重复
@@ -214,10 +205,8 @@ class SyncClipboardManager(
       Log.e(TAG, "Failed to compute hash for clipboard text", e)
       // 继续尝试上传
     }
-    // 先按文档尝试明文；失败则回退标准 Basic Base64
-    if (!uploadText(url, auth1, text)) {
-      uploadText(url, auth2, text)
-    }
+    // 仅使用标准 Basic Base64 认证
+    uploadText(url, authB64, text)
   }
 
   private fun uploadText(url: String, auth: String, text: String): Boolean {
@@ -260,12 +249,11 @@ class SyncClipboardManager(
    */
   fun uploadOnce(): Boolean {
     val url = buildUrl() ?: return false
-    val auth1 = authHeaderPlain() ?: return false
-    val auth2 = authHeaderB64() ?: return false
+    val authB64 = authHeaderB64() ?: return false
     val text = readClipboardText() ?: return false
     if (text.isEmpty()) return false
     return try {
-      val ok = if (!uploadText(url, auth1, text)) uploadText(url, auth2, text) else true
+      val ok = uploadText(url, authB64, text)
       ok
     } catch (e: Throwable) {
       Log.e(TAG, "uploadOnce failed", e)
@@ -277,47 +265,31 @@ class SyncClipboardManager(
    * 执行带认证回退的请求
    * 先尝试明文认证，失败则回退到 Base64 认证
    */
-  private fun <T> executeRequestWithAuthFallback(
+  private fun <T> executeRequestWithAuth(
     requestBuilder: (auth: String) -> Request,
     responseHandler: (okhttp3.Response) -> T?
   ): T? {
-    val auth1 = authHeaderPlain() ?: return null
-    val auth2 = authHeaderB64() ?: return null
-
-    // 尝试明文认证
-    try {
-      val req1 = requestBuilder(auth1)
-      client.newCall(req1).execute().use { resp ->
+    val authB64 = authHeaderB64() ?: return null
+    return try {
+      val req = requestBuilder(authB64)
+      client.newCall(req).execute().use { resp ->
         if (resp.isSuccessful) {
           return responseHandler(resp)
         }
-        Log.w(TAG, "Plain auth failed with status: ${resp.code}")
+        Log.w(TAG, "Auth failed with status: ${resp.code}")
+        null
       }
     } catch (e: Throwable) {
-      Log.e(TAG, "Plain auth request failed", e)
+      Log.e(TAG, "Auth request failed", e)
+      null
     }
-
-    // 回退到 Base64 认证
-    try {
-      val req2 = requestBuilder(auth2)
-      client.newCall(req2).execute().use { resp ->
-        if (resp.isSuccessful) {
-          return responseHandler(resp)
-        }
-        Log.w(TAG, "Base64 auth failed with status: ${resp.code}")
-      }
-    } catch (e: Throwable) {
-      Log.e(TAG, "Base64 auth request failed", e)
-    }
-
-    return null
   }
 
   fun pullNow(updateClipboard: Boolean): Pair<Boolean, String?> {
     val url = buildUrl() ?: return false to null
 
     val result = try {
-      executeRequestWithAuthFallback(
+      executeRequestWithAuth(
         requestBuilder = { auth ->
           Request.Builder()
             .url(url)
@@ -329,25 +301,25 @@ class SyncClipboardManager(
           val body = resp.body?.string()?.takeIf { it.isNotEmpty() }
           if (body == null) {
             Log.w(TAG, "Pull response body is empty")
-            return@executeRequestWithAuthFallback null
+            return@executeRequestWithAuth null
           }
 
           val payload = try {
             json.decodeFromString<ClipboardPayload>(body)
           } catch (e: Throwable) {
             Log.e(TAG, "Failed to parse clipboard payload", e)
-            return@executeRequestWithAuthFallback null
+            return@executeRequestWithAuth null
           }
 
           if (!TextUtils.equals(payload.Type, "Text")) {
             Log.w(TAG, "Unsupported payload type: ${payload.Type}")
-            return@executeRequestWithAuthFallback null
+            return@executeRequestWithAuth null
           }
 
           val text = payload.Clipboard
           if (text.isBlank()) {
             Log.w(TAG, "Clipboard text is blank")
-            return@executeRequestWithAuthFallback null
+            return@executeRequestWithAuth null
           }
 
           // 计算服务端文本哈希并与上次拉取缓存对比，未变化则避免读取系统剪贴板
@@ -363,7 +335,7 @@ class SyncClipboardManager(
           if (updateClipboard) {
             if (newServerHash != null && newServerHash == prevServerHash) {
               // 服务端内容未变化：跳过本地剪贴板读取以降低读取频率
-              return@executeRequestWithAuthFallback text
+              return@executeRequestWithAuth text
             }
             val cur = readClipboardText()
             if (text.isNotEmpty() && text != cur) {
@@ -401,8 +373,7 @@ class SyncClipboardManager(
    */
   fun proactiveUploadIfChanged() {
     val url = buildUrl() ?: return
-    val auth1 = authHeaderPlain() ?: return
-    val auth2 = authHeaderB64() ?: return
+    val authB64 = authHeaderB64() ?: return
     val text = readClipboardText() ?: return
     if (text.isEmpty()) return
     val newHash = try {
@@ -419,9 +390,7 @@ class SyncClipboardManager(
     }
     if (newHash != last) {
       try {
-        if (!uploadText(url, auth1, text)) {
-          uploadText(url, auth2, text)
-        }
+        uploadText(url, authB64, text)
       } catch (e: Throwable) {
         Log.e(TAG, "proactiveUploadIfChanged failed", e)
       }

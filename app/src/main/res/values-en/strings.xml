@@ -21,6 +21,7 @@
     <string name="status_ai_processing">AI post-processing…</string>
     <string name="status_ai_edit_listening">Speak your edit instruction…</string>
     <string name="status_ai_editing">AI editing…</string>
+    <string name="status_cancelled">Canceled</string>
     <string name="status_reverted_to_raw">Reverted to raw transcript</string>
     <string name="status_undone">Undone last change</string>
     <string name="status_llm_empty_result">AI edit failed: no result</string>

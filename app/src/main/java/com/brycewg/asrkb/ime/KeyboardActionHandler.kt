@@ -2,12 +2,15 @@ package com.brycewg.asrkb.ime
 
 import android.content.Context
 import android.util.Log
+import android.os.SystemClock
 import android.view.inputmethod.InputConnection
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import java.util.regex.Pattern
 
 /**
@@ -54,6 +57,24 @@ class KeyboardActionHandler(
     // 全局撤销快照
     private var undoSnapshot: UndoSnapshot? = null
 
+    // Processing 阶段兜底定时器（防止最终结果长时间未回调导致无法再次开始）
+    private var processingTimeoutJob: Job? = null
+    // 强制停止标记：用于忽略上一会话迟到的 onFinal/onStopped
+    private var dropPendingFinal: Boolean = false
+    // 操作序列号：用于取消在途处理（强制停止/新会话开始都会递增）
+    private var opSeq: Long = 0L
+
+    private fun scheduleProcessingTimeout() {
+        try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+        processingTimeoutJob = scope.launch {
+            delay(8000)
+            // 若仍处于 Processing，则回到 Idle
+            if (currentState is KeyboardState.Processing) {
+                transitionToIdle()
+            }
+        }
+    }
+
     fun setUiListener(listener: UiListener) {
         uiListener = listener
     }
@@ -78,13 +99,19 @@ class KeyboardActionHandler(
                 startNormalListening()
             }
             is KeyboardState.Listening -> {
-                // 停止录音
+                // 停止录音：统一进入 Processing，显示“识别中”直到最终结果（即使未开启后处理）
                 asrManager.stopRecording()
-                if (!prefs.postProcessEnabled) {
-                    transitionToIdle()
-                } else {
-                    uiListener?.onStatusMessage(context.getString(R.string.status_recognizing))
-                }
+                transitionToState(KeyboardState.Processing)
+                scheduleProcessingTimeout()
+                uiListener?.onStatusMessage(context.getString(R.string.status_recognizing))
+            }
+            is KeyboardState.Processing -> {
+                // 强制停止：立即回到 Idle，并忽略本会话迟到的 onFinal/onStopped
+                try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+                processingTimeoutJob = null
+                dropPendingFinal = true
+                transitionToIdle(keepMessage = true)
+                uiListener?.onStatusMessage(context.getString(R.string.status_cancelled))
             }
             else -> {
                 // 其他状态忽略
@@ -97,11 +124,20 @@ class KeyboardActionHandler(
      * 处理麦克风按下（长按模式）
      */
     fun handleMicPressDown() {
-        if (currentState !is KeyboardState.Idle) {
-            Log.w(TAG, "handleMicPressDown: ignored in state $currentState")
-            return
+        when (currentState) {
+            is KeyboardState.Idle -> startNormalListening()
+            is KeyboardState.Processing -> {
+                // 强制停止（长按场景）：回到 Idle 并忽略迟到回调
+                try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+                processingTimeoutJob = null
+                dropPendingFinal = true
+                transitionToIdle(keepMessage = true)
+                uiListener?.onStatusMessage(context.getString(R.string.status_cancelled))
+            }
+            else -> {
+                Log.w(TAG, "handleMicPressDown: ignored in state $currentState")
+            }
         }
-        startNormalListening()
     }
 
     /**
@@ -110,11 +146,10 @@ class KeyboardActionHandler(
     fun handleMicPressUp() {
         if (asrManager.isRunning()) {
             asrManager.stopRecording()
-            if (!prefs.postProcessEnabled) {
-                transitionToIdle()
-            } else {
-                uiListener?.onStatusMessage(context.getString(R.string.status_recognizing))
-            }
+            // 进入处理阶段（无论是否开启后处理）
+            transitionToState(KeyboardState.Processing)
+            scheduleProcessingTimeout()
+            uiListener?.onStatusMessage(context.getString(R.string.status_recognizing))
         }
     }
 
@@ -281,15 +316,32 @@ class KeyboardActionHandler(
 
     override fun onAsrFinal(text: String, currentState: KeyboardState) {
         scope.launch {
+            // 若强制停止，忽略迟到的 onFinal
+            if (dropPendingFinal) {
+                dropPendingFinal = false
+                return@launch
+            }
+            // 捕获当前操作序列，用于在提交前判定是否已被新的操作序列取消
+            val seq = opSeq
+            // 若已启动新一轮录音（当前仍为 Listening 且引擎在运行），忽略旧会话迟到的 onFinal
+            val stateNow = this@KeyboardActionHandler.currentState
+            if (asrManager.isRunning() && stateNow is KeyboardState.Listening) return@launch
             when (currentState) {
                 is KeyboardState.AiEditListening -> {
-                    handleAiEditFinal(text, currentState)
+                    handleAiEditFinal(text, currentState, seq)
                 }
                 is KeyboardState.Listening -> {
-                    handleNormalDictationFinal(text, currentState)
+                    handleNormalDictationFinal(text, currentState, seq)
+                }
+                is KeyboardState.Processing, is KeyboardState.Idle -> {
+                    // 允许在 Idle/Processing 状态接收最终结果（例如提前切回 Idle 的路径）
+                    val synthetic = KeyboardState.Listening()
+                    handleNormalDictationFinal(text, synthetic, seq)
                 }
                 else -> {
-                    Log.w(TAG, "onAsrFinal: unexpected state $currentState")
+                    // 兜底按普通听写处理
+                    val synthetic = KeyboardState.Listening()
+                    handleNormalDictationFinal(text, synthetic, seq)
                 }
             }
         }
@@ -317,6 +369,8 @@ class KeyboardActionHandler(
 
     override fun onAsrError(message: String) {
         scope.launch {
+            // 先切换到 Idle，再显示错误，避免被 Idle 文案覆盖
+            transitionToIdle(keepMessage = true)
             uiListener?.onStatusMessage(message)
             uiListener?.onVibrate()
         }
@@ -324,11 +378,12 @@ class KeyboardActionHandler(
 
     override fun onAsrStopped() {
         scope.launch {
-            if (!prefs.postProcessEnabled) {
-                transitionToIdle()
-            } else {
-                uiListener?.onStatusMessage(context.getString(R.string.status_recognizing))
-            }
+            // 若强制停止，忽略迟到的 onStopped
+            if (dropPendingFinal) return@launch
+            // 引擎已停止采集：统一进入 Processing，等待最终结果或兜底
+            transitionToState(KeyboardState.Processing)
+            scheduleProcessingTimeout()
+            uiListener?.onStatusMessage(context.getString(R.string.status_recognizing))
         }
     }
 
@@ -343,17 +398,35 @@ class KeyboardActionHandler(
     // ========== 私有方法：状态转换 ==========
 
     private fun transitionToState(newState: KeyboardState) {
+        // 进入 Processing 前，清理可能存在的预览 composing，避免视觉残留/重复提交
+        if (newState is KeyboardState.Processing) {
+            try {
+                val ic = getCurrentInputConnection()
+                inputHelper.finishComposingText(ic)
+            } catch (_: Throwable) { }
+        }
         currentState = newState
         asrManager.setCurrentState(newState)
         uiListener?.onStateChanged(newState)
     }
 
-    private fun transitionToIdle() {
+    private fun transitionToIdle(keepMessage: Boolean = false) {
+        // 新的显式归位：递增操作序列，取消在途处理
+        opSeq++
+        try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+        processingTimeoutJob = null
         transitionToState(KeyboardState.Idle)
-        uiListener?.onStatusMessage(context.getString(R.string.status_idle))
+        if (!keepMessage) {
+            uiListener?.onStatusMessage(context.getString(R.string.status_idle))
+        }
     }
 
     private fun startNormalListening() {
+        // 开启新一轮录音：递增操作序列，取消在途处理
+        opSeq++
+        try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
+        processingTimeoutJob = null
+        dropPendingFinal = false
         val state = KeyboardState.Listening()
         transitionToState(state)
         asrManager.startRecording(state)
@@ -362,23 +435,26 @@ class KeyboardActionHandler(
 
     // ========== 私有方法：处理最终识别结果 ==========
 
-    private suspend fun handleNormalDictationFinal(text: String, state: KeyboardState.Listening) {
+    private suspend fun handleNormalDictationFinal(text: String, state: KeyboardState.Listening, seq: Long) {
         val ic = getCurrentInputConnection() ?: return
 
         if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
             // AI 后处理流程
-            handleDictationWithPostprocess(ic, text, state)
+            handleDictationWithPostprocess(ic, text, state, seq)
         } else {
             // 无后处理流程
-            handleDictationWithoutPostprocess(ic, text, state)
+            handleDictationWithoutPostprocess(ic, text, state, seq)
         }
     }
 
     private suspend fun handleDictationWithPostprocess(
         ic: InputConnection,
         text: String,
-        state: KeyboardState.Listening
+        state: KeyboardState.Listening,
+        seq: Long
     ) {
+        // 若已被取消，不再更新预览
+        if (seq != opSeq) return
         // 显示识别文本为 composing
         inputHelper.setComposingText(ic, text)
         uiListener?.onStatusMessage(context.getString(R.string.status_ai_processing))
@@ -399,6 +475,8 @@ class KeyboardActionHandler(
             processed
         }
 
+        // 若已被取消，不再提交
+        if (seq != opSeq) return
         // 提交最终文本
         inputHelper.setComposingText(ic, finalProcessed)
         inputHelper.finishComposingText(ic)
@@ -420,10 +498,12 @@ class KeyboardActionHandler(
 
         uiListener?.onVibrate()
 
-        // 分段录音期间保持 Listening，否则回到 Idle
+        // 分段录音期间保持 Listening；否则进入 Processing 并延时返回 Idle
         if (asrManager.isRunning()) {
             transitionToState(KeyboardState.Listening())
         } else {
+            transitionToState(KeyboardState.Processing)
+            scheduleProcessingTimeout()
             transitionToIdleWithTiming()
         }
     }
@@ -431,7 +511,8 @@ class KeyboardActionHandler(
     private suspend fun handleDictationWithoutPostprocess(
         ic: InputConnection,
         text: String,
-        state: KeyboardState.Listening
+        state: KeyboardState.Listening,
+        seq: Long
     ) {
         val trimmedFinal = if (prefs.trimFinalTrailingPunct) {
             trimTrailingPunctuation(text)
@@ -450,12 +531,15 @@ class KeyboardActionHandler(
 
         // 如果识别为空，直接返回
         if (finalText.isBlank()) {
+            // 空结果：先切换到 Idle 再提示，避免被 Idle 文案覆盖
+            transitionToIdle(keepMessage = true)
             uiListener?.onStatusMessage(context.getString(R.string.asr_error_empty_result))
             uiListener?.onVibrate()
-            transitionToIdleWithTiming()
             return
         }
 
+        // 若已被取消，退出
+        if (seq != opSeq) return
         // 提交文本
         val partial = state.partialText
         if (!partial.isNullOrEmpty()) {
@@ -498,15 +582,17 @@ class KeyboardActionHandler(
 
         uiListener?.onVibrate()
 
-        // 分段录音期间保持 Listening，否则回到 Idle
+        // 分段录音期间保持 Listening；否则进入 Processing 并延时返回 Idle
         if (asrManager.isRunning()) {
             transitionToState(KeyboardState.Listening())
         } else {
+            transitionToState(KeyboardState.Processing)
+            scheduleProcessingTimeout()
             transitionToIdleWithTiming()
         }
     }
 
-    private suspend fun handleAiEditFinal(text: String, state: KeyboardState.AiEditListening) {
+    private suspend fun handleAiEditFinal(text: String, state: KeyboardState.AiEditListening, seq: Long) {
         val ic = getCurrentInputConnection() ?: run {
             transitionToIdleWithTiming()
             return
@@ -535,6 +621,8 @@ class KeyboardActionHandler(
             ""
         }
 
+        // 若已被取消，退出
+        if (seq != opSeq) return
         if (edited.isBlank()) {
             uiListener?.onStatusMessage(context.getString(R.string.status_llm_empty_result))
             uiListener?.onVibrate()
@@ -543,6 +631,7 @@ class KeyboardActionHandler(
         }
 
         // 执行替换
+        if (seq != opSeq) return
         if (state.targetIsSelection) {
             // 替换选中文本
             inputHelper.commitText(ic, edited)

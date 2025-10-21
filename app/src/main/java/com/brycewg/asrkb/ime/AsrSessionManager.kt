@@ -177,7 +177,12 @@ class AsrSessionManager(
             }
         }
 
-        return matched ?: buildEngine()
+        val engine = matched ?: buildEngine()
+        if (engine != null && engine !== asrEngine) {
+            asrEngine?.stop()
+            asrEngine = engine
+        }
+        return asrEngine
     }
 
     /**
