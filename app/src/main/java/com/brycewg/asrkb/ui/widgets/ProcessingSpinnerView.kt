@@ -1,4 +1,4 @@
-package com.brycewg.asrkb.ui
+package com.brycewg.asrkb.ui.widgets
 
 import android.content.Context
 import android.graphics.Canvas

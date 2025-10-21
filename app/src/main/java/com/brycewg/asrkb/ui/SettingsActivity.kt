@@ -1,73 +1,162 @@
 package com.brycewg.asrkb.ui
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
-import android.widget.Toast
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
-import com.brycewg.asrkb.R
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import android.view.LayoutInflater
-import com.brycewg.asrkb.store.Prefs
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.net.toUri
-import androidx.lifecycle.lifecycleScope
-import com.google.android.material.textfield.TextInputEditText
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import android.Manifest
-import kotlinx.coroutines.Dispatchers
+import androidx.lifecycle.lifecycleScope
+import com.brycewg.asrkb.R
 import com.brycewg.asrkb.ime.AsrKeyboardService
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.ui.setup.SetupState
+import com.brycewg.asrkb.ui.setup.SetupStateMachine
+import com.brycewg.asrkb.ui.update.UpdateChecker
+import com.brycewg.asrkb.ui.about.AboutActivity
+import com.brycewg.asrkb.ui.settings.input.InputSettingsActivity
+import com.brycewg.asrkb.ui.settings.asr.AsrSettingsActivity
+import com.brycewg.asrkb.ui.settings.ai.AiPostSettingsActivity
+import com.brycewg.asrkb.ui.settings.other.OtherSettingsActivity
+import com.brycewg.asrkb.ui.settings.floating.FloatingSettingsActivity
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.json.JSONObject
-import java.util.concurrent.TimeUnit
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+/**
+ * 主设置页面
+ *
+ * 提供：
+ * - 一键设置流程（基于状态机）
+ * - 更新检查（通过 UpdateChecker）
+ * - 设置导入/导出
+ * - 子设置页导航
+ * - 测试输入体验
+ */
 class SettingsActivity : AppCompatActivity() {
     companion object {
+        private const val TAG = "SettingsActivity"
         const val EXTRA_AUTO_SHOW_IME_PICKER = "extra_auto_show_ime_picker"
     }
 
+    // 一键设置状态机
+    private lateinit var setupStateMachine: SetupStateMachine
+
+    // 更新检查器
+    private lateinit var updateChecker: UpdateChecker
+
+    // 无障碍服务状态（用于检测服务刚刚被启用）
     private var wasAccessibilityEnabled = false
+
+    // Handler 用于延迟任务
+    private val handler = Handler(Looper.getMainLooper())
+
+    // IME 选择器相关状态（用于"外部切换"模式）
+    private var autoCloseAfterImePicker = false
+    private var imePickerShown = false
+    private var imePickerLostFocusOnce = false
+    private var autoShownImePicker = false
+
+    // 一键设置轮询任务（用于等待用户选择输入法）
+    private var setupPollingRunnable: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
 
-        // 一键设置
-        findViewById<Button>(R.id.btnOneClickSetup)?.setOnClickListener {
-            startOneClickSetupFlow()
-        }
+        // 初始化状态机和工具类
+        setupStateMachine = SetupStateMachine(this)
+        updateChecker = UpdateChecker(this)
 
+        // 记录初始无障碍服务状态
         wasAccessibilityEnabled = isAccessibilityServiceEnabled()
 
+        // 设置按钮点击事件
+        setupButtonListeners()
 
-        findViewById<Button>(R.id.btnShowGuide).setOnClickListener {
-            val view = LayoutInflater.from(this).inflate(R.layout.dialog_guide, null, false)
-            MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.title_quick_guide)
-                .setView(view)
-                .setPositiveButton(R.string.btn_close, null)
-                .show()
+        // 显示识别字数统计
+        updateAsrTotalChars()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        // 检查无障碍服务是否刚刚被启用，给予用户反馈
+        checkAccessibilityServiceJustEnabled()
+
+        // 每天首次进入设置页时，静默检查一次更新（仅在有新版本时弹窗提示）
+        maybeAutoCheckUpdatesDaily()
+
+        // 更新识别字数统计
+        updateAsrTotalChars()
+
+        // 若处于一键设置流程中，返回后继续推进
+        advanceSetupIfInProgress()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+
+        // 处理"外部切换"模式：通过焦点变化判断 IME 选择器是否关闭
+        handleExternalImeSwitchMode(hasFocus)
+
+        // 处理自动弹出 IME 选择器（由 Intent Extra 触发）
+        handleAutoShowImePicker(hasFocus)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        // 权限请求结果返回后，继续推进一键设置流程
+        if (setupStateMachine.currentState is SetupState.RequestingPermissions) {
+            Log.d(TAG, "Permission result received, advancing setup")
+            // 小延迟，等待系统状态稳定
+            handler.postDelayed({ advanceSetupIfInProgress() }, 200)
+        }
+    }
+
+    /**
+     * 设置所有按钮的点击监听器
+     */
+    private fun setupButtonListeners() {
+        // 一键设置
+        findViewById<Button>(R.id.btnOneClickSetup)?.setOnClickListener {
+            startOneClickSetup()
         }
 
-        findViewById<Button>(R.id.btnCheckUpdate).setOnClickListener {
+        // 快速指南
+        findViewById<Button>(R.id.btnShowGuide)?.setOnClickListener {
+            showQuickGuide()
+        }
+
+        // 检查更新
+        findViewById<Button>(R.id.btnCheckUpdate)?.setOnClickListener {
             checkForUpdates()
         }
 
-        // 测试输入：点击按钮弹出底部输入框（用于体验输入法）
+        // 测试输入
         findViewById<Button>(R.id.btnTestInput)?.setOnClickListener {
             showTestInputBottomSheet()
         }
@@ -77,7 +166,7 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, AboutActivity::class.java))
         }
 
-        // 直达子设置页
+        // 子设置页导航
         findViewById<Button>(R.id.btnOpenInputSettings)?.setOnClickListener {
             startActivity(Intent(this, InputSettingsActivity::class.java))
         }
@@ -94,361 +183,171 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, FloatingSettingsActivity::class.java))
         }
 
-        val prefs = Prefs(this)
-        val tvAsrTotalChars = findViewById<TextView>(R.id.tvAsrTotalChars)
-        try {
-            tvAsrTotalChars.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
-        } catch (_: Throwable) { }
-
-
         // 设置导入/导出
-        val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
-            if (uri != null) {
-                try {
-                    contentResolver.openOutputStream(uri)?.use { os ->
-                        os.write(Prefs(this).exportJsonString().toByteArray(Charsets.UTF_8))
-                        os.flush()
+        setupImportExportLaunchers()
+    }
+
+    // ==================== 一键设置相关 ====================
+
+    /**
+     * 启动一键设置流程
+     */
+    private fun startOneClickSetup() {
+        Log.d(TAG, "Starting one-click setup")
+
+        // 重置状态机
+        setupStateMachine.reset()
+        stopSetupPolling()
+
+        // 推进到第一个状态
+        advanceSetupStateMachine()
+    }
+
+    /**
+     * 推进一键设置状态机
+     *
+     * 1. 调用状态机的 advance() 方法获取下一个状态
+     * 2. 执行该状态对应的操作
+     * 3. 如果是 SelectingIme 状态，启动轮询等待用户选择
+     */
+    private fun advanceSetupStateMachine() {
+        val newState = setupStateMachine.advance()
+        val didExecute = setupStateMachine.executeCurrentStateAction()
+
+        Log.d(TAG, "Setup state: $newState, executed action: $didExecute")
+
+        when (newState) {
+            is SetupState.SelectingIme -> {
+                // 启动轮询，等待用户选择输入法
+                if (newState.askedOnce) {
+                    startSetupPolling()
+                }
+            }
+
+            is SetupState.Completed, is SetupState.Aborted -> {
+                // 设置完成或中止，停止轮询
+                stopSetupPolling()
+            }
+
+            is SetupState.RequestingPermissions -> {
+                // 权限请求阶段，某些权限需要通过 Activity 的回调处理
+                if (didExecute) {
+                    val state = setupStateMachine.getCurrentPermissionState()
+                    if (state?.askedNotif == true && !state.askedA11y) {
+                        // Android 13+ 通知权限请求
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (ContextCompat.checkSelfPermission(
+                                    this,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                ) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                requestPermissions(
+                                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                    1001
+                                )
+                            } else {
+                                // 已授予，继续推进
+                                handler.postDelayed({ advanceSetupStateMachine() }, 200)
+                            }
+                        } else {
+                            // Android 12 及以下，跳过
+                            handler.postDelayed({ advanceSetupStateMachine() }, 200)
+                        }
                     }
-                    val name = uri.lastPathSegment ?: "settings.json"
-                    Toast.makeText(this, getString(R.string.toast_export_success, name), Toast.LENGTH_SHORT).show()
-                } catch (_: Throwable) {
-                    Toast.makeText(this, getString(R.string.toast_export_failed), Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            else -> {
+                // 其他状态，无需特殊处理
+            }
+        }
+    }
+
+    /**
+     * 如果正在一键设置流程中，继续推进
+     */
+    private fun advanceSetupIfInProgress() {
+        if (setupStateMachine.currentState !is SetupState.NotStarted &&
+            setupStateMachine.currentState !is SetupState.Completed &&
+            setupStateMachine.currentState !is SetupState.Aborted
+        ) {
+            Log.d(TAG, "Resuming setup flow")
+            handler.post { advanceSetupStateMachine() }
+        }
+    }
+
+    /**
+     * 启动轮询，等待用户选择输入法
+     *
+     * 轮询间隔 300ms，最长等待 8 秒
+     */
+    private fun startSetupPolling() {
+        stopSetupPolling()
+
+        Log.d(TAG, "Starting setup polling for IME selection")
+
+        val runnable = object : Runnable {
+            override fun run() {
+                val state = setupStateMachine.currentState as? SetupState.SelectingIme
+                    ?: return
+
+                // 再次推进状态机（检查是否已选择）
+                setupStateMachine.advance()
+
+                val newState = setupStateMachine.currentState
+
+                when (newState) {
+                    is SetupState.RequestingPermissions -> {
+                        // 用户已选择输入法，进入权限阶段
+                        Log.d(TAG, "IME selected during polling, advancing to permissions")
+                        stopSetupPolling()
+                        advanceSetupStateMachine()
+                    }
+
+                    is SetupState.Aborted -> {
+                        // 超时或其他原因中止
+                        Log.d(TAG, "Setup aborted during polling")
+                        stopSetupPolling()
+                        Toast.makeText(
+                            this@SettingsActivity,
+                            getString(R.string.toast_setup_choose_keyboard),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+
+                    is SetupState.Completed -> {
+                        // 已完成（不太可能在这个阶段发生）
+                        stopSetupPolling()
+                    }
+
+                    else -> {
+                        // 继续轮询
+                        handler.postDelayed(this, 300)
+                    }
                 }
             }
         }
-        val importLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            if (uri != null) {
-                try {
-                    val json = contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
-                    val ok = Prefs(this).importJsonString(json)
-                    if (ok) {
-                        // 导入完成后，通知 IME 即时刷新（包含高度与按钮交换）。
-                        try { sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI)) } catch (_: Throwable) { }
-                        Toast.makeText(this, getString(R.string.toast_import_success), Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this, getString(R.string.toast_import_failed), Toast.LENGTH_SHORT).show()
-                    }
-                } catch (_: Throwable) {
-                    Toast.makeText(this, getString(R.string.toast_import_failed), Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        findViewById<Button>(R.id.btnExportSettings).setOnClickListener {
-            val fileName = "asr_keyboard_settings_" + java.text.SimpleDateFormat("yyyyMMdd_HHmm", java.util.Locale.getDefault()).format(java.util.Date()) + ".json"
-            exportLauncher.launch(fileName)
-        }
-        findViewById<Button>(R.id.btnImportSettings).setOnClickListener {
-            importLauncher.launch(arrayOf("application/json", "text/plain"))
-        }
+
+        setupPollingRunnable = runnable
+        handler.postDelayed(runnable, 350)
     }
 
-
-    private var autoShownImePicker = false
-    private val handler = Handler(Looper.getMainLooper())
-    // 当以“外部切换”模式进入时，选择后自动关闭设置页（仅用焦点信号判定）
-    private var autoCloseAfterImePicker = false
-    private var pendingOneClick = false
-    private var oneClickPickerShown = false
-    private var askedEnableImeOnce = false
-    private var askedPickerOnce = false
-    private var askedMicOnce = false
-    private var askedOverlayOnce = false
-    private var askedNotifOnce = false
-    private var askedA11yOnce = false
-    private var imeWatchRunnable: Runnable? = null
-
-    override fun onResume() {
-        super.onResume()
-
-        // 检查无障碍服务是否刚刚被启用
-        Prefs(this)
-        val isNowEnabled = isAccessibilityServiceEnabled()
-
-        if (!wasAccessibilityEnabled && isNowEnabled) {
-            // 无障碍服务刚刚被启用
-            Log.d("SettingsActivity", "Accessibility service just enabled")
-            Toast.makeText(this, getString(R.string.toast_accessibility_enabled), Toast.LENGTH_SHORT).show()
-        }
-
-        wasAccessibilityEnabled = isNowEnabled
-
-        // 每天首次进入设置页时，静默检查一次更新（仅在有新版本时弹窗提示）
-        maybeAutoCheckUpdatesDaily()
-
-
-        try {
-            val tvAsrTotalChars = findViewById<TextView>(R.id.tvAsrTotalChars)
-            val prefs = Prefs(this)
-            tvAsrTotalChars?.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
-        } catch (_: Throwable) { }
-
-        // 若处于一键设置流程中，返回后继续推进下一步
-        if (pendingOneClick) {
-            handler.post { advanceOneClickIfPossible() }
-        }
+    /**
+     * 停止轮询
+     */
+    private fun stopSetupPolling() {
+        setupPollingRunnable?.let { handler.removeCallbacks(it) }
+        setupPollingRunnable = null
     }
 
-    private var imePickerShown = false
-    private var imePickerLostFocusOnce = false
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
+    // ==================== 更新检查相关 ====================
 
-        // 若处于外部切换流程：利用“焦点丢失→恢复”的信号判断选择器关闭
-        if (autoCloseAfterImePicker && imePickerShown) {
-            if (!hasFocus) {
-                // 系统输入法选择器置前导致本页失去焦点
-                imePickerLostFocusOnce = true
-                return
-            } else if (imePickerLostFocusOnce) {
-                // 选择器关闭，本页重新获得焦点 → 可安全收尾
-                handler.postDelayed({
-                    if (!isFinishing && !isDestroyed) {
-                        finish()
-                        try { overridePendingTransition(0, 0) } catch (_: Throwable) { }
-                    }
-                }, 250L)
-                // 只触发一次
-                imePickerShown = false
-                imePickerLostFocusOnce = false
-                return
-            }
-        }
-
-        if (!hasFocus) return
-        if (autoShownImePicker) return
-        if (intent?.getBooleanExtra(EXTRA_AUTO_SHOW_IME_PICKER, false) != true) return
-        autoShownImePicker = true
-        autoCloseAfterImePicker = true
-        // 延迟到窗口获得焦点后调用，稳定性更好
-        handler.post {
-            try {
-                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                imm.showInputMethodPicker()
-                // 标记：已弹出选择器
-                imePickerShown = true
-                imePickerLostFocusOnce = false
-            } catch (_: Throwable) { }
-        }
-    }
-
-
-    private fun startOneClickSetupFlow() {
-        pendingOneClick = true
-        oneClickPickerShown = false
-        askedEnableImeOnce = false
-        askedPickerOnce = false
-        askedMicOnce = false
-        askedOverlayOnce = false
-        askedNotifOnce = false
-        askedA11yOnce = false
-        stopImeWatch()
-        advanceOneClickIfPossible()
-    }
-
-    private fun advanceOneClickIfPossible() {
-        if (!pendingOneClick) return
-
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        val imeEnabled = isOurImeEnabled(imm)
-        val imeCurrent = isOurImeCurrent()
-
-        if (!imeEnabled) {
-            // 第一步：引导启用输入法（仅提示一次）
-            if (!askedEnableImeOnce) {
-                askedEnableImeOnce = true
-                Toast.makeText(this, getString(R.string.toast_setup_enable_keyboard_first), Toast.LENGTH_SHORT).show()
-                try { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) } catch (_: Throwable) { }
-            }
-            return
-        }
-
-        if (!imeCurrent) {
-            // 第二步：已启用但未选择为当前输入法 → 唤起选择器（仅一次）
-            if (!askedPickerOnce) {
-                askedPickerOnce = true
-                oneClickPickerShown = true
-                promptImeChooserAndWatch()
-            }
-            return
-        }
-
-        // 第三步：检查权限（线性队列）
-        if (!hasAllRequiredPermissions()) {
-            requestAllPermissions()
-            // 保持 pendingOneClick=true，等待回流/回调后继续
-            return
-        }
-
-        // 全部就绪
-        pendingOneClick = false
-        stopImeWatch()
-        Toast.makeText(this, getString(R.string.toast_setup_all_done), Toast.LENGTH_SHORT).show()
-    }
-
-    private fun promptImeChooserAndWatch() {
-        // 使用与“选择键盘”按钮一致的直接唤起方式，避免额外过渡动画
-        try {
-            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.showInputMethodPicker()
-        } catch (_: Throwable) { }
-
-        // 轮询等待用户选择完成后自动推进下一步（最长 8 秒）
-        stopImeWatch()
-        val startAt = System.currentTimeMillis()
-        val r = Runnable {
-            if (!pendingOneClick) return@Runnable
-            if (isOurImeCurrent()) {
-                stopImeWatch()
-                // 立即进入权限队列
-                requestAllPermissions()
-                return@Runnable
-            }
-            if (System.currentTimeMillis() - startAt > 8000L) {
-                stopImeWatch()
-                // 超时，不再打扰；等待用户手动处理或再次点击一键设置
-                Toast.makeText(this, getString(R.string.toast_setup_choose_keyboard), Toast.LENGTH_SHORT).show()
-                return@Runnable
-            }
-            handler.postDelayed(imeWatchRunnable!!, 300)
-        }
-        imeWatchRunnable = r
-        handler.postDelayed(r, 350)
-    }
-
-    private fun stopImeWatch() {
-        imeWatchRunnable?.let { handler.removeCallbacks(it) }
-        imeWatchRunnable = null
-    }
-
-    private fun hasAllRequiredPermissions(): Boolean {
-        val micGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        val prefs = Prefs(this)
-        val needOverlay = prefs.floatingSwitcherEnabled || prefs.floatingAsrEnabled
-        val overlayGranted = !needOverlay || Settings.canDrawOverlays(this)
-        val needA11y = prefs.floatingAsrEnabled
-        val a11yGranted = !needA11y || isAccessibilityServiceEnabled()
-
-        // Android 13+ 通知权限仅作为增强项，缺失不阻塞核心功能
-        return micGranted && overlayGranted && a11yGranted
-    }
-
-    private fun isOurImeEnabled(imm: InputMethodManager?): Boolean {
-        val list = try { imm?.enabledInputMethodList } catch (_: Throwable) { null }
-        if (list?.any { it.packageName == packageName } == true) return true
-        return try {
-            val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_INPUT_METHODS)
-            val id = "$packageName/.ime.AsrKeyboardService"
-            enabled?.contains(id) == true || (enabled?.split(':')?.any { it.startsWith(packageName) } == true)
-        } catch (_: Throwable) { false }
-    }
-
-    private fun isOurImeCurrent(): Boolean {
-        return try {
-            val current = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
-            val expectedId = "$packageName/.ime.AsrKeyboardService"
-            current == expectedId
-        } catch (_: Throwable) {
-            false
-        }
-    }
-
-    private fun requestAllPermissions() {
-        val prefs = Prefs(this)
-
-        // 1) 麦克风（必要）
-        val micGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (!micGranted) {
-            if (!askedMicOnce) {
-                askedMicOnce = true
-                try { startActivity(Intent(this, PermissionActivity::class.java)) } catch (_: Throwable) { }
-                return
-            }
-            // 已提示过，跳过到下一项
-        }
-
-        // 2) 悬浮窗（当启用悬浮类功能时需要）
-        val needOverlay = prefs.floatingSwitcherEnabled || prefs.floatingAsrEnabled
-        val overlayGranted = !needOverlay || Settings.canDrawOverlays(this)
-        if (!overlayGranted) {
-            if (!askedOverlayOnce) {
-                askedOverlayOnce = true
-                Toast.makeText(this, getString(R.string.toast_need_overlay_perm), Toast.LENGTH_LONG).show()
-                try {
-                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
-                    startActivity(intent)
-                } catch (_: Throwable) { }
-                return
-            }
-            // 已提示过，跳过到下一项
-        }
-
-        // 3) 通知权限（Android 13+，增强项）
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            val notifGranted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            if (!notifGranted) {
-                if (!askedNotifOnce) {
-                    askedNotifOnce = true
-                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
-                    return
-                }
-                // 已提示过，跳过
-            }
-        }
-
-        // 4) 无障碍（当启用悬浮球语音识别时需要）
-        val needA11y = prefs.floatingAsrEnabled
-        val a11yGranted = !needA11y || isAccessibilityServiceEnabled()
-        if (!a11yGranted) {
-            if (!askedA11yOnce) {
-                askedA11yOnce = true
-                Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
-                try { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) } catch (_: Throwable) { }
-                return
-            }
-            // 已提示过且用户返回未开启：结束本轮以避免循环跳转
-            pendingOneClick = false
-            stopImeWatch()
-            Toast.makeText(this, getString(R.string.toast_need_accessibility_perm), Toast.LENGTH_LONG).show()
-            return
-        }
-
-        // 若到此处，无需再弹系统页/权限对话框：全部已满足或仅剩增强项用户未同意
-        if (hasAllRequiredPermissions()) {
-            pendingOneClick = false
-            stopImeWatch()
-            Toast.makeText(this, getString(R.string.toast_setup_all_done), Toast.LENGTH_SHORT).show()
-        } else {
-            // 还有未满足但已全部提示过：结束以避免循环
-            pendingOneClick = false
-            stopImeWatch()
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (pendingOneClick) {
-            // 小延迟，等待系统状态稳定
-            handler.postDelayed({ advanceOneClickIfPossible() }, 200)
-        }
-    }
-
-    private fun isAccessibilityServiceEnabled(): Boolean {
-        val expectedComponentName = "$packageName/com.brycewg.asrkb.ui.AsrAccessibilityService"
-        val enabledServicesSetting = try {
-            Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-        } catch (_: Throwable) {
-            Log.e("SettingsActivity", "Failed to get accessibility services")
-            return false
-        }
-        Log.d("SettingsActivity", "Expected: $expectedComponentName")
-        Log.d("SettingsActivity", "Enabled services: $enabledServicesSetting")
-        val result = enabledServicesSetting?.contains(expectedComponentName) == true
-        Log.d("SettingsActivity", "Accessibility service enabled: $result")
-        return result
-    }
-
+    /**
+     * 检查更新（主动触发，显示进度对话框）
+     */
     private fun checkForUpdates() {
-        // 显示检查中的提示
+        Log.d(TAG, "User initiated update check")
+
         val progressDialog = MaterialAlertDialogBuilder(this)
             .setMessage(R.string.update_checking)
             .setCancelable(false)
@@ -458,13 +357,15 @@ class SettingsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val result = withContext(Dispatchers.IO) {
-                    checkGitHubRelease()
+                    updateChecker.checkGitHubRelease()
                 }
                 progressDialog.dismiss()
 
                 if (result.hasUpdate) {
-                    showUpdateDialog(result.currentVersion, result.latestVersion, result.downloadUrl, result.updateTime, result.releaseNotes)
+                    Log.d(TAG, "Update available: ${result.latestVersion}")
+                    showUpdateDialog(result)
                 } else {
+                    Log.d(TAG, "No update available")
                     Toast.makeText(
                         this@SettingsActivity,
                         getString(R.string.update_no_update),
@@ -473,219 +374,122 @@ class SettingsActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 progressDialog.dismiss()
-                Log.e("SettingsActivity", "Update check failed", e)
-
-                // 显示错误对话框，提供手动查看选项
-                MaterialAlertDialogBuilder(this@SettingsActivity)
-                    .setTitle(R.string.update_check_failed)
-                    .setMessage(e.message ?: "Unknown error")
-                    .setPositiveButton(R.string.btn_manual_check) { _, _ ->
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/BryceWG/LexiSharp-Keyboard/releases"))
-                            startActivity(intent)
-                        } catch (_: Exception) {
-                            Toast.makeText(this@SettingsActivity, getString(R.string.error_open_browser), Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                    .setNegativeButton(R.string.btn_cancel, null)
-                    .show()
+                Log.e(TAG, "Update check failed", e)
+                showUpdateCheckFailedDialog(e)
             }
         }
     }
 
-    // 静默检查更新：不显示“正在检查”或“已是最新版本”的提示，仅在有更新时弹窗提示
+    /**
+     * 每天首次进入设置页时，静默检查更新
+     *
+     * 不显示"正在检查"或"已是最新版本"提示，仅在有更新时弹窗
+     */
     private fun maybeAutoCheckUpdatesDaily() {
         try {
             val prefs = Prefs(this)
-            val today = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.getDefault())
-                .format(java.util.Date())
-            if (prefs.lastUpdateCheckDate == today) return
+            val today = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+
+            if (prefs.lastUpdateCheckDate == today) {
+                Log.d(TAG, "Already checked update today, skipping auto check")
+                return
+            }
+
             // 记录为今日已检查，避免同日重复触发
             prefs.lastUpdateCheckDate = today
-        } catch (_: Throwable) {
+            Log.d(TAG, "Starting daily auto update check")
+        } catch (e: Exception) {
             // 读取或写入失败则不自动检查
+            Log.e(TAG, "Failed to check/update last update check date", e)
             return
         }
 
-        // 开始静默检查
         lifecycleScope.launch {
             try {
-                val result = withContext(Dispatchers.IO) { checkGitHubRelease() }
+                val result = withContext(Dispatchers.IO) {
+                    updateChecker.checkGitHubRelease()
+                }
+
                 if (result.hasUpdate) {
-                    showUpdateDialog(
-                        result.currentVersion,
-                        result.latestVersion,
-                        result.downloadUrl,
-                        result.updateTime,
-                        result.releaseNotes
-                    )
+                    Log.d(TAG, "Auto check found update: ${result.latestVersion}")
+                    showUpdateDialog(result)
+                } else {
+                    Log.d(TAG, "Auto check: no update available")
                 }
             } catch (e: Exception) {
-                Log.d("SettingsActivity", "Auto update check failed", e)
+                // 静默检查失败，不弹窗提示
+                Log.d(TAG, "Auto update check failed (silent): ${e.message}")
             }
         }
     }
 
-    private data class UpdateCheckResult(
-        val hasUpdate: Boolean,
-        val currentVersion: String,
-        val latestVersion: String,
-        val downloadUrl: String,
-        val updateTime: String? = null,
-        val releaseNotes: String? = null
-    )
-
-    private suspend fun checkGitHubRelease(): UpdateCheckResult {
-        val client = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
-            .build()
-
-        // 加入时间戳参数，降低 CDN 旧缓存命中概率（按分钟变动，避免每秒都变）
-        val ts = (System.currentTimeMillis() / 60_000L).toString()
-        val urls = listOf(
-            // 优先使用可用镜像代理 raw 内容（更新更及时）
-            "https://hub.gitmirror.com/https://raw.githubusercontent.com/BryceWG/LexiSharp-Keyboard/main/version.json?t=$ts",
-            "https://ghproxy.net/https://raw.githubusercontent.com/BryceWG/LexiSharp-Keyboard/main/version.json?t=$ts",
-            // 直接读取 GitHub 原始内容
-            "https://raw.githubusercontent.com/BryceWG/LexiSharp-Keyboard/main/version.json?t=$ts",
-            // jsDelivr 主域 (作为兜底）
-            "https://cdn.jsdelivr.net/gh/BryceWG/LexiSharp-Keyboard@main/version.json?t=$ts"
+    /**
+     * 显示更新对话框
+     */
+    private fun showUpdateDialog(result: UpdateChecker.UpdateCheckResult) {
+        val messageBuilder = StringBuilder()
+        messageBuilder.append(
+            getString(
+                R.string.update_dialog_message,
+                result.currentVersion,
+                result.latestVersion
+            )
         )
 
-        val currentRaw = try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "unknown"
-        } catch (_: Exception) { "unknown" }
-        val currentVersion = normalizeVersion(currentRaw)
-
-        return coroutineScope {
-            data class Remote(val version: String, val downloadUrl: String, val updateTime: String?, val releaseNotes: String?)
-
-            val jobs = urls.map { url ->
-                async(Dispatchers.IO) {
-                    val request = Request.Builder()
-                        .url(url)
-                        .addHeader("User-Agent", "LexiSharp-Android")
-                        .build()
-                    client.newCall(request).execute().use { response ->
-                        if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
-                        val body = response.body?.string() ?: throw Exception("Empty response")
-                        val json = JSONObject(body)
-
-                        val candidate = normalizeVersion(json.optString("version", "").removePrefix("v"))
-                        if (candidate.isEmpty()) throw Exception("Invalid version format")
-
-                        val downloadUrl = json.optString("download_url", "https://github.com/BryceWG/LexiSharp-Keyboard/releases")
-                        val updateTime = json.optString("update_time", "").ifBlank { null }
-                        val releaseNotes = json.optString("release_notes", "").ifBlank { null }
-                        Remote(candidate, downloadUrl, updateTime, releaseNotes)
-                    }
-                }
-            }
-
-            val remotes = mutableListOf<Remote>()
-            var lastError: Exception? = null
-            for (j in jobs) {
-                try {
-                    remotes += j.await()
-                } catch (e: Exception) {
-                    lastError = e
-                }
-            }
-
-            if (remotes.isEmpty()) throw lastError ?: Exception("All sources failed")
-
-            var best: Remote? = null
-            for (r in remotes) {
-                best = when {
-                    best == null -> r
-                    compareVersions(r.version, best!!.version) > 0 -> r
-                    else -> best
-                }
-            }
-
-            val hasUpdate = compareVersions(best!!.version, currentVersion) > 0
-            UpdateCheckResult(hasUpdate, currentRaw, best!!.version, best!!.downloadUrl, best!!.updateTime, best!!.releaseNotes)
-        }
-    }
-
-    private fun normalizeVersion(v: String): String {
-        if (v.isBlank()) return ""
-        // 移除前缀 v/V 和非数字点字符，仅保留比较需要的主次修订号
-        return v.trim()
-            .removePrefix("v")
-            .removePrefix("V")
-            .replace(Regex("[^0-9.]"), "")
-            .trim('.')
-    }
-
-    private fun compareVersions(version1: String, version2: String): Int {
-        val v1Parts = version1.split(".").mapNotNull { it.toIntOrNull() }
-        val v2Parts = version2.split(".").mapNotNull { it.toIntOrNull() }
-
-        val maxLength = maxOf(v1Parts.size, v2Parts.size)
-        for (i in 0 until maxLength) {
-            val v1 = v1Parts.getOrNull(i) ?: 0
-            val v2 = v2Parts.getOrNull(i) ?: 0
-            if (v1 != v2) {
-                return v1.compareTo(v2)
-            }
-        }
-        return 0
-    }
-
-    private fun showUpdateDialog(
-        currentVersion: String,
-        latestVersion: String,
-        downloadUrl: String,
-        updateTime: String? = null,
-        releaseNotes: String? = null
-    ) {
-        // 构建消息内容
-        val messageBuilder = StringBuilder()
-        messageBuilder.append(getString(R.string.update_dialog_message, currentVersion, latestVersion))
-
         // 添加更新时间（如果有）
-        if (!updateTime.isNullOrEmpty()) {
+        result.updateTime?.let { updateTime ->
             messageBuilder.append("\n\n")
-            // 尝试格式化时间戳
-            val formattedTime = try {
-                // 解析 ISO 8601 格式并转换为本地时间
-                val utcFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault())
-                utcFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
-                val date = utcFormat.parse(updateTime)
-
-                val localFormat = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
-                if (date != null) localFormat.format(date) else updateTime
-            } catch (e: Exception) {
-                updateTime // 如果解析失败，直接显示原始时间
-            }
-            messageBuilder.append(
-                getString(R.string.update_timestamp_label, formattedTime)
-            )
+            val formattedTime = formatUpdateTime(updateTime)
+            messageBuilder.append(getString(R.string.update_timestamp_label, formattedTime))
         }
 
         // 添加发布说明
-        if (!releaseNotes.isNullOrEmpty()) {
+        result.releaseNotes?.let { notes ->
             messageBuilder.append("\n\n")
-            messageBuilder.append(
-                getString(R.string.update_release_notes_label, releaseNotes)
-            )
+            messageBuilder.append(getString(R.string.update_release_notes_label, notes))
         }
 
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.update_dialog_title)
             .setMessage(messageBuilder.toString())
             .setPositiveButton(R.string.btn_download) { _, _ ->
-                // 显示下载源选择对话框
-                showDownloadSourceDialog(downloadUrl, latestVersion)
+                showDownloadSourceDialog(result.downloadUrl, result.latestVersion)
             }
             .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
+    /**
+     * 显示更新检查失败对话框
+     */
+    private fun showUpdateCheckFailedDialog(error: Exception) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.update_check_failed)
+            .setMessage(error.message ?: "Unknown error")
+            .setPositiveButton(R.string.btn_manual_check) { _, _ ->
+                try {
+                    val intent = Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://github.com/BryceWG/LexiSharp-Keyboard/releases")
+                    )
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to open browser", e)
+                    Toast.makeText(
+                        this,
+                        getString(R.string.error_open_browser),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    /**
+     * 显示下载源选择对话框
+     */
     private fun showDownloadSourceDialog(originalUrl: String, version: String) {
-        // 准备下载源列表
         val downloadSources = arrayOf(
             getString(R.string.download_source_github_official),
             getString(R.string.download_source_mirror_ghproxy),
@@ -696,9 +500,7 @@ class SettingsActivity : AppCompatActivity() {
         // 根据 release 页面构造 APK 直链（用于镜像站加速）；官方仍跳转 release 页面
         val directApkUrl = buildDirectApkUrl(originalUrl, version)
 
-        // 生成对应的 URL：
-        // - 官方：release 页面（originalUrl）
-        // - 镜像：一律使用 APK 直链
+        // 生成对应的 URL：官方使用 release 页面，镜像使用 APK 直链
         val downloadUrls = arrayOf(
             originalUrl,
             convertToMirrorUrl(directApkUrl, "https://ghproxy.net/"),
@@ -712,15 +514,190 @@ class SettingsActivity : AppCompatActivity() {
                 try {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrls[which]))
                     startActivity(intent)
-                } catch (_: Exception) {
-                    Toast.makeText(this, getString(R.string.error_open_browser), Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to open download URL", e)
+                    Toast.makeText(
+                        this,
+                        getString(R.string.error_open_browser),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
             .setNegativeButton(R.string.btn_cancel, null)
             .show()
     }
 
-    // 设置页测试输入：底部浮层输入框
+    /**
+     * 格式化更新时间
+     *
+     * 尝试解析 ISO 8601 格式并转换为本地时间，失败则返回原始字符串
+     */
+    private fun formatUpdateTime(updateTime: String): String {
+        return try {
+            val utcFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+            utcFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            val date = utcFormat.parse(updateTime)
+
+            val localFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            if (date != null) localFormat.format(date) else updateTime
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse update time: $updateTime", e)
+            updateTime
+        }
+    }
+
+    /**
+     * 构造 APK 直链
+     *
+     * 输入: https://github.com/{owner}/{repo}/releases/tag/{tag}
+     * 输出: https://github.com/{owner}/{repo}/releases/download/v{version}/lexisharp-keyboard-{version}-release.apk
+     */
+    private fun buildDirectApkUrl(originalUrl: String, version: String): String {
+        val baseEnd = originalUrl.indexOf("/releases/tag/")
+        val base = if (baseEnd > 0) {
+            originalUrl.substring(0, baseEnd)
+        } else {
+            "https://github.com/BryceWG/LexiSharp-Keyboard"
+        }
+        val tag = "v$version"
+        val apkName = "lexisharp-keyboard-$version-release.apk"
+        return "$base/releases/download/$tag/$apkName"
+    }
+
+    /**
+     * 转换为镜像 URL
+     *
+     * 仅对 GitHub 链接加镜像前缀
+     */
+    private fun convertToMirrorUrl(originalUrl: String, mirrorPrefix: String): String {
+        return if (originalUrl.startsWith("https://github.com/")) {
+            mirrorPrefix + originalUrl
+        } else {
+            originalUrl
+        }
+    }
+
+    // ==================== 设置导入/导出 ====================
+
+    /**
+     * 设置导入/导出的 ActivityResultLauncher
+     */
+    private fun setupImportExportLaunchers() {
+        val exportLauncher = registerForActivityResult(
+            ActivityResultContracts.CreateDocument("application/json")
+        ) { uri: Uri? ->
+            if (uri != null) {
+                exportSettings(uri)
+            }
+        }
+
+        val importLauncher = registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri: Uri? ->
+            if (uri != null) {
+                importSettings(uri)
+            }
+        }
+
+        findViewById<Button>(R.id.btnExportSettings)?.setOnClickListener {
+            val fileName = "asr_keyboard_settings_" +
+                SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date()) +
+                ".json"
+            exportLauncher.launch(fileName)
+        }
+
+        findViewById<Button>(R.id.btnImportSettings)?.setOnClickListener {
+            importLauncher.launch(arrayOf("application/json", "text/plain"))
+        }
+    }
+
+    /**
+     * 导出设置到 URI
+     */
+    private fun exportSettings(uri: Uri) {
+        try {
+            contentResolver.openOutputStream(uri)?.use { os ->
+                val jsonString = Prefs(this).exportJsonString()
+                os.write(jsonString.toByteArray(Charsets.UTF_8))
+                os.flush()
+            }
+            val name = uri.lastPathSegment ?: "settings.json"
+            Toast.makeText(
+                this,
+                getString(R.string.toast_export_success, name),
+                Toast.LENGTH_SHORT
+            ).show()
+            Log.d(TAG, "Settings exported successfully to $uri")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to export settings", e)
+            Toast.makeText(
+                this,
+                getString(R.string.toast_export_failed),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    /**
+     * 从 URI 导入设置
+     */
+    private fun importSettings(uri: Uri) {
+        try {
+            val json = contentResolver.openInputStream(uri)
+                ?.bufferedReader(Charsets.UTF_8)
+                ?.use { it.readText() } ?: ""
+
+            val success = Prefs(this).importJsonString(json)
+
+            if (success) {
+                // 导入完成后，通知 IME 即时刷新（包含高度与按钮交换）
+                try {
+                    sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to send refresh broadcast", e)
+                }
+
+                Toast.makeText(
+                    this,
+                    getString(R.string.toast_import_success),
+                    Toast.LENGTH_SHORT
+                ).show()
+                Log.d(TAG, "Settings imported successfully from $uri")
+            } else {
+                Toast.makeText(
+                    this,
+                    getString(R.string.toast_import_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
+                Log.w(TAG, "Failed to import settings (invalid JSON or parsing error)")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to import settings", e)
+            Toast.makeText(
+                this,
+                getString(R.string.toast_import_failed),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    // ==================== 其他辅助功能 ====================
+
+    /**
+     * 显示快速指南对话框
+     */
+    private fun showQuickGuide() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_guide, null, false)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.title_quick_guide)
+            .setView(view)
+            .setPositiveButton(R.string.btn_close, null)
+            .show()
+    }
+
+    /**
+     * 显示测试输入底部浮层
+     */
     private fun showTestInputBottomSheet() {
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.dialog_test_input, null, false)
@@ -733,25 +710,136 @@ class SettingsActivity : AppCompatActivity() {
                 edit.requestFocus()
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(edit, InputMethodManager.SHOW_IMPLICIT)
-            } catch (_: Throwable) { }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to show soft input", e)
+            }
         }
 
         dialog.show()
     }
 
-    private fun buildDirectApkUrl(originalUrl: String, version: String): String {
-        // 输入 URL 形如: https://github.com/{owner}/{repo}/releases/tag/{tag}
-        // 输出直链: https://github.com/{owner}/{repo}/releases/download/v{version}/lexisharp-keyboard-{version}-release.apk
-        val baseEnd = originalUrl.indexOf("/releases/tag/")
-        val base = if (baseEnd > 0) originalUrl.substring(0, baseEnd) else "https://github.com/BryceWG/LexiSharp-Keyboard"
-        val tag = "v$version"
-        val apkName = "lexisharp-keyboard-$version-release.apk"
-        return "$base/releases/download/$tag/$apkName"
+    /**
+     * 更新识别字数统计显示
+     */
+    private fun updateAsrTotalChars() {
+        try {
+            val tvAsrTotalChars = findViewById<TextView>(R.id.tvAsrTotalChars)
+            val prefs = Prefs(this)
+            tvAsrTotalChars?.text = getString(R.string.label_asr_total_chars, prefs.totalAsrChars)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update ASR total chars display", e)
+        }
     }
 
-    private fun convertToMirrorUrl(originalUrl: String, mirrorPrefix: String): String {
-        // 只对 GitHub 链接加镜像前缀；既支持 release 页面也支持 releases/download 直链
-        return if (originalUrl.startsWith("https://github.com/")) mirrorPrefix + originalUrl else originalUrl
+    /**
+     * 检查无障碍服务是否刚刚被启用，给予用户反馈
+     */
+    private fun checkAccessibilityServiceJustEnabled() {
+        val isNowEnabled = isAccessibilityServiceEnabled()
+
+        if (!wasAccessibilityEnabled && isNowEnabled) {
+            Log.d(TAG, "Accessibility service just enabled")
+            Toast.makeText(
+                this,
+                getString(R.string.toast_accessibility_enabled),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        wasAccessibilityEnabled = isNowEnabled
     }
 
+    /**
+     * 检查无障碍服务是否已启用
+     */
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val expectedComponentName =
+            "$packageName/com.brycewg.asrkb.ui.AsrAccessibilityService"
+        val enabledServicesSetting = try {
+            Settings.Secure.getString(
+                contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get accessibility services", e)
+            return false
+        }
+
+        Log.d(TAG, "Expected accessibility service: $expectedComponentName")
+        Log.d(TAG, "Enabled accessibility services: $enabledServicesSetting")
+
+        val result = enabledServicesSetting?.contains(expectedComponentName) == true
+        Log.d(TAG, "Accessibility service enabled: $result")
+        return result
+    }
+
+    /**
+     * 处理"外部切换"模式的 IME 选择器逻辑
+     *
+     * 当从浮动球或其他外部入口进入设置页并自动弹出 IME 选择器时，
+     * 利用窗口焦点变化来检测选择器是否关闭，关闭后自动退出设置页。
+     *
+     * 焦点变化信号：
+     * 1. 选择器弹出时，本页失去焦点 (hasFocus=false)
+     * 2. 选择器关闭后，本页重新获得焦点 (hasFocus=true)
+     * 3. 检测到"失去焦点→恢复焦点"的完整循环后，延迟 250ms 关闭设置页
+     */
+    private fun handleExternalImeSwitchMode(hasFocus: Boolean) {
+        if (!autoCloseAfterImePicker || !imePickerShown) {
+            return
+        }
+
+        if (!hasFocus) {
+            // 系统输入法选择器置前，导致本页失去焦点
+            imePickerLostFocusOnce = true
+            Log.d(TAG, "IME picker shown, activity lost focus")
+        } else if (imePickerLostFocusOnce) {
+            // 选择器关闭，本页重新获得焦点 -> 可安全收尾
+            Log.d(TAG, "IME picker closed, activity regained focus, finishing")
+            handler.postDelayed({
+                if (!isFinishing && !isDestroyed) {
+                    finish()
+                    try {
+                        overridePendingTransition(0, 0)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to override pending transition", e)
+                    }
+                }
+            }, 250L)
+
+            // 只触发一次
+            imePickerShown = false
+            imePickerLostFocusOnce = false
+        }
+    }
+
+    /**
+     * 处理自动弹出 IME 选择器（由 Intent Extra 触发）
+     *
+     * 用于从浮动球等外部入口快速切换输入法，进入设置页后自动弹出选择器
+     */
+    private fun handleAutoShowImePicker(hasFocus: Boolean) {
+        if (!hasFocus) return
+        if (autoShownImePicker) return
+        if (intent?.getBooleanExtra(EXTRA_AUTO_SHOW_IME_PICKER, false) != true) return
+
+        autoShownImePicker = true
+        autoCloseAfterImePicker = true
+
+        Log.d(TAG, "Auto-showing IME picker from intent extra")
+
+        // 延迟到窗口获得焦点后调用，稳定性更好
+        handler.post {
+            try {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showInputMethodPicker()
+                // 标记：已弹出选择器
+                imePickerShown = true
+                imePickerLostFocusOnce = false
+                Log.d(TAG, "IME picker shown successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to show IME picker", e)
+            }
+        }
+    }
 }

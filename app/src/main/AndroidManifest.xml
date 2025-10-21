@@ -40,37 +40,37 @@
         <!-- 直接子设置页（无中间层） -->
 
         <activity
-            android:name=".ui.InputSettingsActivity"
+            android:name=".ui.settings.input.InputSettingsActivity"
             android:exported="false" />
 
         <activity
-            android:name=".ui.AsrSettingsActivity"
+            android:name=".ui.settings.asr.AsrSettingsActivity"
             android:exported="false" />
 
         <activity
-            android:name=".ui.AiPostSettingsActivity"
+            android:name=".ui.settings.ai.AiPostSettingsActivity"
             android:exported="false" />
 
         <activity
-            android:name=".ui.OtherSettingsActivity"
+            android:name=".ui.settings.other.OtherSettingsActivity"
             android:exported="false" />
 
         <activity
-            android:name=".ui.FloatingSettingsActivity"
+            android:name=".ui.settings.floating.FloatingSettingsActivity"
             android:exported="false" />
 
         <!-- 关于页面 -->
         <activity
-            android:name=".ui.AboutActivity"
+            android:name=".ui.about.AboutActivity"
             android:exported="false" />
 
         <activity
-            android:name=".ui.PermissionActivity"
+            android:name=".ui.permission.PermissionActivity"
             android:exported="false"
             android:theme="@style/Theme.ASRKeyboard.Transparent" />
 
         <activity
-            android:name=".ui.ImePickerActivity"
+            android:name=".ui.ime.ImePickerActivity"
             android:exported="false"
             android:noHistory="true"
             android:excludeFromRecents="true"
@@ -94,17 +94,17 @@
 
         <!-- 悬浮球切换输入法的前台/常驻服务（不导出） -->
         <service
-            android:name=".ui.FloatingImeSwitcherService"
+            android:name=".ui.floating.FloatingImeSwitcherService"
             android:exported="false" />
 
         <!-- 悬浮球语音识别服务 -->
         <service
-            android:name=".ui.FloatingAsrService"
+            android:name=".ui.floating.FloatingAsrService"
             android:exported="false" />
 
         <!-- 模型下载/解压前台服务（支持并发任务） -->
         <service
-            android:name=".ui.ModelDownloadService"
+            android:name=".ui.settings.asr.ModelDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 

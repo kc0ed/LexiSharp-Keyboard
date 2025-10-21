@@ -10,8 +10,8 @@ import com.google.android.material.color.DynamicColors
 import com.brycewg.asrkb.store.Prefs
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import com.brycewg.asrkb.ui.FloatingImeSwitcherService
-import com.brycewg.asrkb.ui.FloatingAsrService
+import com.brycewg.asrkb.ui.floating.FloatingImeSwitcherService
+import com.brycewg.asrkb.ui.floating.FloatingAsrService
 
 class App : Application() {
     override fun onCreate() {

@@ -1,4 +1,4 @@
-package com.brycewg.asrkb.ui
+package com.brycewg.asrkb.ui.permission
 
 import android.Manifest
 import android.content.pm.PackageManager

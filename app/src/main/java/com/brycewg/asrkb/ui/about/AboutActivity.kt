@@ -1,12 +1,15 @@
-package com.brycewg.asrkb.ui
+package com.brycewg.asrkb.ui.about
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import android.os.Build
 import android.content.pm.PackageManager
 import com.brycewg.asrkb.R
 
@@ -40,12 +43,22 @@ class AboutActivity : AppCompatActivity() {
       try {
         val url = getString(R.string.about_project_url)
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-      } catch (_: Throwable) {}
+      } catch (e: ActivityNotFoundException) {
+        Log.e(TAG, "Failed to open GitHub URL: No browser found", e)
+        Toast.makeText(this, R.string.error_open_browser, Toast.LENGTH_SHORT).show()
+      } catch (e: Throwable) {
+        Log.e(TAG, "Failed to open GitHub URL", e)
+        Toast.makeText(this, R.string.error_open_browser, Toast.LENGTH_SHORT).show()
+      }
     }
 
     // 返回箭头点击关闭（若布局中设置了导航图标）
     findViewById<androidx.appcompat.widget.Toolbar?>(R.id.toolbar)?.setNavigationOnClickListener {
       finish()
     }
+  }
+
+  companion object {
+    private const val TAG = "AboutActivity"
   }
 }

@@ -1,0 +1,240 @@
+package com.brycewg.asrkb.ui.settings.input
+
+import android.content.Intent
+import android.os.Bundle
+import android.util.Log
+import android.view.HapticFeedbackConstants
+import android.view.View
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import com.brycewg.asrkb.R
+import com.brycewg.asrkb.ime.AsrKeyboardService
+import com.brycewg.asrkb.store.Prefs
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.materialswitch.MaterialSwitch
+
+class InputSettingsActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "InputSettingsActivity"
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_input_settings)
+
+        val prefs = Prefs(this)
+
+        val switchTrimTrailingPunct = findViewById<MaterialSwitch>(R.id.switchTrimTrailingPunct)
+        val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
+        val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
+        val switchMicTapToggle = findViewById<MaterialSwitch>(R.id.switchMicTapToggle)
+        val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
+        val switchFcitx5ReturnOnSwitcher = findViewById<MaterialSwitch>(R.id.switchFcitx5ReturnOnSwitcher)
+        val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
+        val tvKeyboardHeight = findViewById<TextView>(R.id.tvKeyboardHeightValue)
+        val tvLanguage = findViewById<TextView>(R.id.tvLanguageValue)
+
+        fun applyPrefsToUi() {
+            switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
+            switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
+            switchMicHaptic.isChecked = prefs.micHapticEnabled
+            switchMicTapToggle.isChecked = prefs.micTapToggleEnabled
+            switchSwapAiEditWithSwitcher.isChecked = prefs.swapAiEditWithImeSwitcher
+            switchFcitx5ReturnOnSwitcher.isChecked = prefs.fcitx5ReturnOnImeSwitch
+            switchHideRecentTasks.isChecked = prefs.hideRecentTaskCard
+        }
+        applyPrefsToUi()
+
+        // 键盘高度：三档（点击弹出单选对话框）
+        setupKeyboardHeightSelection(prefs, tvKeyboardHeight)
+
+        // 应用语言选择（点击弹出单选对话框）
+        setupLanguageSelection(prefs, tvLanguage)
+
+        // 监听与保存
+        switchTrimTrailingPunct.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.trimFinalTrailingPunct = isChecked
+        }
+        switchAutoSwitchPassword.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.autoSwitchOnPassword = isChecked
+        }
+        switchMicHaptic.setOnCheckedChangeListener { btn, isChecked ->
+            prefs.micHapticEnabled = isChecked
+            try {
+                btn.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Failed to perform haptic feedback for mic haptic switch", e)
+            }
+        }
+        switchMicTapToggle.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.micTapToggleEnabled = isChecked
+        }
+        switchSwapAiEditWithSwitcher.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.swapAiEditWithImeSwitcher = isChecked
+            sendRefreshBroadcast()
+        }
+        switchFcitx5ReturnOnSwitcher.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.fcitx5ReturnOnImeSwitch = isChecked
+        }
+        switchHideRecentTasks.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.hideRecentTaskCard = isChecked
+            applyExcludeFromRecents(isChecked)
+        }
+
+        // 初始应用一次"从最近任务中排除"设置
+        applyExcludeFromRecents(prefs.hideRecentTaskCard)
+    }
+
+    /**
+     * 设置键盘高度选择对话框
+     */
+    private fun setupKeyboardHeightSelection(prefs: Prefs, tvKeyboardHeight: TextView) {
+        val options = listOf(
+            getString(R.string.keyboard_height_small),
+            getString(R.string.keyboard_height_medium),
+            getString(R.string.keyboard_height_large)
+        )
+
+        fun updateSummary() {
+            val idx = (prefs.keyboardHeightTier - 1).coerceIn(0, 2)
+            tvKeyboardHeight.text = options[idx]
+        }
+        updateSummary()
+
+        tvKeyboardHeight.setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            val currentIndex = (prefs.keyboardHeightTier - 1).coerceIn(0, 2)
+            showSingleChoiceDialog(
+                titleRes = R.string.label_keyboard_height,
+                items = options,
+                currentIndex = currentIndex,
+                onSelected = { selectedIndex ->
+                    val tier = (selectedIndex + 1).coerceIn(1, 3)
+                    if (prefs.keyboardHeightTier != tier) {
+                        prefs.keyboardHeightTier = tier
+                        updateSummary()
+                        sendRefreshBroadcast()
+                    }
+                }
+            )
+        }
+    }
+
+    /**
+     * 设置应用语言选择对话框
+     */
+    private fun setupLanguageSelection(prefs: Prefs, tvLanguage: TextView) {
+        val options = listOf(
+            getString(R.string.lang_follow_system),
+            getString(R.string.lang_zh_cn),
+            getString(R.string.lang_en)
+        )
+
+        fun getLanguageIndex(tag: String): Int = when (tag) {
+            "zh", "zh-CN", "zh-Hans" -> 1
+            "en" -> 2
+            else -> 0
+        }
+
+        fun updateSummary() {
+            tvLanguage.text = options[getLanguageIndex(prefs.appLanguageTag)]
+        }
+        updateSummary()
+
+        tvLanguage.setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            val currentIndex = getLanguageIndex(prefs.appLanguageTag)
+            showSingleChoiceDialog(
+                titleRes = R.string.label_language,
+                items = options,
+                currentIndex = currentIndex,
+                onSelected = { selectedIndex ->
+                    val newTag = when (selectedIndex) {
+                        1 -> "zh-CN"
+                        2 -> "en"
+                        else -> ""
+                    }
+                    if (newTag != prefs.appLanguageTag) {
+                        prefs.appLanguageTag = newTag
+                        updateSummary()
+                        val locales = if (newTag.isBlank()) {
+                            LocaleListCompat.getEmptyLocaleList()
+                        } else {
+                            LocaleListCompat.forLanguageTags(newTag)
+                        }
+                        AppCompatDelegate.setApplicationLocales(locales)
+                    }
+                }
+            )
+        }
+    }
+
+    /**
+     * 通用单选对话框显示函数
+     *
+     * @param titleRes 对话框标题资源 ID
+     * @param items 选项列表
+     * @param currentIndex 当前选中的索引
+     * @param onSelected 选中回调，参数为选中的索引
+     */
+    private fun showSingleChoiceDialog(
+        titleRes: Int,
+        items: List<String>,
+        currentIndex: Int,
+        onSelected: (Int) -> Unit
+    ) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(titleRes)
+            .setSingleChoiceItems(items.toTypedArray(), currentIndex) { dialog, which ->
+                onSelected(which)
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    /**
+     * 发送刷新 IME UI 的广播
+     */
+    private fun sendRefreshBroadcast() {
+        try {
+            sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI))
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to send refresh IME UI broadcast", e)
+        }
+    }
+
+    /**
+     * 根据设置执行触觉反馈
+     */
+    private fun hapticTapIfEnabled(view: View?) {
+        try {
+            if (Prefs(this).micHapticEnabled) {
+                view?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to perform haptic feedback", e)
+        }
+    }
+
+    /**
+     * 应用"从最近任务中排除"设置
+     */
+    private fun applyExcludeFromRecents(enabled: Boolean) {
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+            am.appTasks?.forEach { it.setExcludeFromRecents(enabled) }
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to apply exclude from recents setting", e)
+        }
+    }
+}

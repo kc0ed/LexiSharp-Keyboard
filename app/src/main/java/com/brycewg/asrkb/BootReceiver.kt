@@ -11,8 +11,8 @@ import android.provider.Settings
 import android.util.Log
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.AsrAccessibilityService
-import com.brycewg.asrkb.ui.FloatingAsrService
-import com.brycewg.asrkb.ui.FloatingImeSwitcherService
+import com.brycewg.asrkb.ui.floating.FloatingAsrService
+import com.brycewg.asrkb.ui.floating.FloatingImeSwitcherService
 
 /**
  * 开机自启广播接收器：
@@ -78,4 +78,3 @@ class BootReceiver : BroadcastReceiver() {
         }
     }
 }
-
