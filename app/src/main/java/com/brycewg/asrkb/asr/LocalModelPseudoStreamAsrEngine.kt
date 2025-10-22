@@ -46,9 +46,11 @@ class LocalModelPseudoStreamAsrEngine(
     private val streamMutex = Mutex()
     private var lastDecodeUptimeMs: Long = 0L
     private var lastEmitUptimeMs: Long = 0L
-    // 控制解码与预览的最小间隔（降低 JNI 频繁分配与主线程压力）
-    private val decodeIntervalMs: Long = 400L
-    private val emitIntervalMs: Long = 250L
+    // 基准分片时长（ms），改为 200ms；窗口按其倍数推导。
+    @Volatile private var chunkMillis: Int = 200
+    // 解码/预览节流：decode=2×chunk（约 400ms），emit=chunk（与采集对齐）。
+    @Volatile private var decodeIntervalMs: Long = (chunkMillis * 2).toLong()
+    @Volatile private var emitIntervalMs: Long = chunkMillis.toLong()
     private var lastEmittedText: String? = null
 
     private val sampleRate = 16000
@@ -84,6 +86,10 @@ class LocalModelPseudoStreamAsrEngine(
         }
         // 将引擎标记为运行中，以便开始采集和静音判停
         running.set(true)
+        // 重置节流窗口与上次文本，确保每次会话“同步起步”。
+        lastDecodeUptimeMs = 0L
+        lastEmitUptimeMs = 0L
+        lastEmittedText = null
         // 启动音频采集（先录先缓冲），并在后台加载模型与创建 stream
         startCapture()
 
@@ -246,8 +252,11 @@ class LocalModelPseudoStreamAsrEngine(
     private fun startCapture() {
         audioJob?.cancel()
         audioJob = scope.launch(Dispatchers.IO) {
-            // 将帧间隔从 ~200ms 缩小到 ~120ms，以降低预览延迟
-            val targetChunkMs = 120
+            // 分片时长：200ms；可后续暴露为设置项。
+            val targetChunkMs = chunkMillis
+            // 统一时序基准：decode=2×chunk，emit=chunk
+            decodeIntervalMs = (targetChunkMs * 2).toLong()
+            emitIntervalMs = targetChunkMs.toLong()
             val audioManager = AudioCaptureManager(
                 context = context,
                 sampleRate = sampleRate,
@@ -270,7 +279,7 @@ class LocalModelPseudoStreamAsrEngine(
             else null
 
             try {
-                Log.d(TAG, "Starting audio capture with chunk size ${targetChunkMs}ms")
+                Log.d(TAG, "Starting audio capture with chunk=${targetChunkMs}ms, decode=${decodeIntervalMs}ms, emit=${emitIntervalMs}ms")
                 audioManager.startCapture().collect { audioChunk ->
                     if (!running.get() && currentStream == null) return@collect
 
