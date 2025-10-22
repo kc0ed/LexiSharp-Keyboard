@@ -264,7 +264,8 @@ class LocalModelPseudoStreamAsrEngine(
                 return@launch
             }
 
-            val vadDetector = if (prefs.autoStopOnSilenceEnabled)
+            // 长按说话模式下由用户松手决定停止，绕过 VAD 自动判停
+            val vadDetector = if (prefs.autoStopOnSilenceEnabled && prefs.micTapToggleEnabled)
                 VadDetector(context, sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
             else null
 
