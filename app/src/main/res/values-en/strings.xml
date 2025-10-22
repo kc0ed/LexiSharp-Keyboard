@@ -348,10 +348,6 @@
     <string name="label_auto_stop_silence">Auto stop when no speech</string>
     <string name="label_silence_window_ms">Stop window (ms)</string>
     <string name="label_silence_sensitivity">Sensitivity (1-15; higher = more sensitive)</string>
-    <string name="btn_silence_calibrate">Calibrate Sensitivity</string>
-    <string name="toast_silence_calib_intro">Sampling started (~4s). Speak a sentence at your normal volume…</string>
-    <string name="toast_silence_calib_need_perm">Microphone permission is required for calibration. Please grant and retry.</string>
-    <string name="toast_silence_calib_result_set">Sampling done. Peak=%1$d; suggested=%2$d (was %3$d, updated)</string>
     <!-- SenseVoice local settings -->
     <string name="btn_sv_download_model">One-click download SenseVoice model</string>
     <string name="btn_sv_download_model_int8">One-click download SenseVoice (small int8, ~160MB)</string>

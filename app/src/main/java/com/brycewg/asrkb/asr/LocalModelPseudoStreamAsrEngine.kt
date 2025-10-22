@@ -264,8 +264,8 @@ class LocalModelPseudoStreamAsrEngine(
                 return@launch
             }
 
-            val silenceDetector = if (prefs.autoStopOnSilenceEnabled)
-                SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
+            val vadDetector = if (prefs.autoStopOnSilenceEnabled)
+                VadDetector(context, sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
             else null
 
             try {
@@ -273,8 +273,8 @@ class LocalModelPseudoStreamAsrEngine(
                 audioManager.startCapture().collect { audioChunk ->
                     if (!running.get() && currentStream == null) return@collect
 
-                    // 静音自动判停
-                    if (silenceDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
+                    // VAD 自动判停
+                    if (vadDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
                         Log.d(TAG, "Silence detected, stopping recording")
                         try { listener.onStopped() } catch (t: Throwable) {
                             Log.e(TAG, "Failed to notify stopped", t)

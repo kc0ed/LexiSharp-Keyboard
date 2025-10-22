@@ -154,9 +154,10 @@ abstract class BaseFileAsrEngine(
             return
         }
 
-        // 静音检测器（如果启用）
-        val silenceDetector = if (prefs.autoStopOnSilenceEnabled) {
-            SilenceDetector(
+        // VAD 检测器（如果启用）
+        val vadDetector = if (prefs.autoStopOnSilenceEnabled) {
+            VadDetector(
+                context,
                 sampleRate,
                 prefs.autoStopSilenceWindowMs,
                 prefs.autoStopSilenceSensitivity
@@ -174,8 +175,8 @@ abstract class BaseFileAsrEngine(
 
                 currentSeg.write(audioChunk)
 
-                // 静音自动判停：结束录音，推送最后一段
-                if (silenceDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
+                // VAD 自动判停：结束录音，推送最后一段
+                if (vadDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
                     running.set(false)
                     Log.d(TAG, "Silence detected, stopping recording")
                     try {
@@ -278,6 +279,13 @@ abstract class BaseFileAsrEngine(
                 } catch (t: Throwable) {
                     Log.e(TAG, "Failed to send final buffer during cleanup", t)
                 }
+            }
+
+            // 释放 VAD 资源
+            try {
+                vadDetector?.release()
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to release VAD detector", t)
             }
         }
     }

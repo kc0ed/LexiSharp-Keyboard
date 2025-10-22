@@ -175,8 +175,8 @@ class SonioxStreamAsrEngine(
                 return@launch
             }
 
-            val silenceDetector = if (prefs.autoStopOnSilenceEnabled)
-                SilenceDetector(sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
+            val vadDetector = if (prefs.autoStopOnSilenceEnabled)
+                VadDetector(context, sampleRate, prefs.autoStopSilenceWindowMs, prefs.autoStopSilenceSensitivity)
             else null
 
             val maxFrames = (2000 / chunkMillis).coerceAtLeast(1) // 预缓冲≈2s
@@ -186,8 +186,8 @@ class SonioxStreamAsrEngine(
                 audioManager.startCapture().collect { audioChunk ->
                     if (!running.get()) return@collect
 
-                    // 静音自动判停
-                    if (silenceDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
+                    // VAD 自动判停
+                    if (vadDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
                         Log.d(TAG, "Silence detected, stopping recording")
                         try { listener.onStopped() } catch (t: Throwable) {
                             Log.e(TAG, "Failed to notify stopped", t)

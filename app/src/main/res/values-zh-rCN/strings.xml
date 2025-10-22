@@ -380,11 +380,6 @@
     <string name="label_sv_model_variant">模型版本</string>
     <string name="sv_model_small_int8">Small（int8，约160MB）</string>
     <string name="sv_model_small_full">Small（full，约850MB）</string>
-    <!-- 录音判停校准 -->
-    <string name="btn_silence_calibrate">一键校准灵敏度</string>
-    <string name="toast_silence_calib_intro">已开始采集（约 4 秒），请以正常说话音量说一句话…</string>
-    <string name="toast_silence_calib_need_perm">需要麦克风权限才能校准，请授予后重试</string>
-    <string name="toast_silence_calib_result_set">采样完成，峰值=%1$d；建议灵敏度=%2$d（原为 %3$d，已更新）</string>
 
     <!-- SyncClipboard settings -->
     <string name="section_sync_clipboard">剪贴板同步</string>

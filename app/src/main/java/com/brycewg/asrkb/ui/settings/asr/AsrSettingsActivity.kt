@@ -14,7 +14,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.AsrVendor
-import com.brycewg.asrkb.ui.permission.PermissionActivity
 import com.brycewg.asrkb.store.Prefs
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
@@ -50,7 +49,6 @@ class AsrSettingsActivity : AppCompatActivity() {
     private lateinit var sliderSilenceWindow: Slider
     private lateinit var tvSilenceSensitivityLabel: View
     private lateinit var sliderSilenceSensitivity: Slider
-    private lateinit var btnSilenceCalibrate: MaterialButton
 
     // Vendor group containers
     private lateinit var groupVolc: View
@@ -110,7 +108,6 @@ class AsrSettingsActivity : AppCompatActivity() {
         sliderSilenceWindow = findViewById(R.id.sliderSilenceWindow)
         tvSilenceSensitivityLabel = findViewById(R.id.tvSilenceSensitivityLabel)
         sliderSilenceSensitivity = findViewById(R.id.sliderSilenceSensitivity)
-        btnSilenceCalibrate = findViewById(R.id.btnSilenceCalibrate)
 
         // Vendor groups
         groupVolc = findViewById(R.id.groupVolc)
@@ -181,33 +178,6 @@ class AsrSettingsActivity : AppCompatActivity() {
             viewModel.updateSilenceSensitivity(value.toInt().coerceIn(1, 15))
         }
 
-        // Calibration button
-        btnSilenceCalibrate.setOnClickListener { v ->
-            hapticTapIfEnabled(v)
-            lifecycleScope.launch {
-                runSilenceCalibration(
-                    onStart = {
-                        Toast.makeText(
-                            this@AsrSettingsActivity,
-                            getString(R.string.toast_silence_calib_intro),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
-                    onListening = { /* no-op */ },
-                    onResult = { peak, suggested ->
-                        val finalLevel = suggested.coerceAtLeast(1)
-                        val current = prefs.autoStopSilenceSensitivity
-                        viewModel.updateSilenceSensitivity(finalLevel)
-                        sliderSilenceSensitivity.value = finalLevel.toFloat()
-                        Toast.makeText(
-                            this@AsrSettingsActivity,
-                            getString(R.string.toast_silence_calib_result_set, peak, finalLevel, current),
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                )
-            }
-        }
     }
 
     private fun setupVendorSpecificSettings() {
@@ -886,7 +856,6 @@ class AsrSettingsActivity : AppCompatActivity() {
         if (sliderSilenceWindow.visibility != vis) sliderSilenceWindow.visibility = vis
         if (tvSilenceSensitivityLabel.visibility != vis) tvSilenceSensitivityLabel.visibility = vis
         if (sliderSilenceSensitivity.visibility != vis) sliderSilenceSensitivity.visibility = vis
-        if (btnSilenceCalibrate.visibility != vis) btnSilenceCalibrate.visibility = vis
     }
 
     private fun updateSfOmniVisibility(enabled: Boolean) {
@@ -984,153 +953,6 @@ class AsrSettingsActivity : AppCompatActivity() {
         }
     }
 
-    // ====== Silence Calibration ======
-
-    private suspend fun runSilenceCalibration(
-        onStart: () -> Unit,
-        onListening: () -> Unit,
-        onResult: (peakAbs: Int, suggestedLevel: Int) -> Unit
-    ) {
-        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.RECORD_AUDIO
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-
-        if (!granted) {
-            Toast.makeText(this, getString(R.string.toast_silence_calib_need_perm), Toast.LENGTH_SHORT).show()
-            try {
-                startActivity(android.content.Intent(this, PermissionActivity::class.java))
-            } catch (e: Throwable) {
-                android.util.Log.e(TAG, "Failed to start permission activity", e)
-            }
-            return
-        }
-
-        onStart()
-
-        withContext(Dispatchers.IO) {
-            val sampleRate = 16000
-            val channel = android.media.AudioFormat.CHANNEL_IN_MONO
-            val format = android.media.AudioFormat.ENCODING_PCM_16BIT
-            val durationMs = 4000L
-            val warmupMs = 300L
-            val minBuffer = android.media.AudioRecord.getMinBufferSize(sampleRate, channel, format)
-            val readBytesPerPass = ((sampleRate * 200) / 1000) * 2
-            val bufferSize = kotlin.math.max(minBuffer, readBytesPerPass)
-            var recorder: android.media.AudioRecord? = null
-            var peak = 0
-
-            try {
-                recorder = try {
-                    android.media.AudioRecord(
-                        android.media.MediaRecorder.AudioSource.VOICE_RECOGNITION,
-                        sampleRate, channel, format, bufferSize
-                    )
-                } catch (e: Throwable) {
-                    android.util.Log.w(TAG, "Failed to create recorder with VOICE_RECOGNITION", e)
-                    null
-                }
-
-                if (recorder == null || recorder.state != android.media.AudioRecord.STATE_INITIALIZED) {
-                    try {
-                        recorder?.release()
-                    } catch (e: Throwable) {
-                        android.util.Log.e(TAG, "Failed to release recorder", e)
-                    }
-                    recorder = try {
-                        android.media.AudioRecord(
-                            android.media.MediaRecorder.AudioSource.MIC,
-                            sampleRate, channel, format, bufferSize
-                        )
-                    } catch (e: Throwable) {
-                        android.util.Log.w(TAG, "Failed to create recorder with MIC", e)
-                        null
-                    }
-                }
-
-                if (recorder == null || recorder.state != android.media.AudioRecord.STATE_INITIALIZED) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@AsrSettingsActivity, getString(R.string.error_audio_init_failed), Toast.LENGTH_SHORT).show()
-                    }
-                    return@withContext
-                }
-
-                try {
-                    recorder.startRecording()
-                } catch (t: Throwable) {
-                    android.util.Log.e(TAG, "Failed to start recording", t)
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@AsrSettingsActivity, getString(R.string.error_audio_error, t.message ?: ""), Toast.LENGTH_SHORT).show()
-                    }
-                    return@withContext
-                }
-
-                val buf = ByteArray(readBytesPerPass)
-                val now = android.os.SystemClock.elapsedRealtime()
-                val warmupEnd = now + warmupMs
-                val sampleEnd = warmupEnd + durationMs
-
-                // Warmup phase
-                while (android.os.SystemClock.elapsedRealtime() < warmupEnd) {
-                    try {
-                        recorder.read(buf, 0, buf.size)
-                    } catch (e: Throwable) {
-                        android.util.Log.e(TAG, "Error during warmup read", e)
-                        break
-                    }
-                }
-
-                // Sampling phase
-                while (android.os.SystemClock.elapsedRealtime() < sampleEnd) {
-                    val n = try {
-                        recorder.read(buf, 0, buf.size)
-                    } catch (e: Throwable) {
-                        android.util.Log.e(TAG, "Error during sample read", e)
-                        -1
-                    }
-                    if (n <= 0) continue
-                    val p = peakAbs(buf, n)
-                    if (p > peak) peak = p
-                }
-
-            } finally {
-                try {
-                    recorder?.stop()
-                } catch (e: Throwable) {
-                    android.util.Log.e(TAG, "Failed to stop recorder", e)
-                }
-                try {
-                    recorder?.release()
-                } catch (e: Throwable) {
-                    android.util.Log.e(TAG, "Failed to release recorder", e)
-                }
-            }
-
-            // Map peak to threshold level
-            val thresholds = com.brycewg.asrkb.asr.SilenceDetector.THRESHOLDS
-            var estimated = 1
-            for (i in thresholds.indices) {
-                if (thresholds[i] <= peak) estimated = i + 1 else break
-            }
-            val suggested = (estimated - 2).coerceAtLeast(1)
-            withContext(Dispatchers.Main) { onResult(peak, suggested) }
-        }
-    }
-
-    private fun peakAbs(buf: ByteArray, len: Int): Int {
-        var max = 0
-        var i = 0
-        while (i + 1 < len) {
-            val lo = buf[i].toInt() and 0xFF
-            val hi = buf[i + 1].toInt() and 0xFF
-            val s = (hi shl 8) or lo
-            val v = if (s < 0x8000) s else s - 0x10000
-            val a = kotlin.math.abs(v)
-            if (a > max) max = a
-            i += 2
-        }
-        return max
-    }
 
     companion object {
         private const val TAG = "AsrSettingsActivity"
