@@ -355,11 +355,10 @@
     <string name="btn_sv_download_model_full">一键下载 SenseVoice 模型（small full，约 850MB）</string>
     <string name="btn_sv_clear_model">清除已下载模型</string>
     
-    <!-- 录音判停（文案补充：1-15 档） -->
     <string name="section_silence_autostop">录音判停设置</string>
     <string name="label_auto_stop_silence">无人说话自动停止录音</string>
     <string name="label_silence_window_ms">判停时间阈值（毫秒）</string>
-    <string name="label_silence_sensitivity">灵敏度（1-15，越高越敏感）</string>
+    <string name="label_silence_sensitivity">灵敏度（1-10，越高越敏感）</string>
     <string name="sv_download_status_downloading">下载中… %1$d%%</string>
     <string name="sv_download_status_extracting">解压中…</string>
     <string name="sv_download_status_done">模型已就绪</string>

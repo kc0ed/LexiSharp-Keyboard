@@ -270,7 +270,7 @@ data class AsrSettingsUiState(
     val selectedVendor: AsrVendor = AsrVendor.Volc,
     val autoStopSilenceEnabled: Boolean = false,
     val silenceWindowMs: Int = 1200,
-    val silenceSensitivity: Int = 7,
+    val silenceSensitivity: Int = 4,
     // Volcengine settings
     val volcStreamingEnabled: Boolean = false,
     val volcDdcEnabled: Boolean = false,

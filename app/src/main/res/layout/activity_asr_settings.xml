@@ -71,7 +71,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:valueFrom="1"
-        android:valueTo="15"
+        android:valueTo="10"
         android:stepSize="1" />
 
 

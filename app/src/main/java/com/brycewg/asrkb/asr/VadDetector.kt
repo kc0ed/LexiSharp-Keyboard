@@ -29,7 +29,7 @@ import com.k2fsa.sherpa.onnx.VadModelConfig
  * @param context Android Context，用于访问 AssetManager
  * @param sampleRate 音频采样率（Hz），必须与 PCM 数据一致
  * @param windowMs 连续非语音的时长阈值（毫秒），超过此值判定为静音
- * @param sensitivityLevel 灵敏度档位（1-15），值越大越容易判定为静音
+ * @param sensitivityLevel 灵敏度档位（1-10），值越大越容易判定为静音
  */
 class VadDetector(
     private val context: Context,
@@ -40,42 +40,72 @@ class VadDetector(
     companion object {
         private const val TAG = "VadDetector"
 
-        // 灵敏度档位总数（与 SilenceDetector 保持一致）
-        const val LEVELS: Int = 15
+        // 灵敏度档位总数（与设置滑块一致）
+        const val LEVELS: Int = 10
 
         // 灵敏度映射到 VAD 的 minSilenceDuration 参数（单位：秒）
-        // 值越大，需要更长的静音才会判定为非语音，相当于"不敏感"
-        // 这里反向映射：sensitivityLevel 越高，minSilenceDuration 越小
+        // 调整为更宽松的分段：低档位给更长的静音要求，减少“提前中断”。
+        // 规则：sensitivityLevel 越高，minSilenceDuration 越小（更敏感）。
         private val MIN_SILENCE_DURATION_MAP: FloatArray = floatArrayOf(
-            0.5f,  // 1: 非常不敏感（需要 0.5s 连续静音才判定为非语音）
-            0.45f, // 2
-            0.4f,  // 3
+            0.55f, // 1  非常不敏感：至少 0.60s 静音才算非语音
+            0.50f, // 2
+            0.42f, // 3
             0.35f, // 4
-            0.3f,  // 5（默认）
-            0.28f, // 6
-            0.26f, // 7
-            0.24f, // 8
-            0.22f, // 9
-            0.20f, // 10
-            0.18f, // 11
-            0.16f, // 12
-            0.14f, // 13
-            0.12f, // 14
-            0.10f  // 15: 非常敏感（仅需 0.1s 静音即判定为非语音）
+            0.30f, // 5
+            0.25f, // 6
+            0.20f, // 7（默认附近）
+            0.16f, // 8
+            0.12f, // 9
+            0.08f  // 10 更敏感
         )
     }
 
     private var vad: Vad? = null
     private var silentMsAcc: Int = 0
     private val minSilenceDuration: Float
+    private val threshold: Float
+    private val speechHangoverMs: Int
+    private var speechHangoverRemainingMs: Int = 0
+    // 录音开始阶段的初期防抖（仅在首次检测到语音之前生效）
+    private val initialDebounceMs: Int
+    private var initialDebounceRemainingMs: Int = 0
+    private var hasDetectedSpeech: Boolean = false
 
     init {
         val lvl = sensitivityLevel.coerceIn(1, LEVELS)
         minSilenceDuration = MIN_SILENCE_DURATION_MAP[lvl - 1]
 
+        // 将灵敏度映射到 VAD 置信阈值：
+        // 10 档：低(1-3)=0.40，中(4-7)=0.50，高(8-10)=0.60
+        threshold = when (lvl) {
+            in 1..3 -> 0.40f
+            in 4..7 -> 0.50f
+            else -> 0.60f
+        }
+
+        // 短暂静音“挂起”时间：在检测到语音后，容忍这段时间内的瞬时静音，避免过早累计。
+        // 档位越低，挂起越长以更保守地保持语音状态。
+        speechHangoverMs = when (lvl) {
+            in 1..3 -> 300
+            in 4..7 -> 250
+            else -> 200
+        }
+
+        // 初期防抖：刚开始录音时，允许一小段时间不累计静音，避免尚未开口或微弱启动噪声导致的提前停。
+        // 比语音挂起略保守一点（低档位更长）。
+        initialDebounceMs = when (lvl) {
+            in 1..3 -> 300
+            in 4..7 -> 200
+            else -> 100
+        }
+        initialDebounceRemainingMs = initialDebounceMs
+
         try {
             initVad()
-            Log.i(TAG, "VadDetector initialized: windowMs=$windowMs, sensitivity=$lvl, minSilenceDuration=$minSilenceDuration")
+            Log.i(
+                TAG,
+                "VadDetector initialized: windowMs=$windowMs, sensitivity=$lvl, minSilenceDuration=$minSilenceDuration, threshold=$threshold, hangoverMs=$speechHangoverMs, initialDebounceMs=$initialDebounceMs"
+            )
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to initialize VAD, will fallback to no detection", t)
         }
@@ -88,7 +118,7 @@ class VadDetector(
         // 1. 构建 SileroVadModelConfig
         val sileroConfig = SileroVadModelConfig(
             model = "vad/silero_vad.onnx",  // 模型路径（相对于 assets）
-            threshold = 0.5f,                // 语音检测阈值
+            threshold = threshold,           // 按灵敏度映射的语音检测阈值
             minSilenceDuration = minSilenceDuration, // 根据灵敏度映射
             minSpeechDuration = 0.25f,       // 最小语音持续时长
             windowSize = 512                 // VAD 窗口大小
@@ -138,10 +168,27 @@ class VadDetector(
             // 4. 调用 Vad.clear() 清除内部状态（准备下一帧）
             vad.clear()
 
-            // 5. 累计非语音时长
+            // 5. 初期防抖 + 语音挂起 平滑处理，再进行累计非语音时长
             if (isSpeech) {
                 silentMsAcc = 0
+                hasDetectedSpeech = true
+                speechHangoverRemainingMs = speechHangoverMs
             } else {
+                // 初期防抖：尚未检测到语音前，不累计静音
+                if (!hasDetectedSpeech && initialDebounceRemainingMs > 0) {
+                    initialDebounceRemainingMs -= frameMs
+                    if (initialDebounceRemainingMs < 0) initialDebounceRemainingMs = 0
+                    return false
+                }
+
+                // 语音挂起：检测到语音后的一小段时间内，不累计静音
+                if (speechHangoverRemainingMs > 0) {
+                    speechHangoverRemainingMs -= frameMs
+                    if (speechHangoverRemainingMs < 0) speechHangoverRemainingMs = 0
+                    // 挂起期内直接返回
+                    return false
+                }
+
                 silentMsAcc += frameMs
                 if (silentMsAcc >= windowMs) {
                     Log.d(TAG, "Silence window reached: ${silentMsAcc}ms >= ${windowMs}ms")
@@ -162,6 +209,9 @@ class VadDetector(
     fun reset() {
         silentMsAcc = 0
         try {
+            hasDetectedSpeech = false
+            initialDebounceRemainingMs = initialDebounceMs
+            speechHangoverRemainingMs = 0
             vad?.reset()
             Log.d(TAG, "VAD reset successfully")
         } catch (t: Throwable) {

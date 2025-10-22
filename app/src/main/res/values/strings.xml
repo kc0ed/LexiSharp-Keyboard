@@ -329,7 +329,7 @@
     <string name="section_silence_autostop">录音判停设置</string>
     <string name="label_auto_stop_silence">无人说话自动停止录音</string>
     <string name="label_silence_window_ms">判停时间阈值（毫秒）</string>
-    <string name="label_silence_sensitivity">灵敏度（1-15，越高越敏感）</string>
+    <string name="label_silence_sensitivity">灵敏度（1-10，越高越敏感）</string>
     <string name="download_source_title">选择下载源</string>
     <string name="download_source_github_official">GitHub 官方</string>
     <string name="download_source_mirror_ghproxy">GitHub 镜像 (ghproxy.net)</string>

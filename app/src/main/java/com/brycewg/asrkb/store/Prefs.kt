@@ -111,10 +111,10 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_AUTO_STOP_SILENCE_WINDOW_MS, DEFAULT_SILENCE_WINDOW_MS).coerceIn(300, 5000)
         set(value) = sp.edit { putInt(KEY_AUTO_STOP_SILENCE_WINDOW_MS, value.coerceIn(300, 5000)) }
 
-    // 静音自动判停：灵敏度（1-15，数值越大越容易判定无人说话）
+    // 静音自动判停：灵敏度（1-10，数值越大越容易判定无人说话）
     var autoStopSilenceSensitivity: Int
-        get() = sp.getInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY, DEFAULT_SILENCE_SENSITIVITY).coerceIn(1, 15)
-        set(value) = sp.edit { putInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY, value.coerceIn(1, 15)) }
+        get() = sp.getInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY, DEFAULT_SILENCE_SENSITIVITY).coerceIn(1, 10)
+        set(value) = sp.edit { putInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY, value.coerceIn(1, 10)) }
 
     // 键盘高度档位（1/2/3），默认一档
     var keyboardHeightTier: Int
@@ -836,7 +836,7 @@ class Prefs(context: Context) {
 
         // 静音自动判停默认值
         const val DEFAULT_SILENCE_WINDOW_MS = 1200
-        const val DEFAULT_SILENCE_SENSITIVITY = 7 // 1-15
+        const val DEFAULT_SILENCE_SENSITIVITY = 4 // 1-10
 
         // 标点按钮默认值
         const val DEFAULT_PUNCT_1 = "，"

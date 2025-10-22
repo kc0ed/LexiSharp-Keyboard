@@ -175,7 +175,7 @@ class AsrSettingsActivity : AppCompatActivity() {
         }
 
         setupSlider(sliderSilenceSensitivity) { value ->
-            viewModel.updateSilenceSensitivity(value.toInt().coerceIn(1, 15))
+            viewModel.updateSilenceSensitivity(value.toInt().coerceIn(1, 10))
         }
 
     }
