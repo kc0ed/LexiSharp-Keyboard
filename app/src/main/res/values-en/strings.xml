@@ -181,6 +181,7 @@
     <string name="label_radial_switch_prompt">Switch AI post-processing prompt</string>
     <string name="label_radial_clipboard_upload">Upload Clipboard</string>
     <string name="label_radial_clipboard_pull">Pull Clipboard</string>
+    <string name="label_radial_toggle_silence_autostop">Toggle auto-stop on silence</string>
     <string name="label_choose_asr_vendor">Choose ASR provider</string>
     <string name="toast_move_mode_on">Move mode enabled. Tap the ball to exit.</string>
 
@@ -222,6 +223,8 @@
     <string name="toast_export_failed">Export failed</string>
     <string name="toast_import_success">Imported successfully and applied</string>
     <string name="toast_import_failed">Import failed or incorrect format</string>
+    <string name="toast_silence_autostop_on">Auto-stop on silence enabled</string>
+    <string name="toast_silence_autostop_off">Auto-stop on silence disabled</string>
 
     <!-- Stats -->
     <string name="label_asr_total_chars">Total characters from speech recognition: %1$d</string>

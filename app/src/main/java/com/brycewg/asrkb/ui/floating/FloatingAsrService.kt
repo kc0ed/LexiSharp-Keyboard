@@ -396,6 +396,12 @@ class FloatingAsrService : Service(),
                 getString(R.string.label_radial_move),
                 getString(R.string.label_radial_move)
             ) { enableMoveModeFromMenu() },
+            // 录音判停开关（与 ASR 设置一致）
+            FloatingMenuHelper.MenuItem(
+                R.drawable.ic_settings,
+                getString(R.string.label_radial_toggle_silence_autostop),
+                getString(R.string.label_radial_toggle_silence_autostop)
+            ) { toggleAutoStopSilenceFromMenu() },
             FloatingMenuHelper.MenuItem(
                 if (try { prefs.postProcessEnabled } catch (_: Throwable) { false }) {
                     R.drawable.ic_star_filled
@@ -587,6 +593,17 @@ class FloatingAsrService : Service(),
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to toggle postproc", e)
+        }
+    }
+
+    private fun toggleAutoStopSilenceFromMenu() {
+        try {
+            val newVal = !prefs.autoStopOnSilenceEnabled
+            prefs.autoStopOnSilenceEnabled = newVal
+            val msgRes = if (newVal) R.string.toast_silence_autostop_on else R.string.toast_silence_autostop_off
+            Toast.makeText(this, getString(msgRes), Toast.LENGTH_SHORT).show()
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to toggle silence auto-stop", e)
         }
     }
 
