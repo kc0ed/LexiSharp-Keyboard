@@ -275,6 +275,7 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
     }
 
     override fun onStatusMessage(message: String) {
+        clearStatusTextStyle()
         txtStatus?.text = message
     }
 
@@ -411,10 +412,12 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                 return@setOnClickListener
             }
             if (!prefs.hasAsrKeys()) {
+                clearStatusTextStyle()
                 txtStatus?.text = getString(R.string.hint_need_keys)
                 return@setOnClickListener
             }
             if (!prefs.hasLlmKeys()) {
+                clearStatusTextStyle()
                 txtStatus?.text = getString(R.string.hint_need_llm_keys)
                 return@setOnClickListener
             }
@@ -525,37 +528,58 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
     // ========== UI 更新方法 ==========
 
     private fun updateUiIdle() {
+        clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_idle)
         btnMic?.isSelected = false
         currentInputConnection?.let { inputHelper.finishComposingText(it) }
     }
 
     private fun updateUiListening() {
+        clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_listening)
         btnMic?.isSelected = true
     }
 
     private fun updateUiProcessing() {
+        clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_recognizing)
         btnMic?.isSelected = false
     }
 
     private fun updateUiAiProcessing() {
+        clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_ai_processing)
         btnMic?.isSelected = false
     }
 
     private fun updateUiAiEditListening() {
+        clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_ai_edit_listening)
         btnMic?.isSelected = false
     }
 
     private fun updateUiAiEditProcessing() {
+        clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_ai_editing)
         btnMic?.isSelected = false
     }
 
     // ========== 辅助方法 ==========
+
+    /**
+     * 清除状态文本的粘贴板预览样式（背景遮罩、内边距、点击监听器）
+     * 确保普通状态文本不会显示粘贴板预览的样式
+     */
+    private fun clearStatusTextStyle() {
+        val tv = txtStatus ?: return
+        try {
+            tv.isClickable = false
+            tv.isFocusable = false
+            tv.setOnClickListener(null)
+            tv.background = null
+            tv.setPaddingRelative(0, 0, 0, 0)
+        } catch (_: Throwable) { }
+    }
 
     private fun checkAsrReady(): Boolean {
         if (!hasRecordAudioPermission()) {
@@ -592,6 +616,7 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                 val found = com.brycewg.asrkb.asr.findSvModelDir(variantDir)
                     ?: com.brycewg.asrkb.asr.findSvModelDir(probeRoot)
                 if (found == null) {
+                    clearStatusTextStyle()
                     txtStatus?.text = getString(R.string.error_sensevoice_model_missing)
                     return false
                 }
@@ -603,6 +628,7 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
     }
 
     private fun refreshPermissionUi() {
+        clearStatusTextStyle()
         val granted = hasRecordAudioPermission()
         val hasKeys = prefs.hasAsrKeys()
         if (!granted) {
@@ -698,6 +724,7 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                 val position = mi.itemId
                 val preset = presets.getOrNull(position) ?: return@setOnMenuItemClickListener false
                 prefs.activePromptId = preset.id
+                clearStatusTextStyle()
                 txtStatus?.text = getString(R.string.switched_preset, preset.title)
                 true
             }
@@ -717,7 +744,10 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                     }
                     if (!prepared) {
                         try {
-                            rootView?.post { txtStatus?.text = getString(R.string.sv_loading_model) }
+                            rootView?.post {
+                                clearStatusTextStyle()
+                                txtStatus?.text = getString(R.string.sv_loading_model)
+                            }
                         } catch (_: Throwable) { }
                         serviceScope.launch(Dispatchers.Default) {
                             try {
@@ -728,8 +758,10 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                                     onLoadDone = {
                                         try {
                                             rootView?.post {
+                                                clearStatusTextStyle()
                                                 txtStatus?.text = getString(R.string.sv_model_ready)
                                                 rootView?.postDelayed({
+                                                    clearStatusTextStyle()
                                                     if (asrManager.isRunning()) {
                                                         txtStatus?.text = getString(R.string.status_listening)
                                                     } else {
@@ -768,6 +800,7 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                             override fun onUploadSuccess() {
                                 try {
                                     rootView?.post {
+                                        clearStatusTextStyle()
                                         txtStatus?.text = getString(R.string.sc_status_uploaded)
                                     }
                                 } catch (_: Throwable) { }
