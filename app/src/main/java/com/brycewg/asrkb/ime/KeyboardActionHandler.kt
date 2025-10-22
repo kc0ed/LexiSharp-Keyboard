@@ -388,7 +388,12 @@ class KeyboardActionHandler(
     }
 
     override fun onLocalModelLoadStart() {
-        uiListener?.onStatusMessage(context.getString(R.string.sv_loading_model))
+        val resId = if (currentState is KeyboardState.Listening || currentState is KeyboardState.AiEditListening) {
+            R.string.sv_loading_model_while_listening
+        } else {
+            R.string.sv_loading_model
+        }
+        uiListener?.onStatusMessage(context.getString(resId))
     }
 
     override fun onLocalModelLoadDone() {

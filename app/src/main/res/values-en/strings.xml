@@ -360,6 +360,7 @@
     <string name="sv_model_small_int8">Small (int8, ~160MB)</string>
     <string name="sv_model_small_full">Small (full, ~850MB)</string>
     <string name="sv_loading_model">Loading local model…</string>
+    <string name="sv_loading_model_while_listening">Listening… loading local model in background…</string>
     <string name="sv_model_ready">Local model loaded</string>
     <string name="label_sv_preload">Load model on first show</string>
     <string name="label_sv_keep_alive">Model keep-alive duration</string>

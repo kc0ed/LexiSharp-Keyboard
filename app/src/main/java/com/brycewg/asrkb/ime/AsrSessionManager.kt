@@ -2,6 +2,8 @@ package com.brycewg.asrkb.ime
 
 import android.content.Context
 import android.util.Log
+import android.os.Handler
+import android.os.Looper
 import com.brycewg.asrkb.asr.*
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -198,6 +200,33 @@ class AsrSessionManager(
      */
     fun startRecording(state: KeyboardState) {
         currentState = state
+        // 若为本地 SenseVoice 且使用文件识别模式，在录音触发时后台开始加载模型
+        try {
+            if (prefs.asrVendor == AsrVendor.SenseVoice && !prefs.svPseudoStreamingEnabled) {
+                val prepared = try {
+                    com.brycewg.asrkb.asr.isSenseVoicePrepared()
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to check local model prepared state", t)
+                    false
+                }
+                if (!prepared) {
+                    try {
+                        com.brycewg.asrkb.asr.preloadSenseVoiceIfConfigured(
+                            context,
+                            prefs,
+                            onLoadStart = { onLocalModelLoadStart() },
+                            onLoadDone = { onLocalModelLoadDone() },
+                            suppressToastOnStart = true,
+                            forImmediateUse = true
+                        )
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to trigger SenseVoice preload on startRecording", t)
+                    }
+                }
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Local model preload guard failed", t)
+        }
         asrEngine?.start()
     }
 
@@ -255,12 +284,28 @@ class AsrSessionManager(
 
     override fun onLocalModelLoadStart() {
         Log.d(TAG, "onLocalModelLoadStart")
-        listener?.onLocalModelLoadStart()
+        try {
+            Handler(Looper.getMainLooper()).post {
+                try { listener?.onLocalModelLoadStart() } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to deliver onLocalModelLoadStart to UI", t)
+                }
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to post onLocalModelLoadStart to main", t)
+        }
     }
 
     override fun onLocalModelLoadDone() {
         Log.d(TAG, "onLocalModelLoadDone")
-        listener?.onLocalModelLoadDone()
+        try {
+            Handler(Looper.getMainLooper()).post {
+                try { listener?.onLocalModelLoadDone() } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to deliver onLocalModelLoadDone to UI", t)
+                }
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to post onLocalModelLoadDone to main", t)
+        }
     }
 
     // ========== 私有方法 ==========

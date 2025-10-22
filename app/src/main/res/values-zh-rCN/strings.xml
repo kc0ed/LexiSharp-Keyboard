@@ -352,6 +352,7 @@
     <string name="sv_download_status_done">模型已就绪</string>
     <string name="sv_download_status_failed">下载或解压失败</string>
     <string name="sv_loading_model">本地模型加载中…</string>
+    <string name="sv_loading_model_while_listening">正在聆听…本地模型后台加载中…</string>
     <string name="sv_model_ready">本地模型加载完成</string>
     <string name="label_sv_preload">首次显示时加载模型</string>
     <string name="label_sv_keep_alive">模型内存保留时长</string>

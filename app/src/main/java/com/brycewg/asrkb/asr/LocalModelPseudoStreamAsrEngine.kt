@@ -58,6 +58,13 @@ class LocalModelPseudoStreamAsrEngine(
     override val isRunning: Boolean
         get() = running.get()
 
+    // 预缓冲：在模型加载期间缓存音频，待流创建后一次性送入
+    private val prebufferMutex = Mutex()
+    private val prebuffer = ArrayDeque<ByteArray>()
+    private var prebufferBytes: Int = 0
+    // ~12 秒缓冲：16kHz * 2B * 12s ≈ 384KB
+    private val maxPrebufferBytes: Int = 384 * 1024
+
     private var loadJob: Job? = null
     override fun start() {
         if (running.get()) return
@@ -75,6 +82,11 @@ class LocalModelPseudoStreamAsrEngine(
             listener.onError(context.getString(R.string.error_local_asr_not_ready))
             return
         }
+        // 将引擎标记为运行中，以便开始采集和静音判停
+        running.set(true)
+        // 启动音频采集（先录先缓冲），并在后台加载模型与创建 stream
+        startCapture()
+
         // 后台加载模型并创建 stream，避免阻塞主线程
         loadJob?.cancel()
         loadJob = scope.launch(Dispatchers.Default) {
@@ -105,7 +117,6 @@ class LocalModelPseudoStreamAsrEngine(
                 val keepMinutes = try { prefs.svKeepAliveMinutes } catch (_: Throwable) { -1 }
                 val keepMs = if (keepMinutes <= 0) 0L else keepMinutes.toLong() * 60_000L
                 val alwaysKeep = keepMinutes < 0
-                if (closing.get()) return@launch
 
                 Log.d(TAG, "Preparing SenseVoice model at $modelPath")
                 val ok = svManager.prepare(
@@ -125,14 +136,14 @@ class LocalModelPseudoStreamAsrEngine(
                         Log.e(TAG, "Failed to notify load done", t)
                     } },
                 )
-                if (!ok || closing.get()) {
+                if (!ok) {
                     Log.w(TAG, "Model preparation failed or cancelled")
                     return@launch
                 }
 
                 Log.d(TAG, "Creating recognition stream")
                 val stream = svManager.createStreamOrNull()
-                if (stream == null || closing.get()) {
+                if (stream == null) {
                     if (stream != null) try {
                         svManager.releaseStream(stream)
                     } catch (t: Throwable) {
@@ -142,9 +153,35 @@ class LocalModelPseudoStreamAsrEngine(
                     return@launch
                 }
                 currentStream = stream
-                running.set(true)
-                Log.d(TAG, "Starting audio capture and decode")
-                startCaptureAndDecode(stream)
+                Log.d(TAG, "Draining prebuffer and entering streaming mode")
+                // 先把预缓冲送入
+                drainPrebufferTo(stream)
+
+                if (closing.get()) {
+                    // 用户已停止：做一次最终解码并收尾
+                    try {
+                        val finalText = streamMutex.withLock { svManager.decodeAndGetText(stream) }
+                        Log.d(TAG, "Final(result-after-late-load) length: ${finalText?.length ?: 0}")
+                        try {
+                            listener.onFinal(finalText?.trim() ?: "")
+                        } catch (notifyError: Throwable) {
+                            Log.e(TAG, "Failed to notify final after late load", notifyError)
+                        }
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "Failed to decode final after late load", t)
+                        try { listener.onFinal("") } catch (_: Throwable) {}
+                    } finally {
+                        try { streamMutex.withLock { svManager.releaseStream(stream) } } catch (t: Throwable) {
+                            Log.e(TAG, "Failed to release stream after late load", t)
+                        }
+                        currentStream = null
+                        closing.set(false)
+                        running.set(false)
+                    }
+                } else {
+                    // 继续采集：后续音频直接走实时 deliverChunk()
+                    running.set(true)
+                }
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to start engine: ${t.message}", t)
                 try {
@@ -157,6 +194,13 @@ class LocalModelPseudoStreamAsrEngine(
     }
 
     override fun stop() {
+        if (!running.get() && currentStream == null) {
+            // 未进入 running 但可能仍在加载/预缓冲，标记关闭并等待加载完成后冲刷
+            closing.set(true)
+            audioJob?.cancel()
+            audioJob = null
+            return
+        }
         if (!running.get()) return
         Log.d(TAG, "Stopping engine")
         closing.set(true)
@@ -197,14 +241,9 @@ class LocalModelPseudoStreamAsrEngine(
     }
 
     /**
-     * 启动音频采集并进行实时解码
-     *
-     * 使用 AudioCaptureManager 简化音频采集逻辑，包括：
-     * - 权限检查和 AudioRecord 初始化
-     * - 音频源回退（VOICE_RECOGNITION -> MIC）
-     * - 预热逻辑（兼容模式 vs 非兼容模式）
+     * 启动音频采集。若流未创建则先进入预缓冲；创建后直接投送 + 解码。
      */
-    private fun startCaptureAndDecode(stream: Any) {
+    private fun startCapture() {
         audioJob?.cancel()
         audioJob = scope.launch(Dispatchers.IO) {
             // 将帧间隔从 ~200ms 缩小到 ~120ms，以降低预览延迟
@@ -232,7 +271,7 @@ class LocalModelPseudoStreamAsrEngine(
             try {
                 Log.d(TAG, "Starting audio capture with chunk size ${targetChunkMs}ms")
                 audioManager.startCapture().collect { audioChunk ->
-                    if (!running.get()) return@collect
+                    if (!running.get() && currentStream == null) return@collect
 
                     // 静音自动判停
                     if (silenceDetector?.shouldStop(audioChunk, audioChunk.size) == true) {
@@ -244,8 +283,13 @@ class LocalModelPseudoStreamAsrEngine(
                         return@collect
                     }
 
-                    // 投送音频块到离线流并尝试解码
-                    deliverChunk(stream, audioChunk, audioChunk.size)
+                    // 若流已就绪则直接投送，否则进入预缓冲
+                    val s = currentStream
+                    if (s != null) {
+                        deliverChunk(s, audioChunk, audioChunk.size)
+                    } else {
+                        appendPrebuffer(audioChunk)
+                    }
                 }
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) {
@@ -259,7 +303,8 @@ class LocalModelPseudoStreamAsrEngine(
     }
 
     private suspend fun deliverChunk(stream: Any, bytes: ByteArray, len: Int) {
-        if (!running.get() || closing.get()) return
+        // 在运行中或处于收尾阶段(closing)均可投送；仅在二者皆不满足时返回
+        if (!running.get() && !closing.get()) return
         if (currentStream !== stream) return
         val floats = pcmToFloatArray(bytes, len)
         if (floats.isEmpty()) return
@@ -300,6 +345,32 @@ class LocalModelPseudoStreamAsrEngine(
                 lastEmitUptimeMs = now
                 lastEmittedText = trimmed
             }
+        }
+    }
+
+    private suspend fun appendPrebuffer(bytes: ByteArray) {
+        prebufferMutex.withLock {
+            // 控制内存上限：超限则丢弃最旧的块
+            if (bytes.isEmpty()) return@withLock
+            while (prebufferBytes + bytes.size > maxPrebufferBytes && prebuffer.isNotEmpty()) {
+                val removed = prebuffer.removeFirst()
+                prebufferBytes -= removed.size
+            }
+            prebuffer.addLast(bytes.copyOf())
+            prebufferBytes += bytes.size
+        }
+    }
+
+    private suspend fun drainPrebufferTo(stream: Any) {
+        val drainList = mutableListOf<ByteArray>()
+        prebufferMutex.withLock {
+            if (prebuffer.isEmpty()) return
+            drainList.addAll(prebuffer)
+            prebuffer.clear()
+            prebufferBytes = 0
+        }
+        for (chunk in drainList) {
+            deliverChunk(stream, chunk, chunk.size)
         }
     }
 

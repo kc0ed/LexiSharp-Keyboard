@@ -221,17 +221,21 @@ fun preloadSenseVoiceIfConfigured(
     prefs: Prefs,
     onLoadStart: (() -> Unit)? = null,
     onLoadDone: (() -> Unit)? = null,
-    suppressToastOnStart: Boolean = false
+    suppressToastOnStart: Boolean = false,
+    // force 参数仅用于兼容旧调用，不再改变保留策略；始终遵循偏好设置
+    force: Boolean = false,
+    // 该预加载是否紧跟着会被立即使用（例如开始录音）。
+    // 若为 true，则不在此处调度卸载，由实际使用/释放时再调度；否则预加载后按设置调度卸载。
+    forImmediateUse: Boolean = false
 ) {
     try {
         val manager = SenseVoiceOnnxManager.getInstance()
         if (!manager.isOnnxAvailable()) return
-        // 保护：若"保留时长=不保留(0)"，则跳过预加载，避免立刻卸载造成空转
+        // 读取保留时长：预加载阶段不再据此直接卸载，由实际使用时机决定
         val keepMinutesGuard = try { prefs.svKeepAliveMinutes } catch (t: Throwable) {
             Log.w("SenseVoiceFileAsrEngine", "Failed to get keep alive minutes", t)
             -1
         }
-        if (keepMinutesGuard == 0) return
         val base = try { context.getExternalFilesDir(null) } catch (t: Throwable) {
             Log.w("SenseVoiceFileAsrEngine", "Failed to get external files dir", t)
             null
@@ -266,7 +270,7 @@ fun preloadSenseVoiceIfConfigured(
         val alwaysKeep = keepMinutes < 0
         // 在后台协程触发预加载，避免直接在调用线程（可能是主线程）阻塞
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
-            manager.prepare(
+            val ok = manager.prepare(
                 assetManager = null,
                 tokens = tokensPath,
                 model = modelPath,
@@ -307,6 +311,11 @@ fun preloadSenseVoiceIfConfigured(
                 },
                 onLoadDone = onLoadDone,
             )
+            if (ok && !forImmediateUse) {
+                try { SenseVoiceOnnxManager.getInstance().scheduleUnloadIfIdle() } catch (t: Throwable) {
+                    Log.e("SenseVoiceFileAsrEngine", "Failed to schedule unload after preload", t)
+                }
+            }
         }
     } catch (t: Throwable) {
         Log.e("SenseVoiceFileAsrEngine", "Failed to preload SenseVoice", t)
@@ -426,7 +435,7 @@ class SenseVoiceOnnxManager private constructor() {
         private const val TAG = "SenseVoiceOnnxManager"
 
         @Volatile
-        private var instance: SenseVoiceOnnxManager? = null
+    private var instance: SenseVoiceOnnxManager? = null
 
         fun getInstance(): SenseVoiceOnnxManager {
             return instance ?: synchronized(this) {
@@ -472,6 +481,11 @@ class SenseVoiceOnnxManager private constructor() {
     fun isPrepared(): Boolean {
         return cachedRecognizer != null
     }
+
+    // 记录最近一次配置，用于在 stream 释放时按用户设置调度卸载
+    @Volatile private var lastKeepAliveMs: Long = 0L
+    @Volatile private var lastAlwaysKeep: Boolean = false
+    @Volatile private var activeStreams: Int = 0
 
     /**
      * 调度自动卸载
@@ -663,6 +677,10 @@ class SenseVoiceOnnxManager private constructor() {
                 }
             }
 
+            // 记录本次配置
+            lastKeepAliveMs = keepAliveMs
+            lastAlwaysKeep = alwaysKeep
+
             val stream = recognizer.createStream()
             try {
                 stream.acceptWaveform(samples, sampleRate)
@@ -716,8 +734,10 @@ class SenseVoiceOnnxManager private constructor() {
                     Log.e(TAG, "onLoadDone callback failed", t)
                 }
             }
-
-            scheduleAutoUnload(keepAliveMs, alwaysKeep)
+            // 记录本次配置。注意：不在预加载时立即调度卸载，
+            // 将在实际使用（decodeOffline 或流式结束 releaseStream）后再依据设置调度。
+            lastKeepAliveMs = keepAliveMs
+            lastAlwaysKeep = alwaysKeep
             return@withLock true
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to prepare recognizer: ${t.message}", t)
@@ -730,7 +750,9 @@ class SenseVoiceOnnxManager private constructor() {
     suspend fun createStreamOrNull(): Any? = mutex.withLock {
         try {
             val recognizer = cachedRecognizer ?: return@withLock null
-            return@withLock recognizer.createStream()
+            val s = recognizer.createStream()
+            activeStreams++
+            return@withLock s
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to create stream: ${t.message}", t)
             return@withLock null
@@ -763,8 +785,19 @@ class SenseVoiceOnnxManager private constructor() {
             if (stream is ReflectiveStream) {
                 stream.release()
             }
+            // 根据最近一次配置调度卸载（遵循保留时长设置）
+            if (activeStreams > 0) activeStreams--
+            scheduleUnloadIfIdle()
         } catch (t: Throwable) {
             Log.e(TAG, "Failed to release stream: ${t.message}", t)
+        }
+    }
+
+    fun scheduleUnloadIfIdle() {
+        if (activeStreams <= 0) {
+            scheduleAutoUnload(lastKeepAliveMs, lastAlwaysKeep)
+        } else {
+            Log.d(TAG, "Skip scheduling unload: ${activeStreams} active stream(s)")
         }
     }
 }
