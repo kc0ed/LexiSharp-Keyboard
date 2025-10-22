@@ -12,7 +12,6 @@ import android.util.Log
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.AsrAccessibilityService
 import com.brycewg.asrkb.ui.floating.FloatingAsrService
-import com.brycewg.asrkb.ui.floating.FloatingImeSwitcherService
 
 /**
  * 开机自启广播接收器：
@@ -37,13 +36,6 @@ class BootReceiver : BroadcastReceiver() {
             val prefs = Prefs(context)
             val canOverlay = Settings.canDrawOverlays(context)
             if (!canOverlay) return
-
-            if (prefs.floatingSwitcherEnabled && !prefs.floatingAsrEnabled) {
-                val i1 = Intent(context, FloatingImeSwitcherService::class.java).apply {
-                    action = FloatingImeSwitcherService.ACTION_SHOW
-                }
-                context.startService(i1)
-            }
 
             if (prefs.floatingAsrEnabled) {
                 val i2 = Intent(context, FloatingAsrService::class.java).apply {

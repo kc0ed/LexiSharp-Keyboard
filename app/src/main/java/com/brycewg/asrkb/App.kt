@@ -10,7 +10,6 @@ import com.google.android.material.color.DynamicColors
 import com.brycewg.asrkb.store.Prefs
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
-import com.brycewg.asrkb.ui.floating.FloatingImeSwitcherService
 import com.brycewg.asrkb.ui.floating.FloatingAsrService
 
 class App : Application() {
@@ -36,14 +35,6 @@ class App : Application() {
         try {
             val prefs = Prefs(this)
             val canOverlay = Settings.canDrawOverlays(this)
-
-            // 启动输入法切换悬浮球
-            if (prefs.floatingSwitcherEnabled && canOverlay && !prefs.floatingAsrEnabled) {
-                val intent = Intent(this, FloatingImeSwitcherService::class.java).apply {
-                    action = FloatingImeSwitcherService.ACTION_SHOW
-                }
-                startService(intent)
-            }
 
             // 启动语音识别悬浮球
             if (prefs.floatingAsrEnabled && canOverlay) {

@@ -92,11 +92,6 @@
 
 
 
-        <!-- 悬浮球切换输入法的前台/常驻服务（不导出） -->
-        <service
-            android:name=".ui.floating.FloatingImeSwitcherService"
-            android:exported="false" />
-
         <!-- 悬浮球语音识别服务 -->
         <service
             android:name=".ui.floating.FloatingAsrService"

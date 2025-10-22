@@ -16,7 +16,7 @@ import android.widget.Toast
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.LocaleHelper
 import com.brycewg.asrkb.ui.floating.FloatingAsrService
-import com.brycewg.asrkb.ui.floating.FloatingImeSwitcherService
+import com.brycewg.asrkb.ui.floating.FloatingImeHints
 
 /**
  * 无障碍服务,用于悬浮球语音识别后将文本插入到当前焦点的输入框中
@@ -274,8 +274,7 @@ class AsrAccessibilityService : AccessibilityService() {
      */
     private fun shouldCheckImeVisibility(prefs: Prefs): Boolean {
         if (!prefs.floatingSwitcherOnlyWhenImeVisible) return false
-        val anyFloatingEnabled = prefs.floatingSwitcherEnabled || prefs.floatingAsrEnabled
-        return anyFloatingEnabled
+        return prefs.floatingAsrEnabled
     }
 
     /**
@@ -339,28 +338,10 @@ class AsrAccessibilityService : AccessibilityService() {
      */
     private fun notifyFloatingServices(visible: Boolean) {
         try {
-            val action = if (visible) {
-                FloatingImeSwitcherService.ACTION_HINT_IME_VISIBLE
-            } else {
-                FloatingImeSwitcherService.ACTION_HINT_IME_HIDDEN
-            }
-
-            // 通知输入法切换悬浮球
+            val action = if (visible) FloatingImeHints.ACTION_HINT_IME_VISIBLE else FloatingImeHints.ACTION_HINT_IME_HIDDEN
             try {
-                val i1 = Intent(this, FloatingImeSwitcherService::class.java).apply {
-                    this.action = action
-                }
-                startService(i1)
-            } catch (e: Throwable) {
-                Log.e(TAG, "Error notifying FloatingImeSwitcherService", e)
-            }
-
-            // 通知语音识别悬浮球
-            try {
-                val i2 = Intent(this, FloatingAsrService::class.java).apply {
-                    this.action = action
-                }
-                startService(i2)
+                val i = Intent(this, FloatingAsrService::class.java).apply { this.action = action }
+                startService(i)
             } catch (e: Throwable) {
                 Log.e(TAG, "Error notifying FloatingAsrService", e)
             }

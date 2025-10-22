@@ -19,6 +19,7 @@ import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.floatingball.*
+import com.brycewg.asrkb.ui.floating.FloatingImeHints
 import com.brycewg.asrkb.ui.AsrAccessibilityService
 import com.brycewg.asrkb.ui.SettingsActivity
 import kotlinx.coroutines.CoroutineScope
@@ -82,11 +83,11 @@ class FloatingAsrService : Service(),
     private val hintReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                FloatingImeSwitcherService.ACTION_HINT_IME_VISIBLE -> {
+                FloatingImeHints.ACTION_HINT_IME_VISIBLE -> {
                     imeVisible = true
                     updateVisibilityByPref()
                 }
-                FloatingImeSwitcherService.ACTION_HINT_IME_HIDDEN -> {
+                FloatingImeHints.ACTION_HINT_IME_HIDDEN -> {
                     imeVisible = false
                     updateVisibilityByPref()
                 }
@@ -115,8 +116,8 @@ class FloatingAsrService : Service(),
         // 注册广播接收器
         try {
             val filter = android.content.IntentFilter().apply {
-                addAction(FloatingImeSwitcherService.ACTION_HINT_IME_VISIBLE)
-                addAction(FloatingImeSwitcherService.ACTION_HINT_IME_HIDDEN)
+                addAction(FloatingImeHints.ACTION_HINT_IME_VISIBLE)
+                addAction(FloatingImeHints.ACTION_HINT_IME_HIDDEN)
             }
             if (android.os.Build.VERSION.SDK_INT >= 33) {
                 registerReceiver(hintReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
@@ -133,11 +134,11 @@ class FloatingAsrService : Service(),
         when (intent?.action) {
             ACTION_SHOW -> updateVisibilityByPref()
             ACTION_HIDE -> hideBall()
-            FloatingImeSwitcherService.ACTION_HINT_IME_VISIBLE -> {
+            FloatingImeHints.ACTION_HINT_IME_VISIBLE -> {
                 imeVisible = true
                 updateVisibilityByPref()
             }
-            FloatingImeSwitcherService.ACTION_HINT_IME_HIDDEN -> {
+            FloatingImeHints.ACTION_HINT_IME_HIDDEN -> {
                 imeVisible = false
                 updateVisibilityByPref()
             }

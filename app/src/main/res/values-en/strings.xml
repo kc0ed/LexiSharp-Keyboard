@@ -126,13 +126,11 @@
     <string name="label_trim_trailing_punct">Remove trailing punctuation on finish</string>
     <string name="label_mic_haptic">Haptic feedback for keys and floating ball</string>
     <string name="label_mic_tap_toggle">Use tap to control recording</string>
-    <string name="label_floating_switcher">Enable floating ball to switch IME</string>
     <string name="label_floating_only_when_ime_visible">Only show floating ball when keyboard is visible</string>
     <string name="label_floating_alpha">Floating ball transparency</string>
     <string name="label_floating_size">Floating ball size</string>
     <string name="toast_need_overlay_perm">Please grant "Display over other apps" in system settings to enable the floating ball</string>
     <string name="toast_need_accessibility_perm">Please enable Accessibility Service in system settings to support this feature</string>
-    <string name="cd_floating_switcher">Quick switch to LexiSharp keyboard</string>
     <string name="label_floating_asr">Use floating ball for voice recognition</string>
     <string name="label_floating_write_compat">Floating write-text compatibility mode</string>
     <string name="label_floating_ime_visibility_compat">IME visibility compatibility mode</string>

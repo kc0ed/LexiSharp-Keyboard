@@ -223,7 +223,7 @@ class SetupStateMachine(private val context: Context) {
         }
 
         // 2) 悬浮窗权限（当启用悬浮功能时需要）
-        val needOverlay = prefs.floatingSwitcherEnabled || prefs.floatingAsrEnabled
+        val needOverlay = prefs.floatingAsrEnabled
         if (!state.askedOverlay && needOverlay && !hasOverlayPermission()) {
             Log.d(TAG, "Requesting overlay permission")
             Toast.makeText(
@@ -295,7 +295,7 @@ class SetupStateMachine(private val context: Context) {
      */
     private fun hasAllRequiredPermissions(): Boolean {
         val micGranted = hasMicrophonePermission()
-        val needOverlay = prefs.floatingSwitcherEnabled || prefs.floatingAsrEnabled
+        val needOverlay = prefs.floatingAsrEnabled
         val overlayGranted = !needOverlay || hasOverlayPermission()
         val needA11y = prefs.floatingAsrEnabled
         val a11yGranted = !needA11y || hasAccessibilityPermission()

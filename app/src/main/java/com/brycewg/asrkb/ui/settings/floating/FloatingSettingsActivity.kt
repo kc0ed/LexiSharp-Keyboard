@@ -33,7 +33,6 @@ class FloatingSettingsActivity : AppCompatActivity() {
     private lateinit var prefs: Prefs
 
     // UI 组件
-    private lateinit var switchFloating: MaterialSwitch
     private lateinit var switchFloatingOnlyWhenImeVisible: MaterialSwitch
     private lateinit var sliderFloatingAlpha: Slider
     private lateinit var sliderFloatingSize: Slider
@@ -74,7 +73,6 @@ class FloatingSettingsActivity : AppCompatActivity() {
      * 初始化所有 UI 组件
      */
     private fun initializeViews() {
-        switchFloating = findViewById(R.id.switchFloatingSwitcher)
         switchFloatingOnlyWhenImeVisible = findViewById(R.id.switchFloatingOnlyWhenImeVisible)
         sliderFloatingAlpha = findViewById(R.id.sliderFloatingAlpha)
         sliderFloatingSize = findViewById(R.id.sliderFloatingSize)
@@ -89,15 +87,6 @@ class FloatingSettingsActivity : AppCompatActivity() {
      * 绑定 ViewModel 状态到 UI
      */
     private fun bindStateToViews() {
-        lifecycleScope.launch {
-            // 输入法切换球开关
-            viewModel.imeSwitcherEnabled.collect { enabled ->
-                if (switchFloating.isChecked != enabled) {
-                    switchFloating.isChecked = enabled
-                }
-            }
-        }
-
         lifecycleScope.launch {
             // 语音识别球开关
             viewModel.asrEnabled.collect { enabled ->
@@ -161,12 +150,6 @@ class FloatingSettingsActivity : AppCompatActivity() {
      * 设置所有监听器
      */
     private fun setupListeners() {
-        // 输入法悬浮球开关
-        switchFloating.setOnCheckedChangeListener { btn, isChecked ->
-            hapticTapIfEnabled(btn)
-            handleImeSwitcherToggle(isChecked)
-        }
-
         // 仅在键盘显示时显示悬浮球
         switchFloatingOnlyWhenImeVisible.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)
@@ -240,26 +223,6 @@ class FloatingSettingsActivity : AppCompatActivity() {
                 viewModel.updateImeVisibilityCompatPackages(this@FloatingSettingsActivity, s?.toString() ?: "")
             }
         })
-    }
-
-    /**
-     * 处理输入法切换球开关变化
-     */
-    private fun handleImeSwitcherToggle(enabled: Boolean) {
-        val permissionRequest = viewModel.handleImeSwitcherToggle(this, enabled, serviceManager)
-        when (permissionRequest) {
-            FloatingSettingsViewModel.PermissionRequest.OVERLAY -> {
-                showOverlayPermissionToast()
-                requestOverlayPermission()
-            }
-            FloatingSettingsViewModel.PermissionRequest.ACCESSIBILITY -> {
-                showAccessibilityPermissionToast()
-                requestAccessibilityPermission()
-            }
-            null -> {
-                // 成功，无需额外操作
-            }
-        }
     }
 
     /**

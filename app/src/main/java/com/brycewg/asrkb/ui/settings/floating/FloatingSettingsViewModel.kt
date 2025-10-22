@@ -21,9 +21,6 @@ class FloatingSettingsViewModel : ViewModel() {
     }
 
     // UI 状态
-    private val _imeSwitcherEnabled = MutableStateFlow(false)
-    val imeSwitcherEnabled: StateFlow<Boolean> = _imeSwitcherEnabled.asStateFlow()
-
     private val _asrEnabled = MutableStateFlow(false)
     val asrEnabled: StateFlow<Boolean> = _asrEnabled.asStateFlow()
 
@@ -48,69 +45,14 @@ class FloatingSettingsViewModel : ViewModel() {
     fun initialize(context: Context) {
         try {
             val prefs = Prefs(context)
-            _imeSwitcherEnabled.value = prefs.floatingSwitcherEnabled
             _asrEnabled.value = prefs.floatingAsrEnabled
             _onlyWhenImeVisible.value = prefs.floatingSwitcherOnlyWhenImeVisible
             _alpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
             _sizeDp.value = prefs.floatingBallSizeDp
             _writeCompatEnabled.value = prefs.floatingWriteTextCompatEnabled
             _imeVisibilityCompatEnabled.value = prefs.floatingImeVisibilityCompatEnabled
-
-            // 如果两者同时开启，兜底优先语音识别
-            if (_imeSwitcherEnabled.value && _asrEnabled.value) {
-                Log.w(TAG, "Both services enabled, disabling IME switcher")
-                _imeSwitcherEnabled.value = false
-                prefs.floatingSwitcherEnabled = false
-            }
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to initialize state", e)
-        }
-    }
-
-    /**
-     * 处理输入法切换悬浮球开关变化
-     * @return 是否需要请求权限（overlay 或 accessibility）
-     */
-    fun handleImeSwitcherToggle(
-        context: Context,
-        enabled: Boolean,
-        serviceManager: FloatingServiceManager
-    ): PermissionRequest? {
-        try {
-            val prefs = Prefs(context)
-
-            // 检查悬浮窗权限
-            if (enabled && !Settings.canDrawOverlays(context)) {
-                Log.w(TAG, "IME switcher toggle: missing overlay permission")
-                _imeSwitcherEnabled.value = false
-                prefs.floatingSwitcherEnabled = false
-                return PermissionRequest.OVERLAY
-            }
-
-            // 互斥：如果启用输入法切换球，需要关闭语音识别球
-            if (enabled && _asrEnabled.value) {
-                Log.d(TAG, "IME switcher enabled, disabling ASR service")
-                _asrEnabled.value = false
-                prefs.floatingAsrEnabled = false
-                serviceManager.hideAsrService()
-            }
-
-            // 更新状态
-            _imeSwitcherEnabled.value = enabled
-            prefs.floatingSwitcherEnabled = enabled
-
-            // 启动或停止服务
-            if (enabled) {
-                serviceManager.showImeSwitcherService()
-            } else {
-                serviceManager.hideImeSwitcherService()
-            }
-
-            Log.d(TAG, "IME switcher toggled: $enabled")
-            return null
-        } catch (e: Throwable) {
-            Log.e(TAG, "Failed to handle IME switcher toggle", e)
-            return null
         }
     }
 
@@ -138,14 +80,6 @@ class FloatingSettingsViewModel : ViewModel() {
             if (enabled && !isAccessibilityServiceEnabled(context)) {
                 Log.w(TAG, "ASR toggle: missing accessibility permission")
                 return PermissionRequest.ACCESSIBILITY
-            }
-
-            // 互斥：如果启用语音识别球，需要关闭输入法切换球
-            if (enabled && _imeSwitcherEnabled.value) {
-                Log.d(TAG, "ASR enabled, disabling IME switcher service")
-                _imeSwitcherEnabled.value = false
-                prefs.floatingSwitcherEnabled = false
-                serviceManager.hideImeSwitcherService()
             }
 
             // 更新状态
@@ -187,7 +121,7 @@ class FloatingSettingsViewModel : ViewModel() {
             }
 
             // 刷新服务显示状态
-            serviceManager.refreshServices(_imeSwitcherEnabled.value, _asrEnabled.value)
+            serviceManager.refreshAsrService(_asrEnabled.value)
 
             Log.d(TAG, "OnlyWhenImeVisible toggled: $enabled")
             return null
@@ -237,7 +171,7 @@ class FloatingSettingsViewModel : ViewModel() {
             prefs.floatingSwitcherAlpha = (alphaPercent / 100f).coerceIn(0.2f, 1.0f)
 
             // 刷新服务以应用新透明度
-            serviceManager.refreshServices(_imeSwitcherEnabled.value, _asrEnabled.value)
+            serviceManager.refreshAsrService(_asrEnabled.value)
 
             Log.d(TAG, "Alpha updated: $alphaPercent")
         } catch (e: Throwable) {
@@ -258,9 +192,9 @@ class FloatingSettingsViewModel : ViewModel() {
             _sizeDp.value = sizeDp
             prefs.floatingBallSizeDp = sizeDp.coerceIn(28, 96)
 
-            // 仅刷新输入法切换球（语音识别球大小单独管理）
-            if (_imeSwitcherEnabled.value) {
-                serviceManager.showImeSwitcherService()
+            // 刷新语音识别悬浮球（当前仅保留语音悬浮球）
+            if (_asrEnabled.value) {
+                serviceManager.showAsrService()
             }
 
             Log.d(TAG, "Size updated: $sizeDp")
