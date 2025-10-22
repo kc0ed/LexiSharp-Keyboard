@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:orientation="vertical">
+
+  <com.google.android.material.appbar.MaterialToolbar
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:titleCentered="true"
+    app:title="@string/title_backup_settings" />
+
+  <androidx.core.widget.NestedScrollView
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:fillViewport="true">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:padding="16dp"
+      android:orientation="vertical">
+
+      <!-- 文件备份 -->
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        android:text="@string/section_file_backup" />
+
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnExportToFile"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:text="@string/btn_export_to_file" />
+
+        <View android:layout_width="8dp" android:layout_height="0dp" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnImportFromFile"
+          style="@style/Widget.Material3.Button.OutlinedButton"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:text="@string/btn_import_from_file" />
+      </LinearLayout>
+
+      <com.google.android.material.divider.MaterialDivider
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp" />
+
+      <!-- WebDAV 同步 -->
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        android:text="@string/section_webdav_sync" />
+
+      <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:boxBackgroundMode="outline"
+        android:hint="@string/hint_webdav_url">
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/etWebdavUrl"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="textUri"
+          android:textColor="?attr/colorOnSurface"
+          android:textColorHint="?attr/colorOnSurfaceVariant" />
+      </com.google.android.material.textfield.TextInputLayout>
+
+      <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:boxBackgroundMode="outline"
+        android:hint="@string/hint_webdav_username">
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/etWebdavUsername"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="text"
+          android:autofillHints="username"
+          android:textColor="?attr/colorOnSurface"
+          android:textColorHint="?attr/colorOnSurfaceVariant" />
+      </com.google.android.material.textfield.TextInputLayout>
+
+      <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:boxBackgroundMode="outline"
+        android:hint="@string/hint_webdav_password">
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/etWebdavPassword"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:inputType="textPassword"
+          android:autofillHints="password"
+          android:textColor="?attr/colorOnSurface"
+          android:textColorHint="?attr/colorOnSurfaceVariant" />
+      </com.google.android.material.textfield.TextInputLayout>
+
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnWebdavUpload"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:text="@string/btn_webdav_upload" />
+
+        <View android:layout_width="8dp" android:layout_height="0dp" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnWebdavDownload"
+          style="@style/Widget.Material3.Button.OutlinedButton"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:text="@string/btn_webdav_download" />
+      </LinearLayout>
+
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@android:color/darker_gray"
+        android:text="@string/tip_backup_contains_secrets" />
+
+    </LinearLayout>
+  </androidx.core.widget.NestedScrollView>
+
+</LinearLayout>

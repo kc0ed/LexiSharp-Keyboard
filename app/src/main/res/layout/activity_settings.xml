@@ -115,15 +115,7 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button.TonalButton"
-          android:text="@string/btn_export_settings" />
-
-        <com.google.android.material.button.MaterialButton
-          android:id="@+id/btnImportSettings"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
-          style="@style/Widget.Material3.Button.OutlinedButton"
-          android:text="@string/btn_import_settings" />
+          android:text="@string/btn_open_backup_settings" />
         
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnShowGuide"

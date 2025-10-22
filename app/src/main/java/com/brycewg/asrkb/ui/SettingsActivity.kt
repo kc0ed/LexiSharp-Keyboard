@@ -15,7 +15,6 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -31,6 +30,7 @@ import com.brycewg.asrkb.ui.settings.asr.AsrSettingsActivity
 import com.brycewg.asrkb.ui.settings.ai.AiPostSettingsActivity
 import com.brycewg.asrkb.ui.settings.other.OtherSettingsActivity
 import com.brycewg.asrkb.ui.settings.floating.FloatingSettingsActivity
+import com.brycewg.asrkb.ui.settings.backup.BackupSettingsActivity
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
@@ -183,8 +183,10 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, FloatingSettingsActivity::class.java))
         }
 
-        // 设置导入/导出
-        setupImportExportLaunchers()
+        // 配置备份页入口
+        findViewById<Button>(R.id.btnExportSettings)?.setOnClickListener {
+            startActivity(Intent(this, BackupSettingsActivity::class.java))
+        }
     }
 
     // ==================== 一键设置相关 ====================
@@ -577,109 +579,6 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    // ==================== 设置导入/导出 ====================
-
-    /**
-     * 设置导入/导出的 ActivityResultLauncher
-     */
-    private fun setupImportExportLaunchers() {
-        val exportLauncher = registerForActivityResult(
-            ActivityResultContracts.CreateDocument("application/json")
-        ) { uri: Uri? ->
-            if (uri != null) {
-                exportSettings(uri)
-            }
-        }
-
-        val importLauncher = registerForActivityResult(
-            ActivityResultContracts.OpenDocument()
-        ) { uri: Uri? ->
-            if (uri != null) {
-                importSettings(uri)
-            }
-        }
-
-        findViewById<Button>(R.id.btnExportSettings)?.setOnClickListener {
-            val fileName = "asr_keyboard_settings_" +
-                SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date()) +
-                ".json"
-            exportLauncher.launch(fileName)
-        }
-
-        findViewById<Button>(R.id.btnImportSettings)?.setOnClickListener {
-            importLauncher.launch(arrayOf("application/json", "text/plain"))
-        }
-    }
-
-    /**
-     * 导出设置到 URI
-     */
-    private fun exportSettings(uri: Uri) {
-        try {
-            contentResolver.openOutputStream(uri)?.use { os ->
-                val jsonString = Prefs(this).exportJsonString()
-                os.write(jsonString.toByteArray(Charsets.UTF_8))
-                os.flush()
-            }
-            val name = uri.lastPathSegment ?: "settings.json"
-            Toast.makeText(
-                this,
-                getString(R.string.toast_export_success, name),
-                Toast.LENGTH_SHORT
-            ).show()
-            Log.d(TAG, "Settings exported successfully to $uri")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to export settings", e)
-            Toast.makeText(
-                this,
-                getString(R.string.toast_export_failed),
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    /**
-     * 从 URI 导入设置
-     */
-    private fun importSettings(uri: Uri) {
-        try {
-            val json = contentResolver.openInputStream(uri)
-                ?.bufferedReader(Charsets.UTF_8)
-                ?.use { it.readText() } ?: ""
-
-            val success = Prefs(this).importJsonString(json)
-
-            if (success) {
-                // 导入完成后，通知 IME 即时刷新（包含高度与按钮交换）
-                try {
-                    sendBroadcast(Intent(AsrKeyboardService.ACTION_REFRESH_IME_UI))
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to send refresh broadcast", e)
-                }
-
-                Toast.makeText(
-                    this,
-                    getString(R.string.toast_import_success),
-                    Toast.LENGTH_SHORT
-                ).show()
-                Log.d(TAG, "Settings imported successfully from $uri")
-            } else {
-                Toast.makeText(
-                    this,
-                    getString(R.string.toast_import_failed),
-                    Toast.LENGTH_SHORT
-                ).show()
-                Log.w(TAG, "Failed to import settings (invalid JSON or parsing error)")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to import settings", e)
-            Toast.makeText(
-                this,
-                getString(R.string.toast_import_failed),
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
 
     // ==================== 其他辅助功能 ====================
 

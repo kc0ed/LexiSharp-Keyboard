@@ -713,6 +713,19 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_SC_LAST_UP_HASH, "") ?: ""
         set(value) = sp.edit { putString(KEY_SC_LAST_UP_HASH, value) }
 
+    // ---- 备份/同步（WebDAV）偏好项 ----
+    var webdavUrl: String
+        get() = sp.getString(KEY_WD_URL, "") ?: ""
+        set(value) = sp.edit { putString(KEY_WD_URL, value.trim()) }
+
+    var webdavUsername: String
+        get() = sp.getString(KEY_WD_USERNAME, "") ?: ""
+        set(value) = sp.edit { putString(KEY_WD_USERNAME, value.trim()) }
+
+    var webdavPassword: String
+        get() = sp.getString(KEY_WD_PASSWORD, "") ?: ""
+        set(value) = sp.edit { putString(KEY_WD_PASSWORD, value.trim()) }
+
     companion object {
         private const val TAG = "Prefs"
 
@@ -810,6 +823,11 @@ class Prefs(context: Context) {
         private const val KEY_SC_AUTO_PULL = "syncclip_auto_pull"
         private const val KEY_SC_PULL_INTERVAL_SEC = "syncclip_pull_interval_sec"
         private const val KEY_SC_LAST_UP_HASH = "syncclip_last_uploaded_hash"
+
+        // WebDAV 备份
+        private const val KEY_WD_URL = "wd_url"
+        private const val KEY_WD_USERNAME = "wd_username"
+        private const val KEY_WD_PASSWORD = "wd_password"
 
         const val DEFAULT_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash"
         const val SF_ENDPOINT = "https://api.siliconflow.cn/v1/audio/transcriptions"
@@ -977,6 +995,10 @@ class Prefs(context: Context) {
         o.put(KEY_SC_PASSWORD, syncClipboardPassword)
         o.put(KEY_SC_AUTO_PULL, syncClipboardAutoPullEnabled)
         o.put(KEY_SC_PULL_INTERVAL_SEC, syncClipboardPullIntervalSec)
+        // WebDAV（可选）
+        o.put(KEY_WD_URL, webdavUrl)
+        o.put(KEY_WD_USERNAME, webdavUsername)
+        o.put(KEY_WD_PASSWORD, webdavPassword)
         return o.toString()
     }
 
@@ -1084,6 +1106,10 @@ class Prefs(context: Context) {
             optString(KEY_SC_PASSWORD)?.let { syncClipboardPassword = it }
             optBool(KEY_SC_AUTO_PULL)?.let { syncClipboardAutoPullEnabled = it }
             optInt(KEY_SC_PULL_INTERVAL_SEC)?.let { syncClipboardPullIntervalSec = it }
+            // WebDAV 备份
+            optString(KEY_WD_URL)?.let { webdavUrl = it }
+            optString(KEY_WD_USERNAME)?.let { webdavUsername = it }
+            optString(KEY_WD_PASSWORD)?.let { webdavPassword = it }
             Log.i(TAG, "Successfully imported settings from JSON")
             true
         } catch (e: Exception) {
