@@ -43,13 +43,13 @@ class SetupStateMachine(private val context: Context) {
 
         currentState = when (val state = currentState) {
             is SetupState.NotStarted -> {
-                // 开始流程：检查输入法是否已启用
+                // 优化：将“选择输入法”作为最后一步；权限优先
                 if (!isOurImeEnabled()) {
                     SetupState.EnablingIme()
-                } else if (!isOurImeCurrent()) {
-                    SetupState.SelectingIme()
                 } else if (!hasAllRequiredPermissions()) {
                     SetupState.RequestingPermissions()
+                } else if (!isOurImeCurrent()) {
+                    SetupState.SelectingIme()
                 } else {
                     SetupState.Completed
                 }
@@ -57,12 +57,12 @@ class SetupStateMachine(private val context: Context) {
 
             is SetupState.EnablingIme -> {
                 if (isOurImeEnabled()) {
-                    // 输入法已启用，进入下一阶段
-                    Log.d(TAG, "IME enabled, moving to SelectingIme")
-                    if (!isOurImeCurrent()) {
-                        SetupState.SelectingIme()
-                    } else if (!hasAllRequiredPermissions()) {
+                    // 输入法已启用，下一步优先补齐权限，再进行“选择输入法”
+                    Log.d(TAG, "IME enabled; prioritizing permissions before selecting IME")
+                    if (!hasAllRequiredPermissions()) {
                         SetupState.RequestingPermissions()
+                    } else if (!isOurImeCurrent()) {
+                        SetupState.SelectingIme()
                     } else {
                         SetupState.Completed
                     }
