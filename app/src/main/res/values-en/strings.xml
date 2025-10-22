@@ -314,6 +314,16 @@
     <string name="label_test_input">Test input (try the IME here)</string>
     <string name="btn_test_input">Test Input</string>
 
+    <!-- LLM test call -->
+    <string name="btn_llm_test_call">Test LLM Call</string>
+    <string name="llm_test_running">Testing LLM call…</string>
+    <string name="llm_test_success_title">Test Succeeded</string>
+    <string name="llm_test_success_preview">Response preview: %1$s</string>
+    <string name="llm_test_failed_title">Test Failed</string>
+    <string name="llm_test_failed_reason">Reason: %1$s</string>
+    <string name="llm_test_failed_generic">Call failed</string>
+    <string name="llm_test_missing_params">Please fill API endpoint and model name</string>
+
     <!-- Keyboard height -->
     <string name="label_keyboard_height">Keyboard height</string>
     <string name="keyboard_height_small">Small</string>

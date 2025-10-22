@@ -359,6 +359,16 @@
     <string name="label_test_input">测试输入（用于体验输入法）</string>
     <string name="btn_test_input">测试输入</string>
 
+    <!-- LLM test call -->
+    <string name="btn_llm_test_call">测试 LLM 调用</string>
+    <string name="llm_test_running">正在测试 LLM 调用…</string>
+    <string name="llm_test_success_title">测试成功</string>
+    <string name="llm_test_success_preview">返回片段：%1$s</string>
+    <string name="llm_test_failed_title">测试失败</string>
+    <string name="llm_test_failed_reason">原因：%1$s</string>
+    <string name="llm_test_failed_generic">调用失败</string>
+    <string name="llm_test_missing_params">请填写 API 地址与模型名</string>
+
     <!-- Keyboard height -->
     <string name="label_keyboard_height">键盘高度</string>
     <string name="keyboard_height_small">小</string>

@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.brycewg.asrkb.R
+import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.store.PromptPreset
 import com.google.android.material.appbar.MaterialToolbar
@@ -36,6 +37,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
     private lateinit var etLlmTemperature: EditText
     private lateinit var btnLlmAddProfile: Button
     private lateinit var btnLlmDeleteProfile: Button
+    private lateinit var btnLlmTestCall: Button
 
     // Prompt Preset Views
     private lateinit var tvPromptPresets: TextView
@@ -81,6 +83,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
         etLlmTemperature = findViewById(R.id.etLlmTemperature)
         btnLlmAddProfile = findViewById(R.id.btnLlmAddProfile)
         btnLlmDeleteProfile = findViewById(R.id.btnLlmDeleteProfile)
+        btnLlmTestCall = findViewById(R.id.btnLlmTestCall)
 
         // Prompt Preset Views
         tvPromptPresets = findViewById(R.id.tvPromptPresetsValue)
@@ -124,6 +127,11 @@ class AiPostSettingsActivity : AppCompatActivity() {
                 ?.coerceIn(0f, 2f)
                 ?: Prefs.DEFAULT_LLM_TEMPERATURE
             viewModel.updateActiveLlmProvider(prefs) { it.copy(temperature = temperature) }
+        }
+
+        // 测试 LLM 调用
+        btnLlmTestCall.setOnClickListener {
+            handleTestLlmCall()
         }
 
         // Button listeners
@@ -311,6 +319,56 @@ class AiPostSettingsActivity : AppCompatActivity() {
                 getString(R.string.toast_llm_profile_deleted),
                 Toast.LENGTH_SHORT
             ).show()
+        }
+    }
+
+    /**
+     * 触发“测试 LLM 调用”并反馈结果
+     */
+    private fun handleTestLlmCall() {
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setMessage(R.string.llm_test_running)
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        lifecycleScope.launch {
+            try {
+                val processor = LlmPostProcessor()
+                val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    processor.testConnectivity(prefs)
+                }
+                progressDialog.dismiss()
+
+                if (result.ok) {
+                    val preview = result.contentPreview ?: ""
+                    MaterialAlertDialogBuilder(this@AiPostSettingsActivity)
+                        .setTitle(R.string.llm_test_success_title)
+                        .setMessage(getString(R.string.llm_test_success_preview, preview))
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                } else {
+                    val msg = when {
+                        result.message?.contains("Missing endpoint or model", ignoreCase = true) == true ->
+                            getString(R.string.llm_test_missing_params)
+                        result.httpCode != null ->
+                            "HTTP ${result.httpCode}: ${result.message ?: ""}"
+                        else -> result.message ?: getString(R.string.llm_test_failed_generic)
+                    }
+                    MaterialAlertDialogBuilder(this@AiPostSettingsActivity)
+                        .setTitle(R.string.llm_test_failed_title)
+                        .setMessage(getString(R.string.llm_test_failed_reason, msg))
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                progressDialog.dismiss()
+                MaterialAlertDialogBuilder(this@AiPostSettingsActivity)
+                    .setTitle(R.string.llm_test_failed_title)
+                    .setMessage(getString(R.string.llm_test_failed_reason, e.message ?: "unknown"))
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
         }
     }
 

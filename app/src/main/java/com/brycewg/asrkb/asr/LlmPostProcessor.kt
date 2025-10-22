@@ -25,6 +25,26 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
   }
 
   /**
+   * LLM 测试结果
+   */
+  data class LlmTestResult(
+    val ok: Boolean,
+    val httpCode: Int? = null,
+    val message: String? = null,
+    val contentPreview: String? = null
+  )
+
+  /**
+   * 统一的底层调用结果
+   */
+  private data class RawCallResult(
+    val ok: Boolean,
+    val httpCode: Int? = null,
+    val text: String? = null,
+    val error: String? = null
+  )
+
+  /**
    * LLM 请求配置
    */
   private data class LlmRequestConfig(
@@ -129,6 +149,86 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
   }
 
   /**
+   * 复用的底层 Chat 调用：构建请求、执行并解析文本。
+   * 需确保在非主线程调用。
+   */
+  private fun performChat(config: LlmRequestConfig, messages: JSONArray): RawCallResult {
+    val req = try {
+      buildRequest(config, messages)
+    } catch (t: Throwable) {
+      Log.e(TAG, "Failed to build request", t)
+      return RawCallResult(false, error = "Build request failed: ${t.message}")
+    }
+
+    val http = getHttpClient()
+    val resp = try {
+      http.newCall(req).execute()
+    } catch (t: Throwable) {
+      Log.e(TAG, "HTTP request failed", t)
+      return RawCallResult(false, error = t.message ?: "Network error")
+    }
+
+    if (!resp.isSuccessful) {
+      val code = resp.code
+      val err = try { resp.body?.string() } catch (_: Throwable) { null } finally { resp.close() }
+      return RawCallResult(false, httpCode = code, error = err?.take(256) ?: "HTTP $code")
+    }
+
+    val text = try {
+      val body = resp.body?.string()
+      if (body == null) {
+        Log.w(TAG, "Response body is null")
+        return RawCallResult(false, error = "Empty body")
+      }
+      val extracted = extractTextFromResponse(body, "")
+      if (extracted.isBlank()) {
+        return RawCallResult(false, error = "Empty result")
+      }
+      extracted
+    } catch (t: Throwable) {
+      Log.e(TAG, "Failed to parse response", t)
+      return RawCallResult(false, error = t.message ?: "Parse error")
+    } finally {
+      try {
+        resp.close()
+      } catch (closeErr: Throwable) {
+        Log.w(TAG, "Close response failed", closeErr)
+      }
+    }
+
+    return RawCallResult(true, text = text)
+  }
+
+  /**
+   * 测试 LLM 调用是否可用：发送最简单 Prompt，看是否有返回内容。
+   * 不改变任何业务状态，仅用于连通性自检/配置校验。
+   */
+  suspend fun testConnectivity(prefs: Prefs): LlmTestResult = withContext(Dispatchers.IO) {
+    // 基础必填校验（endpoint / model）
+    val active = getActiveConfig(prefs)
+    if (active.endpoint.isBlank() || active.model.isBlank()) {
+      return@withContext LlmTestResult(
+        ok = false,
+        message = "Missing endpoint or model"
+      )
+    }
+
+    val messages = JSONArray().apply {
+      put(JSONObject().apply {
+        put("role", "user")
+        put("content", "say `hi`")
+      })
+    }
+
+    val result = performChat(active, messages)
+    if (result.ok) {
+      return@withContext LlmTestResult(true, contentPreview = result.text?.take(120))
+    } else {
+      return@withContext LlmTestResult(false, httpCode = result.httpCode, message = result.error)
+    }
+  }
+
+  /**
    * 使用 LLM 处理识别文本
    *
    * 根据配置的提示词对输入文本进行后处理（例如：去除口语化、纠错、格式化）。
@@ -157,37 +257,17 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
       })
     }
 
-    val req = buildRequest(config, messages)
-    val http = getHttpClient()
-
-    val resp = try {
-      http.newCall(req).execute()
-    } catch (t: Throwable) {
-      Log.e(TAG, "HTTP request failed during process()", t)
-      return@withContext input
-    }
-
-    if (!resp.isSuccessful) {
-      Log.w(TAG, "LLM request failed with code ${resp.code}")
-      resp.close()
-      return@withContext input
-    }
-
-    val text = try {
-      val responseBody = resp.body?.string()
-      if (responseBody == null) {
-        Log.w(TAG, "Response body is null")
-        resp.close()
-        return@withContext input
+    val result = performChat(config, messages)
+    if (!result.ok) {
+      if (result.httpCode != null) {
+        Log.w(TAG, "LLM process() failed: HTTP ${result.httpCode}, ${result.error}")
+      } else {
+        Log.w(TAG, "LLM process() failed: ${result.error}")
       }
-      extractTextFromResponse(responseBody, input)
-    } catch (t: Throwable) {
-      Log.e(TAG, "Failed to parse response during process()", t)
-      input
-    } finally {
-      resp.close()
+      return@withContext input
     }
 
+    val text = result.text ?: input
     Log.d(TAG, "Text processing completed, output length: ${text.length}")
     return@withContext text
   }
@@ -261,36 +341,17 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
       })
     }
 
-    val req = buildRequest(config, messages)
-    val http = getHttpClient()
-
-    val resp = try {
-      http.newCall(req).execute()
-    } catch (t: Throwable) {
-      Log.e(TAG, "HTTP request failed during editText()", t)
-      return@withContext original
-    }
-
-    if (!resp.isSuccessful) {
-      Log.w(TAG, "LLM edit request failed with code ${resp.code}")
-      resp.close()
-      return@withContext original
-    }
-
-    val out = try {
-      val responseBody = resp.body?.string()
-      if (responseBody == null) {
-        Log.w(TAG, "Response body is null during editText()")
-        resp.close()
-        return@withContext original
+    val result = performChat(config, messages)
+    if (!result.ok) {
+      if (result.httpCode != null) {
+        Log.w(TAG, "LLM editText() failed: HTTP ${result.httpCode}, ${result.error}")
+      } else {
+        Log.w(TAG, "LLM editText() failed: ${result.error}")
       }
-      extractTextFromResponse(responseBody, original)
-    } catch (t: Throwable) {
-      Log.e(TAG, "Failed to parse response during editText()", t)
-      original
-    } finally {
-      resp.close()
+      return@withContext original
     }
+
+    val out = result.text ?: original
 
     Log.d(TAG, "Text editing completed, output length: ${out.length}")
     return@withContext out
