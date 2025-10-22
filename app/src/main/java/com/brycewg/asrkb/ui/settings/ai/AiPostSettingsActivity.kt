@@ -104,13 +104,11 @@ class AiPostSettingsActivity : AppCompatActivity() {
 
         // Text change listeners with ViewModel updates
         etLlmProfileName.addTextChangeListener { text ->
-            val name = text.ifBlank { getString(R.string.untitled_profile) }
-            viewModel.updateActiveLlmProvider(prefs) { it.copy(name = name) }
+            viewModel.updateActiveLlmProvider(prefs) { it.copy(name = text) }
         }
 
         etLlmEndpoint.addTextChangeListener { text ->
-            val endpoint = text.ifBlank { Prefs.DEFAULT_LLM_ENDPOINT }
-            viewModel.updateActiveLlmProvider(prefs) { it.copy(endpoint = endpoint) }
+            viewModel.updateActiveLlmProvider(prefs) { it.copy(endpoint = text) }
         }
 
         etLlmApiKey.addTextChangeListener { text ->
@@ -118,14 +116,13 @@ class AiPostSettingsActivity : AppCompatActivity() {
         }
 
         etLlmModel.addTextChangeListener { text ->
-            val model = text.ifBlank { Prefs.DEFAULT_LLM_MODEL }
-            viewModel.updateActiveLlmProvider(prefs) { it.copy(model = model) }
+            viewModel.updateActiveLlmProvider(prefs) { it.copy(model = text) }
         }
 
         etLlmTemperature.addTextChangeListener { text ->
-            val temperature = text.toFloatOrNull()
-                ?.coerceIn(0f, 2f)
-                ?: Prefs.DEFAULT_LLM_TEMPERATURE
+            if (text.isBlank()) return@addTextChangeListener
+            val parsed = text.toFloatOrNull() ?: return@addTextChangeListener
+            val temperature = parsed.coerceIn(0f, 2f)
             viewModel.updateActiveLlmProvider(prefs) { it.copy(temperature = temperature) }
         }
 
@@ -158,8 +155,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
 
         // Text change listeners with ViewModel updates
         etLlmPromptTitle.addTextChangeListener { text ->
-            val title = text.ifBlank { getString(R.string.untitled_preset) }
-            viewModel.updateActivePromptPreset(prefs) { it.copy(title = title) }
+            viewModel.updateActivePromptPreset(prefs) { it.copy(title = text) }
         }
 
         etLlmPrompt.addTextChangeListener { text ->
@@ -218,8 +214,8 @@ class AiPostSettingsActivity : AppCompatActivity() {
     private fun updateLlmProfileUI(provider: Prefs.LlmProvider?) {
         isUpdatingProgrammatically = true
 
-        val name = provider?.name ?: getString(R.string.untitled_profile)
-        tvLlmProfiles.text = name
+        val displayName = (provider?.name ?: "").ifBlank { getString(R.string.untitled_profile) }
+        tvLlmProfiles.text = displayName
 
         etLlmProfileName.setTextIfDifferent(provider?.name ?: "")
         etLlmEndpoint.setTextIfDifferent(provider?.endpoint ?: prefs.llmEndpoint)
@@ -238,7 +234,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
     private fun updatePromptPresetUI(preset: PromptPreset?) {
         isUpdatingProgrammatically = true
 
-        tvPromptPresets.text = preset?.title ?: getString(R.string.untitled_preset)
+        tvPromptPresets.text = (preset?.title ?: "").ifBlank { getString(R.string.untitled_preset) }
         etLlmPromptTitle.setTextIfDifferent(preset?.title ?: "")
         etLlmPrompt.setTextIfDifferent(preset?.content ?: Prefs.DEFAULT_LLM_PROMPT)
 
@@ -254,7 +250,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
         val profiles = viewModel.llmProfiles.value
         if (profiles.isEmpty()) return
 
-        val titles = profiles.map { it.name }.toTypedArray()
+        val titles = profiles.map { it.name.ifBlank { getString(R.string.untitled_profile) } }.toTypedArray()
         val selectedIndex = viewModel.getActiveLlmProviderIndex()
 
         MaterialAlertDialogBuilder(this)
@@ -277,7 +273,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
         val presets = viewModel.promptPresets.value
         if (presets.isEmpty()) return
 
-        val titles = presets.map { it.title }.toTypedArray()
+        val titles = presets.map { it.title.ifBlank { getString(R.string.untitled_preset) } }.toTypedArray()
         val selectedIndex = viewModel.getActivePromptPresetIndex()
 
         MaterialAlertDialogBuilder(this)
