@@ -2,6 +2,8 @@ package com.brycewg.asrkb.asr
 
 import android.content.Context
 import android.util.Log
+import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.ui.floating.FloatingAsrService
 import com.k2fsa.sherpa.onnx.SileroVadModelConfig
 import com.k2fsa.sherpa.onnx.Vad
 import com.k2fsa.sherpa.onnx.VadModelConfig
@@ -270,5 +272,18 @@ class VadDetector(
         }
 
         return samples
+    }
+}
+
+// 统一判定是否应启用基于静音的自动停止（VAD）。
+// - 常规 IME：需同时开启「静音自动停止」与「点按切换录音」。
+// - 悬浮球：不受「点按切换录音」影响，只要开启「静音自动停止」即可。
+fun isVadAutoStopEnabled(context: Context, prefs: Prefs): Boolean {
+    val isFloating = context is FloatingAsrService
+    return try {
+        prefs.autoStopOnSilenceEnabled && (prefs.micTapToggleEnabled || isFloating)
+    } catch (t: Throwable) {
+        Log.w("VadDetector", "Failed to read prefs for VAD auto-stop", t)
+        false
     }
 }

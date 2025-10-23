@@ -155,7 +155,7 @@ abstract class BaseFileAsrEngine(
         }
 
         // VAD 检测器（如果启用）。长按说话模式下由用户松手决定停止，绕过 VAD 自动判停
-        val vadDetector = if (prefs.autoStopOnSilenceEnabled && prefs.micTapToggleEnabled) {
+        val vadDetector = if (isVadAutoStopEnabled(context, prefs)) {
             VadDetector(
                 context,
                 sampleRate,
