@@ -47,7 +47,7 @@
     <string name="label_app_key">X-Api-App-Key</string>
     <string name="label_access_key">X-Api-Access-Key</string>
     <string name="label_asr_vendor">ASR 服务商</string>
-    <string name="vendor_volc">Volcano Engine</string>
+    <string name="vendor_volc">Volcano Engine（豆包语音）</string>
     <string name="vendor_sf">SiliconFlow</string>
     <string name="vendor_dashscope">阿里云百炼（DashScope）</string>
     <string name="vendor_soniox">Soniox</string>
