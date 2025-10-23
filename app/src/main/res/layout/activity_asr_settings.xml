@@ -210,6 +210,14 @@
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnVolcGetKey"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:text="@string/btn_get_api_key_guide" />
       </LinearLayout>
 
       <!-- SiliconFlow -->
@@ -283,6 +291,14 @@
             android:textColor="?attr/colorOnSurface"
             android:textColorHint="?attr/colorOnSurfaceVariant" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnSfGetKey"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:text="@string/btn_get_api_key_guide" />
       </LinearLayout>
 
       <!-- ElevenLabs -->
@@ -354,6 +370,14 @@
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnElevenGetKey"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:text="@string/btn_get_api_key_guide" />
       </LinearLayout>
 
       <!-- OpenAI ASR -->
@@ -466,6 +490,14 @@
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnOpenAiGetKey"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:text="@string/btn_get_api_key_guide" />
       </LinearLayout>
 
       <!-- DashScope -->
@@ -557,6 +589,14 @@
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnDashGetKey"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:text="@string/btn_get_api_key_guide" />
       </LinearLayout>
 
       <!-- Gemini -->
@@ -622,6 +662,14 @@
             android:textColor="?attr/colorOnSurface"
             android:textColorHint="?attr/colorOnSurfaceVariant" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnGeminiGetKey"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:text="@string/btn_get_api_key_guide" />
       </LinearLayout>
 
       <!-- Soniox -->
@@ -681,6 +729,14 @@
           android:foreground="?attr/selectableItemBackground"
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/soniox_lang_auto" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/btnSonioxGetKey"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          style="@style/Widget.Material3.Button.TonalButton"
+          android:text="@string/btn_get_api_key_guide" />
       </LinearLayout>
 
       <!-- SenseVoice (Local) -->

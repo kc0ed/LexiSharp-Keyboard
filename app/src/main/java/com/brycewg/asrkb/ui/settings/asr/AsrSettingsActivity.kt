@@ -1,5 +1,7 @@
 package com.brycewg.asrkb.ui.settings.asr
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -261,6 +263,12 @@ class AsrSettingsActivity : AppCompatActivity() {
 
         // Language selection
         setupVolcLanguageSelection()
+
+        // Key guide link
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnVolcGetKey).setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            openUrlSafely("https://console.volcengine.com/iam/keymanage/")
+        }
     }
 
     private fun setupVolcLanguageSelection() {
@@ -317,6 +325,12 @@ class AsrSettingsActivity : AppCompatActivity() {
                 viewModel.updateSfUseOmni(isChecked)
             }
         }
+
+        // Key guide link
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSfGetKey).setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            openUrlSafely("https://siliconflow.cn/console/api-keys")
+        }
     }
 
     private fun setupElevenLabsSettings() {
@@ -330,6 +344,12 @@ class AsrSettingsActivity : AppCompatActivity() {
         }
 
         setupElevenLanguageSelection()
+
+        // Key guide link
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnElevenGetKey).setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            openUrlSafely("https://elevenlabs.io/app/settings/api-keys")
+        }
     }
 
     private fun setupElevenLanguageSelection() {
@@ -388,6 +408,12 @@ class AsrSettingsActivity : AppCompatActivity() {
         }
 
         setupOpenAILanguageSelection()
+
+        // Key guide link
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnOpenAiGetKey).setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            openUrlSafely("https://platform.openai.com/api-keys")
+        }
     }
 
     private fun setupOpenAILanguageSelection() {
@@ -434,6 +460,12 @@ class AsrSettingsActivity : AppCompatActivity() {
         }
 
         setupDashLanguageSelection()
+
+        // Key guide link
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnDashGetKey).setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            openUrlSafely("https://dashscope.console.aliyun.com/apiKeys")
+        }
     }
 
     private fun setupDashLanguageSelection() {
@@ -478,6 +510,12 @@ class AsrSettingsActivity : AppCompatActivity() {
             setText(prefs.gemPrompt)
             bindString { prefs.gemPrompt = it }
         }
+
+        // Key guide link
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnGeminiGetKey).setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            openUrlSafely("https://aistudio.google.com/app/apikey")
+        }
     }
 
     private fun setupSonioxSettings() {
@@ -495,6 +533,12 @@ class AsrSettingsActivity : AppCompatActivity() {
         }
 
         setupSonioxLanguageSelection()
+
+        // Key guide link
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btnSonioxGetKey).setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            openUrlSafely("https://soniox.com/account/api-keys")
+        }
     }
 
     private fun setupSonioxLanguageSelection() {
@@ -956,6 +1000,16 @@ class AsrSettingsActivity : AppCompatActivity() {
             }
         } catch (e: Throwable) {
             android.util.Log.e(TAG, "Failed to perform haptic feedback", e)
+        }
+    }
+
+    private fun openUrlSafely(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Throwable) {
+            android.util.Log.e(TAG, "Failed to open url: $url", e)
+            Toast.makeText(this, getString(R.string.error_open_browser), Toast.LENGTH_SHORT).show()
         }
     }
 

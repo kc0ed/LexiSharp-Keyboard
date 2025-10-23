@@ -388,6 +388,9 @@
     <string name="llm_test_failed_generic">调用失败</string>
     <string name="llm_test_missing_params">请填写 API 地址与模型名</string>
 
+    <!-- Common button: open API key guide -->
+    <string name="btn_get_api_key_guide">去官网获取密钥</string>
+
     <!-- Keyboard height -->
     <string name="label_keyboard_height">键盘高度</string>
     <string name="keyboard_height_small">小</string>

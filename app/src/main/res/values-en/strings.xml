@@ -348,6 +348,9 @@
     <string name="llm_test_failed_generic">Call failed</string>
     <string name="llm_test_missing_params">Please fill API endpoint and model name</string>
 
+    <!-- Common button: open API key guide -->
+    <string name="btn_get_api_key_guide">Get API Key</string>
+
     <!-- Keyboard height -->
     <string name="label_keyboard_height">Keyboard height</string>
     <string name="keyboard_height_small">Small</string>
