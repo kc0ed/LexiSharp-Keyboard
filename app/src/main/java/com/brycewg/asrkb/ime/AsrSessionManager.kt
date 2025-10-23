@@ -215,11 +215,11 @@ class AsrSessionManager(
             Log.w(TAG, "Failed to get uptime for session start", t)
             sessionStartUptimeMs = 0L
         }
-        // 开始录音前请求短时独占音频焦点，促使媒体暂停/静音
-        try {
+        // 开始录音前根据设置决定是否请求短时独占音频焦点（音频避让）
+        if (prefs.duckMediaOnRecordEnabled) {
             requestTransientAudioFocus()
-        } catch (t: Throwable) {
-            Log.e(TAG, "requestTransientAudioFocus failed", t)
+        } else {
+            Log.d(TAG, "Audio ducking disabled by user; skip audio focus request")
         }
         // 若为本地 SenseVoice 且使用文件识别模式，在录音触发时后台开始加载模型
         try {

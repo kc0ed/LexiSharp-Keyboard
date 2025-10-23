@@ -98,6 +98,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_MIC_TAP_TOGGLE_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_MIC_TAP_TOGGLE_ENABLED, value) }
 
+    // 录音时音频避让（请求短时独占音频焦点以暂停/静音媒体），默认开启
+    var duckMediaOnRecordEnabled: Boolean
+        get() = sp.getBoolean(KEY_DUCK_MEDIA_ON_RECORD, true)
+        set(value) = sp.edit { putBoolean(KEY_DUCK_MEDIA_ON_RECORD, value) }
+
     // AI 编辑默认范围：无选区时优先使用“上次识别结果”
     var aiEditDefaultToLastAsr: Boolean
         get() = sp.getBoolean(KEY_AI_EDIT_DEFAULT_TO_LAST_ASR, false)
@@ -877,6 +882,7 @@ class Prefs(context: Context) {
         private const val KEY_AUTO_SWITCH_ON_PASSWORD = "auto_switch_on_password"
         private const val KEY_MIC_HAPTIC_ENABLED = "mic_haptic_enabled"
         private const val KEY_MIC_TAP_TOGGLE_ENABLED = "mic_tap_toggle_enabled"
+        private const val KEY_DUCK_MEDIA_ON_RECORD = "duck_media_on_record"
         private const val KEY_AUDIO_COMPAT_PREFER_MIC = "audio_compat_prefer_mic"
         private const val KEY_AUTO_STOP_ON_SILENCE_ENABLED = "auto_stop_on_silence_enabled"
         private const val KEY_AUTO_STOP_SILENCE_WINDOW_MS = "auto_stop_silence_window_ms"
@@ -1066,6 +1072,7 @@ class Prefs(context: Context) {
         o.put(KEY_AUTO_SWITCH_ON_PASSWORD, autoSwitchOnPassword)
         o.put(KEY_MIC_HAPTIC_ENABLED, micHapticEnabled)
         o.put(KEY_MIC_TAP_TOGGLE_ENABLED, micTapToggleEnabled)
+        o.put(KEY_DUCK_MEDIA_ON_RECORD, duckMediaOnRecordEnabled)
         o.put(KEY_AUDIO_COMPAT_PREFER_MIC, audioCompatPreferMic)
         o.put(KEY_AUTO_STOP_ON_SILENCE_ENABLED, autoStopOnSilenceEnabled)
         o.put(KEY_AUTO_STOP_SILENCE_WINDOW_MS, autoStopSilenceWindowMs)
@@ -1174,6 +1181,7 @@ class Prefs(context: Context) {
             optBool(KEY_AUTO_SWITCH_ON_PASSWORD)?.let { autoSwitchOnPassword = it }
             optBool(KEY_MIC_HAPTIC_ENABLED)?.let { micHapticEnabled = it }
             optBool(KEY_MIC_TAP_TOGGLE_ENABLED)?.let { micTapToggleEnabled = it }
+            optBool(KEY_DUCK_MEDIA_ON_RECORD)?.let { duckMediaOnRecordEnabled = it }
             optBool(KEY_AUDIO_COMPAT_PREFER_MIC)?.let { audioCompatPreferMic = it }
             optBool(KEY_AUTO_STOP_ON_SILENCE_ENABLED)?.let { autoStopOnSilenceEnabled = it }
             optInt(KEY_AUTO_STOP_SILENCE_WINDOW_MS)?.let { autoStopSilenceWindowMs = it }

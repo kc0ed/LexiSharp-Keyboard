@@ -439,6 +439,7 @@
 
     <!-- Audio compatibility -->
     <string name="label_audio_compat_prefer_mic">Recording compatibility mode (recommended for Xiaomi devices)</string>
+    <string name="label_audio_ducking_on_record">Audio ducking during recording</string>
 
     <!-- About: Usage stats -->
     <string name="about_stats_title">Usage Stats</string>

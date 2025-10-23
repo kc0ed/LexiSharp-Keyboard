@@ -248,6 +248,7 @@
     <string name="tip_backup_contains_secrets">注意：备份包含密钥与凭证，仅用于个人备份，请妥善保管。</string>
     <string name="toast_silence_autostop_on">已开启录音判停</string>
     <string name="toast_silence_autostop_off">已关闭录音判停</string>
+    <string name="label_audio_ducking_on_record">录音时音频避让</string>
 
     <!-- Stats -->
     <string name="label_asr_total_chars">历史语音识别总字数：%1$d</string>
