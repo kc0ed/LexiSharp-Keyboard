@@ -176,6 +176,27 @@ class FloatingBallViewManager(
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to update view layout", e)
         }
+
+        // 同步调整内部图标大小，保持随悬浮球缩放
+        try {
+            updateBallIconSize()
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to update ball icon size", e)
+        }
+    }
+
+    /** 根据悬浮球窗口大小按比例调整麦克风图标尺寸 */
+    private fun updateBallIconSize() {
+        val icon = ballIcon ?: return
+        val p = lp ?: return
+        val ballSidePx = listOf(p.width, p.height).filter { it > 0 }.minOrNull() ?: return
+        val target = (ballSidePx * 0.75f).toInt().coerceAtLeast(dp(20))
+        val lpIcon = icon.layoutParams ?: return
+        if (lpIcon.width != target || lpIcon.height != target) {
+            lpIcon.width = target
+            lpIcon.height = target
+            icon.layoutParams = lpIcon
+        }
     }
 
     /** 更新悬浮球状态显示 */
