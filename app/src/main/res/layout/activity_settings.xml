@@ -48,7 +48,10 @@
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           style="@style/Widget.Material3.Button"
-          android:text="@string/btn_one_click_setup" />      
+          android:text="@string/btn_one_click_setup"
+          app:icon="@drawable/lightning_a"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />      
 
         <!-- 测试输入：按钮，点击后弹出底部输入框 -->
         <com.google.android.material.button.MaterialButton
@@ -57,7 +60,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button.OutlinedButton"
-          android:text="@string/btn_test_input" />
+          android:text="@string/btn_test_input"
+          app:icon="@drawable/textbox"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
 
         <com.google.android.material.divider.MaterialDivider
           android:layout_width="match_parent"
@@ -70,7 +76,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="16dp"
           style="@style/Widget.Material3.Button"
-          android:text="@string/title_input_settings" />
+          android:text="@string/title_input_settings"
+          app:icon="@drawable/keyboard"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
 
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnOpenAsrSettings"
@@ -78,7 +87,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button"
-          android:text="@string/title_asr_settings" />
+          android:text="@string/title_asr_settings"
+          app:icon="@drawable/microphone"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
 
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnOpenAiSettings"
@@ -86,7 +98,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button.TonalButton"
-          android:text="@string/title_ai_settings" />
+          android:text="@string/title_ai_settings"
+          app:icon="@drawable/magic_wand"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
 
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnOpenFloatingSettings"
@@ -94,7 +109,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button.TonalButton"
-          android:text="@string/title_floating_settings" />
+          android:text="@string/title_floating_settings"
+          app:icon="@drawable/arrows_out_cardinal"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
 
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnOpenOtherSettings"
@@ -102,7 +120,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button.OutlinedButton"
-          android:text="@string/title_other_settings" />
+          android:text="@string/title_other_settings"
+          app:icon="@drawable/dots_three_outline"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
 
         <com.google.android.material.divider.MaterialDivider
           android:layout_width="match_parent"
@@ -115,7 +136,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button.TonalButton"
-          android:text="@string/btn_open_backup_settings" />
+          android:text="@string/btn_open_backup_settings"
+          app:icon="@drawable/cloud_arrow_up"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
         
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnShowGuide"
@@ -123,7 +147,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button.OutlinedButton"
-          android:text="@string/btn_show_guide" />
+          android:text="@string/btn_show_guide"
+          app:icon="@drawable/book_open_user"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
 
         <com.google.android.material.button.MaterialButton
           android:id="@+id/btnCheckUpdate"
@@ -131,7 +158,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           style="@style/Widget.Material3.Button.OutlinedButton"
-          android:text="@string/btn_check_update" />
+          android:text="@string/btn_check_update"
+          app:icon="@drawable/arrows_clockwise"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
 
         <!-- 关于 -->
         <com.google.android.material.button.MaterialButton
@@ -140,7 +170,10 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="16dp"
           style="@style/Widget.Material3.Button.OutlinedButton"
-          android:text="@string/btn_about" />
+          android:text="@string/btn_about"
+          app:icon="@drawable/info"
+          app:iconGravity="textStart"
+          app:iconPadding="8dp" />
 
       </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
