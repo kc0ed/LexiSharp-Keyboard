@@ -123,6 +123,13 @@ class BackspaceGestureHandler(
 
         // 启动长按重复删除计时器
         scheduleLongPress(view)
+
+        // 标记按下以触发 state_pressed，从而切换按压态图标
+        try {
+            view.isPressed = true
+        } catch (e: Throwable) {
+            android.util.Log.w("BackspaceGestureHandler", "Failed to set pressed=true", e)
+        }
     }
 
     private fun onSwipeToClear(view: View, ic: InputConnection) {
@@ -134,6 +141,9 @@ class BackspaceGestureHandler(
         clearedInGesture = true
         listener?.onVibrateRequest()
         listener?.onClearAll()
+
+        // 离开按压态
+        try { view.isPressed = false } catch (e: Throwable) { android.util.Log.w("BackspaceGestureHandler", "Failed to set pressed=false (clear)", e) }
     }
 
     private fun onSwipeToUndo(view: View) {
@@ -143,6 +153,9 @@ class BackspaceGestureHandler(
         // 执行撤销
         listener?.onVibrateRequest()
         listener?.onUndo()
+
+        // 离开按压态
+        try { view.isPressed = false } catch (e: Throwable) { android.util.Log.w("BackspaceGestureHandler", "Failed to set pressed=false (undo)", e) }
     }
 
     private fun onRestoreAfterClear(view: View, ic: InputConnection) {
@@ -198,6 +211,9 @@ class BackspaceGestureHandler(
         longPressStarter = null
         repeatRunnable?.let { view.removeCallbacks(it) }
         repeatRunnable = null
+
+        // 释放按压态
+        try { view.isPressed = false } catch (e: Throwable) { android.util.Log.w("BackspaceGestureHandler", "Failed to set pressed=false (up)", e) }
     }
 
     /**

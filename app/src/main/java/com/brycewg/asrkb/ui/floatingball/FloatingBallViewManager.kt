@@ -185,12 +185,14 @@ class FloatingBallViewManager(
 
         when (state) {
             is FloatingBallState.Recording -> {
+                try { ballIcon?.setImageResource(R.drawable.microphone_fill) } catch (e: Throwable) { Log.w(TAG, "Failed to set ball icon (recording)", e) }
                 ballProgress?.visibility = View.GONE
                 processingSpinner?.visibility = View.GONE
                 stopProcessingSpinner()
                 startRippleAnimation()
             }
             is FloatingBallState.Processing -> {
+                try { ballIcon?.setImageResource(R.drawable.microphone) } catch (e: Throwable) { Log.w(TAG, "Failed to set ball icon (processing)", e) }
                 stopRippleAnimation()
                 ballProgress?.visibility = View.GONE
                 processingSpinner?.visibility = View.VISIBLE
@@ -205,6 +207,7 @@ class FloatingBallViewManager(
             }
             else -> {
                 // Idle, MoveMode
+                try { ballIcon?.setImageResource(R.drawable.microphone) } catch (e: Throwable) { Log.w(TAG, "Failed to set ball icon (idle/move)", e) }
                 stopRippleAnimation()
                 ballProgress?.visibility = View.GONE
                 processingSpinner?.visibility = View.GONE
@@ -218,7 +221,7 @@ class FloatingBallViewManager(
     fun showCompletionTick(durationMs: Long = 1000L) {
         val icon = ballIcon ?: return
         try {
-            icon.setImageResource(R.drawable.ic_check)
+            icon.setImageResource(R.drawable.check_circle)
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to set check icon", e)
             return
@@ -227,7 +230,7 @@ class FloatingBallViewManager(
             completionResetPosted = true
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 try {
-                    ballIcon?.setImageResource(R.drawable.ic_mic)
+                    ballIcon?.setImageResource(R.drawable.microphone)
                 } catch (e: Throwable) {
                     Log.e(TAG, "Failed to reset icon", e)
                 }

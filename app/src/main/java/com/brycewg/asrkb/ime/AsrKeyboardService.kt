@@ -424,15 +424,21 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
             actionHandler.handleAiEditClick(currentInputConnection)
         }
 
-        // 后处理开关
+        // 后处理开关：用填充/线性图标表示启用/禁用，不再使用透明度
         btnPostproc?.apply {
-            isSelected = prefs.postProcessEnabled
-            alpha = if (prefs.postProcessEnabled) 1f else 0.45f
+            try {
+                setImageResource(if (prefs.postProcessEnabled) R.drawable.magic_wand_fill else R.drawable.magic_wand)
+            } catch (e: Throwable) {
+                android.util.Log.w("AsrKeyboardService", "Failed to set postproc icon (init)", e)
+            }
             setOnClickListener { v ->
                 performKeyHaptic(v)
                 actionHandler.handlePostprocessToggle()
-                isSelected = prefs.postProcessEnabled
-                alpha = if (prefs.postProcessEnabled) 1f else 0.45f
+                try {
+                    setImageResource(if (prefs.postProcessEnabled) R.drawable.magic_wand_fill else R.drawable.magic_wand)
+                } catch (e: Throwable) {
+                    android.util.Log.w("AsrKeyboardService", "Failed to set postproc icon (toggle)", e)
+                }
             }
         }
 
@@ -531,6 +537,8 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
         clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_idle)
         btnMic?.isSelected = false
+        try { btnMic?.setImageResource(R.drawable.microphone) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set mic icon (idle)", e) }
+        try { btnAiEdit?.setImageResource(R.drawable.pencil_simple_line) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set AI edit icon (idle)", e) }
         currentInputConnection?.let { inputHelper.finishComposingText(it) }
     }
 
@@ -538,30 +546,40 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
         clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_listening)
         btnMic?.isSelected = true
+        try { btnMic?.setImageResource(R.drawable.microphone_fill) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set mic icon (listening)", e) }
+        try { btnAiEdit?.setImageResource(R.drawable.pencil_simple_line) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set AI edit icon (listening)", e) }
     }
 
     private fun updateUiProcessing() {
         clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_recognizing)
         btnMic?.isSelected = false
+        try { btnMic?.setImageResource(R.drawable.microphone) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set mic icon (processing)", e) }
+        try { btnAiEdit?.setImageResource(R.drawable.pencil_simple_line) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set AI edit icon (processing)", e) }
     }
 
     private fun updateUiAiProcessing() {
         clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_ai_processing)
         btnMic?.isSelected = false
+        try { btnMic?.setImageResource(R.drawable.microphone) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set mic icon (ai processing)", e) }
+        try { btnAiEdit?.setImageResource(R.drawable.pencil_simple_line) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set AI edit icon (ai processing)", e) }
     }
 
     private fun updateUiAiEditListening() {
         clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_ai_edit_listening)
         btnMic?.isSelected = false
+        try { btnMic?.setImageResource(R.drawable.microphone_fill) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set mic icon (ai edit listening)", e) }
+        try { btnAiEdit?.setImageResource(R.drawable.pencil_simple_line_fill) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set AI edit icon (ai edit listening)", e) }
     }
 
     private fun updateUiAiEditProcessing() {
         clearStatusTextStyle()
         txtStatus?.text = getString(R.string.status_ai_editing)
         btnMic?.isSelected = false
+        try { btnMic?.setImageResource(R.drawable.microphone) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set mic icon (ai edit processing)", e) }
+        try { btnAiEdit?.setImageResource(R.drawable.pencil_simple_line_fill) } catch (e: Throwable) { android.util.Log.w("AsrKeyboardService", "Failed to set AI edit icon (ai edit processing)", e) }
     }
 
     // ========== 辅助方法 ==========

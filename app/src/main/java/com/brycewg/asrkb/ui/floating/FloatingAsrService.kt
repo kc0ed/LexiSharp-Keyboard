@@ -250,10 +250,10 @@ class FloatingAsrService : Service(),
             return
         }
 
-        // 开始录音前恢复图标
+        // 开始录音前切换为激活态图标
         try {
             viewManager.getBallView()?.findViewById<android.widget.ImageView>(R.id.ballIcon)
-                ?.setImageResource(R.drawable.ic_mic)
+                ?.setImageResource(R.drawable.microphone_fill)
         } catch (e: Throwable) {
             Log.w(TAG, "Failed to reset icon to mic", e)
         }
@@ -383,47 +383,51 @@ class FloatingAsrService : Service(),
 
         val items = listOf(
             FloatingMenuHelper.MenuItem(
-                R.drawable.ic_prompt,
+                R.drawable.article,
                 getString(R.string.label_radial_switch_prompt),
                 getString(R.string.label_radial_switch_prompt)
             ) { onPickPromptPresetFromMenu() },
             FloatingMenuHelper.MenuItem(
-                R.drawable.ic_waveform,
+                R.drawable.waveform,
                 getString(R.string.label_radial_switch_asr),
                 getString(R.string.label_radial_switch_asr)
             ) { onPickAsrVendor() },
             FloatingMenuHelper.MenuItem(
-                R.drawable.ic_keyboard,
+                R.drawable.keyboard,
                 getString(R.string.label_radial_switch_ime),
                 getString(R.string.label_radial_switch_ime)
             ) { invokeImePickerFromMenu() },
             FloatingMenuHelper.MenuItem(
-                R.drawable.ic_move,
+                R.drawable.arrows_out_cardinal,
                 getString(R.string.label_radial_move),
                 getString(R.string.label_radial_move)
             ) { enableMoveModeFromMenu() },
             // 录音判停开关（与 ASR 设置一致）
             FloatingMenuHelper.MenuItem(
-                R.drawable.ic_settings,
+                if (try { prefs.autoStopOnSilenceEnabled } catch (_: Throwable) { false }) {
+                    R.drawable.hand_palm_fill
+                } else {
+                    R.drawable.hand_palm
+                },
                 getString(R.string.label_radial_toggle_silence_autostop),
                 getString(R.string.label_radial_toggle_silence_autostop)
             ) { toggleAutoStopSilenceFromMenu() },
             FloatingMenuHelper.MenuItem(
                 if (try { prefs.postProcessEnabled } catch (_: Throwable) { false }) {
-                    R.drawable.ic_star_filled
+                    R.drawable.magic_wand_fill
                 } else {
-                    R.drawable.ic_star_outline
+                    R.drawable.magic_wand
                 },
                 getString(R.string.label_radial_postproc),
                 getString(R.string.label_radial_postproc)
             ) { togglePostprocFromMenu() },
             FloatingMenuHelper.MenuItem(
-                R.drawable.ic_stat_upload,
+                R.drawable.cloud_arrow_up,
                 getString(R.string.label_radial_clipboard_upload),
                 getString(R.string.label_radial_clipboard_upload)
             ) { uploadClipboardOnceFromMenu() },
             FloatingMenuHelper.MenuItem(
-                R.drawable.ic_stat_download,
+                R.drawable.cloud_arrow_down,
                 getString(R.string.label_radial_clipboard_pull),
                 getString(R.string.label_radial_clipboard_pull)
             ) { pullClipboardOnceFromMenu() }

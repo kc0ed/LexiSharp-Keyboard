@@ -8,4 +8,4 @@ build/
 app/release
 build/reports/problems/problems-report.html
 .worktrees/
-asr_docs/
+dev_docs/

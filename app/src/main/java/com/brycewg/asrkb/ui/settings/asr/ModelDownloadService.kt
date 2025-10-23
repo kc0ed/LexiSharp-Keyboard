@@ -126,7 +126,7 @@ class ModelDownloadService : Service() {
     val notif = NotificationCompat.Builder(this, CHANNEL_ID)
       .setContentTitle(getString(R.string.notif_model_summary_title))
       .setContentText(getString(R.string.notif_model_summary_text))
-      .setSmallIcon(R.drawable.ic_stat_download)
+      .setSmallIcon(R.drawable.cloud_arrow_down)
       .setGroup(GROUP_ID)
       .setOngoing(true)
       .build()
@@ -560,7 +560,7 @@ class NotificationHandler(
     updateThrottleState(progress)
 
     val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-      .setSmallIcon(R.drawable.ic_stat_download)
+      .setSmallIcon(R.drawable.cloud_arrow_down)
       .setContentTitle(title)
       .setContentText(text)
       .setOnlyAlertOnce(true)

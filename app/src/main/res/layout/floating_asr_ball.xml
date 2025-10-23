@@ -46,10 +46,10 @@
         <!-- 图标置于最上层，保证点击与可见性 -->
         <ImageView
             android:id="@+id/ballIcon"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_mic"
+            android:src="@drawable/microphone"
             android:scaleType="fitCenter"
             android:tint="@color/floating_asr_icon_tint"
             android:contentDescription="@string/cd_floating_asr" />

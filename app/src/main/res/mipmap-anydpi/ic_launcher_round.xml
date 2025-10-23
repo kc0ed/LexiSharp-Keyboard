@@ -3,5 +3,5 @@
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@drawable/logo_foreground" />
     <!-- Android 13+ 单色图标（消除“Monochrome icon is not defined”警告） -->
-    <monochrome android:drawable="@drawable/ic_keyboard" />
+    <monochrome android:drawable="@drawable/keyboard" />
 </adaptive-icon>
