@@ -16,6 +16,7 @@ import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.store.PromptPreset
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -45,6 +46,7 @@ class AiPostSettingsActivity : AppCompatActivity() {
     private lateinit var etLlmPrompt: EditText
     private lateinit var btnAddPromptPreset: Button
     private lateinit var btnDeletePromptPreset: Button
+    private lateinit var switchAiEditPreferLastAsr: MaterialSwitch
 
     // Flag to prevent recursive updates during programmatic text changes
     private var isUpdatingProgrammatically = false
@@ -91,6 +93,13 @@ class AiPostSettingsActivity : AppCompatActivity() {
         etLlmPrompt = findViewById(R.id.etLlmPrompt)
         btnAddPromptPreset = findViewById(R.id.btnAddPromptPreset)
         btnDeletePromptPreset = findViewById(R.id.btnDeletePromptPreset)
+
+        // AI 编辑默认范围开关：使用上次识别结果
+        switchAiEditPreferLastAsr = findViewById(R.id.switchAiEditPreferLastAsr)
+        switchAiEditPreferLastAsr.isChecked = prefs.aiEditDefaultToLastAsr
+        switchAiEditPreferLastAsr.setOnCheckedChangeListener { _, isChecked ->
+            prefs.aiEditDefaultToLastAsr = isChecked
+        }
     }
 
     /**

@@ -24,12 +24,7 @@
       android:orientation="vertical"
       android:padding="16dp">
 
-      <!-- AI Edit default scope switch -->
-      <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switchAiEditPreferLastAsr"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/label_ai_edit_default_use_last_asr" />
+      
 
       <!-- Silence auto-stop section -->
       <TextView

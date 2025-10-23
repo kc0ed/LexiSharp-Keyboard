@@ -143,6 +143,10 @@
     <string name="desc_floating_write_compat">Some apps expose background placeholder text to Accessibility, which contaminates final insertion. When enabled, in target apps the floating ball switches to Select-All + Paste with an invisible marker to avoid placeholder issues. The clipboard may be used temporarily (best-effort restore). Works for Telegram, Douyin, etc.</string>
     <string name="label_floating_write_compat_pkgs">Target package names (one per line)</string>
     <string name="hint_floating_write_compat_pkgs">Enter full package or prefix (e.g., org.telegram or com.ss.android.ugc.aweme). A trailing * means prefix match (e.g., org.telegram.*).</string>
+    <string name="label_floating_write_paste">Use clipboard paste scheme for writing</string>
+    <string name="desc_floating_write_paste">Applies only to the packages below: in these apps, when using floating voice input, copy the result to the clipboard instead of inserting via Accessibility APIs. If a line contains all, it applies globally.</string>
+    <string name="label_floating_write_paste_pkgs">Target packages (one per line)</string>
+    <string name="hint_floating_write_paste_pkgs">Enter exact package names (e.g., com.tencent.mm). To apply globally, add a single line with all.</string>
     <string name="cd_floating_asr">Floating ball voice recognition</string>
     <string name="toast_setup_all_done">All set</string>
     <string name="toast_setup_enable_keyboard_first">Enable the keyboard in system settings, then come back</string>

@@ -1,5 +1,7 @@
 package com.brycewg.asrkb.ui.floatingball
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.util.Log
 import android.os.SystemClock
@@ -469,6 +471,30 @@ class AsrSessionManager(
 
         val pkg = com.brycewg.asrkb.ui.AsrAccessibilityService.getActiveWindowPackage()
         val isTg = pkg != null && isTelegramLikePackage(pkg)
+        // 写入粘贴方案：命中规则则仅复制到剪贴板并提示
+        val writePaste = try {
+            prefs.floatingWriteTextPasteEnabled
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to get write paste preference", e)
+            false
+        }
+        val pasteTarget = pkg != null && isPackageInPasteTargets(pkg)
+        if (writePaste && pasteTarget) {
+            try {
+                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("ASR Result", text)
+                cm.setPrimaryClip(clip)
+                android.widget.Toast.makeText(
+                    context,
+                    context.getString(com.brycewg.asrkb.R.string.floating_asr_copied),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: Throwable) {
+                Log.e(TAG, "Failed to copy to clipboard (writePaste)", e)
+            }
+            // 不尝试插入文本：返回 false 表示未写入
+            return false
+        }
         val writeCompat = try {
             prefs.floatingWriteTextCompatEnabled
         } catch (e: Throwable) {
@@ -504,6 +530,18 @@ class AsrSessionManager(
         }
 
         return wrote
+    }
+
+    private fun isPackageInPasteTargets(pkg: String): Boolean {
+        val raw = try {
+            prefs.floatingWritePastePackages
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to get paste packages", e)
+            ""
+        }
+        val rules = raw.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
+        if (rules.any { it.equals("all", ignoreCase = true) }) return true
+        return rules.any { it == pkg }
     }
 
     private fun tryFixTelegramPlaceholderIfNeeded() {

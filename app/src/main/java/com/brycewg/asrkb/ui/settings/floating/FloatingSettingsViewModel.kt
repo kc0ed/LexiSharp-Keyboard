@@ -36,6 +36,9 @@ class FloatingSettingsViewModel : ViewModel() {
     private val _writeCompatEnabled = MutableStateFlow(true)
     val writeCompatEnabled: StateFlow<Boolean> = _writeCompatEnabled.asStateFlow()
 
+    private val _writePasteEnabled = MutableStateFlow(false)
+    val writePasteEnabled: StateFlow<Boolean> = _writePasteEnabled.asStateFlow()
+
     private val _imeVisibilityCompatEnabled = MutableStateFlow(false)
     val imeVisibilityCompatEnabled: StateFlow<Boolean> = _imeVisibilityCompatEnabled.asStateFlow()
 
@@ -50,6 +53,7 @@ class FloatingSettingsViewModel : ViewModel() {
             _alpha.value = (prefs.floatingSwitcherAlpha * 100f).coerceIn(30f, 100f)
             _sizeDp.value = prefs.floatingBallSizeDp
             _writeCompatEnabled.value = prefs.floatingWriteTextCompatEnabled
+            _writePasteEnabled.value = prefs.floatingWriteTextPasteEnabled
             _imeVisibilityCompatEnabled.value = prefs.floatingImeVisibilityCompatEnabled
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to initialize state", e)
@@ -218,6 +222,20 @@ class FloatingSettingsViewModel : ViewModel() {
     }
 
     /**
+     * 处理写入粘贴方案开关变化
+     */
+    fun handleWritePasteToggle(context: Context, enabled: Boolean) {
+        try {
+            val prefs = Prefs(context)
+            _writePasteEnabled.value = enabled
+            prefs.floatingWriteTextPasteEnabled = enabled
+            Log.d(TAG, "WritePaste toggled: $enabled")
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to handle WritePaste toggle", e)
+        }
+    }
+
+    /**
      * 更新兼容包名列表
      */
     fun updateWriteCompatPackages(context: Context, packages: String) {
@@ -227,6 +245,19 @@ class FloatingSettingsViewModel : ViewModel() {
             Log.d(TAG, "WriteCompatPackages updated")
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to update WriteCompatPackages", e)
+        }
+    }
+
+    /**
+     * 更新粘贴方案包名列表
+     */
+    fun updateWritePastePackages(context: Context, packages: String) {
+        try {
+            val prefs = Prefs(context)
+            prefs.floatingWritePastePackages = packages
+            Log.d(TAG, "WritePastePackages updated")
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed to update WritePastePackages", e)
         }
     }
 

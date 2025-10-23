@@ -104,6 +104,39 @@
           android:scrollbars="vertical" />
       </com.google.android.material.textfield.TextInputLayout>
 
+      <!-- 悬浮球写入文字采取粘贴方案 -->
+      <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchFloatingWritePaste"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/label_floating_write_paste" />
+
+      <TextView
+          android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@android:color/darker_gray"
+        android:text="@string/desc_floating_write_paste" />
+
+      <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:helperText="@string/hint_floating_write_paste_pkgs">
+
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/etFloatingWritePastePkgs"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:hint="@string/label_floating_write_paste_pkgs"
+          android:inputType="textNoSuggestions|textMultiLine"
+          android:minLines="3"
+          android:gravity="top|start"
+          android:overScrollMode="always"
+          android:scrollbars="vertical" />
+      </com.google.android.material.textfield.TextInputLayout>
+
       <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchImeVisibilityCompat"
         android:layout_width="match_parent"

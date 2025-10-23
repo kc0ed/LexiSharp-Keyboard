@@ -211,6 +211,16 @@ class Prefs(context: Context) {
         get() = sp.getString(KEY_FLOATING_WRITE_COMPAT_PACKAGES, DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES) ?: DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES
         set(value) = sp.edit { putString(KEY_FLOATING_WRITE_COMPAT_PACKAGES, value) }
 
+    // 悬浮球：写入采取粘贴方案（根据包名将结果仅复制到粘贴板），默认关闭
+    var floatingWriteTextPasteEnabled: Boolean
+        get() = sp.getBoolean(KEY_FLOATING_WRITE_PASTE_ENABLED, false)
+        set(value) = sp.edit { putBoolean(KEY_FLOATING_WRITE_PASTE_ENABLED, value) }
+
+    // 粘贴方案目标包名（每行一个；all 表示全局生效）
+    var floatingWritePastePackages: String
+        get() = sp.getString(KEY_FLOATING_WRITE_PASTE_PACKAGES, "") ?: ""
+        set(value) = sp.edit { putString(KEY_FLOATING_WRITE_PASTE_PACKAGES, value) }
+
     // LLM后处理设置（旧版单一字段；当存在多配置且已选择活动项时仅作回退）
     var postProcessEnabled: Boolean
         get() = sp.getBoolean(KEY_POSTPROC_ENABLED, false)
@@ -881,11 +891,13 @@ class Prefs(context: Context) {
         private const val KEY_FCITX5_RETURN_ON_SWITCHER = "fcitx5_return_on_switcher"
         private const val KEY_HIDE_RECENT_TASK_CARD = "hide_recent_task_card"
         private const val KEY_FLOATING_WRITE_COMPAT_ENABLED = "floating_write_compat_enabled"
+        private const val KEY_FLOATING_WRITE_PASTE_ENABLED = "floating_write_paste_enabled"
         private const val KEY_FLOATING_ASR_ENABLED = "floating_asr_enabled"
         private const val KEY_FLOATING_ONLY_WHEN_IME_VISIBLE = "floating_only_when_ime_visible"
         private const val KEY_FLOATING_IME_VISIBILITY_COMPAT_ENABLED = "floating_ime_visibility_compat_enabled"
         private const val KEY_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES = "floating_ime_visibility_compat_packages"
         private const val KEY_FLOATING_WRITE_COMPAT_PACKAGES = "floating_write_compat_packages"
+        private const val KEY_FLOATING_WRITE_PASTE_PACKAGES = "floating_write_paste_packages"
         private const val KEY_POSTPROC_ENABLED = "postproc_enabled"
         private const val KEY_APP_LANGUAGE_TAG = "app_language_tag"
         private const val KEY_LAST_UPDATE_CHECK_DATE = "last_update_check_date"
@@ -1114,9 +1126,11 @@ class Prefs(context: Context) {
         // 使用统计（聚合）与首次使用日期
         try { o.put(KEY_USAGE_STATS_JSON, usageStatsJson) } catch (t: Throwable) { Log.w(TAG, "Failed to export usage stats", t) }
         try { o.put(KEY_FIRST_USE_DATE, firstUseDate) } catch (t: Throwable) { Log.w(TAG, "Failed to export first use date", t) }
-        // 兼容性模式
+        // 写入兼容/粘贴方案
         o.put(KEY_FLOATING_WRITE_COMPAT_ENABLED, floatingWriteTextCompatEnabled)
         o.put(KEY_FLOATING_WRITE_COMPAT_PACKAGES, floatingWriteCompatPackages)
+        o.put(KEY_FLOATING_WRITE_PASTE_ENABLED, floatingWriteTextPasteEnabled)
+        o.put(KEY_FLOATING_WRITE_PASTE_PACKAGES, floatingWritePastePackages)
         // SenseVoice（本地 ASR）
         o.put(KEY_SV_MODEL_DIR, svModelDir)
         o.put(KEY_SV_MODEL_VARIANT, svModelVariant)
@@ -1181,6 +1195,8 @@ class Prefs(context: Context) {
             optString(KEY_FLOATING_IME_VISIBILITY_COMPAT_PACKAGES)?.let { floatingImeVisibilityCompatPackages = it }
             optBool(KEY_FLOATING_WRITE_COMPAT_ENABLED)?.let { floatingWriteTextCompatEnabled = it }
             optString(KEY_FLOATING_WRITE_COMPAT_PACKAGES)?.let { floatingWriteCompatPackages = it }
+            optBool(KEY_FLOATING_WRITE_PASTE_ENABLED)?.let { floatingWriteTextPasteEnabled = it }
+            optString(KEY_FLOATING_WRITE_PASTE_PACKAGES)?.let { floatingWritePastePackages = it }
 
             optString(KEY_LLM_ENDPOINT)?.let { llmEndpoint = it.ifBlank { DEFAULT_LLM_ENDPOINT } }
             optString(KEY_LLM_API_KEY)?.let { llmApiKey = it }

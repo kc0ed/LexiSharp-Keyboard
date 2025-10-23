@@ -39,6 +39,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
     private lateinit var switchFloatingAsr: MaterialSwitch
     private lateinit var switchFloatingWriteCompat: MaterialSwitch
     private lateinit var etFloatingWriteCompatPkgs: TextInputEditText
+    private lateinit var switchFloatingWritePaste: MaterialSwitch
+    private lateinit var etFloatingWritePastePkgs: TextInputEditText
     private lateinit var switchImeVisibilityCompat: MaterialSwitch
     private lateinit var etImeVisibilityCompatPkgs: TextInputEditText
 
@@ -79,6 +81,8 @@ class FloatingSettingsActivity : AppCompatActivity() {
         switchFloatingAsr = findViewById(R.id.switchFloatingAsr)
         switchFloatingWriteCompat = findViewById(R.id.switchFloatingWriteCompat)
         etFloatingWriteCompatPkgs = findViewById(R.id.etFloatingWriteCompatPkgs)
+        switchFloatingWritePaste = findViewById(R.id.switchFloatingWritePaste)
+        etFloatingWritePastePkgs = findViewById(R.id.etFloatingWritePastePkgs)
         switchImeVisibilityCompat = findViewById(R.id.switchImeVisibilityCompat)
         etImeVisibilityCompatPkgs = findViewById(R.id.etImeVisibilityCompatPkgs)
     }
@@ -133,6 +137,15 @@ class FloatingSettingsActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
+            // 写入粘贴方案
+            viewModel.writePasteEnabled.collect { enabled ->
+                if (switchFloatingWritePaste.isChecked != enabled) {
+                    switchFloatingWritePaste.isChecked = enabled
+                }
+            }
+        }
+
+        lifecycleScope.launch {
             // 键盘可见性兼容
             viewModel.imeVisibilityCompatEnabled.collect { enabled ->
                 if (switchImeVisibilityCompat.isChecked != enabled) {
@@ -143,6 +156,7 @@ class FloatingSettingsActivity : AppCompatActivity() {
 
         // 初始化文本输入框（从 Prefs 加载）
         etFloatingWriteCompatPkgs.setText(prefs.floatingWriteCompatPackages)
+        etFloatingWritePastePkgs.setText(prefs.floatingWritePastePackages)
         etImeVisibilityCompatPkgs.setText(prefs.floatingImeVisibilityCompatPackages)
     }
 
@@ -206,12 +220,27 @@ class FloatingSettingsActivity : AppCompatActivity() {
             viewModel.handleWriteCompatToggle(this, isChecked)
         }
 
+        // 悬浮球写入文字采取粘贴方案
+        switchFloatingWritePaste.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            viewModel.handleWritePasteToggle(this, isChecked)
+        }
+
         // 兼容目标包名（写入兼容）
         etFloatingWriteCompatPkgs.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 viewModel.updateWriteCompatPackages(this@FloatingSettingsActivity, s?.toString() ?: "")
+            }
+        })
+
+        // 目标包名（写入粘贴方案）
+        etFloatingWritePastePkgs.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                viewModel.updateWritePastePackages(this@FloatingSettingsActivity, s?.toString() ?: "")
             }
         })
 

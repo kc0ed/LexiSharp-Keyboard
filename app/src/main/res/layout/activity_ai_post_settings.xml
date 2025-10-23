@@ -24,6 +24,13 @@
       android:padding="16dp"
       android:orientation="vertical">
 
+      <!-- AI 编辑默认范围：上次识别结果 -->
+      <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchAiEditPreferLastAsr"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/label_ai_edit_default_use_last_asr" />
+
       <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
