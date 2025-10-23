@@ -2,6 +2,7 @@ package com.brycewg.asrkb.ime
 
 import android.content.Context
 import android.util.Log
+import android.os.SystemClock
 import android.os.Handler
 import android.os.Looper
 import com.brycewg.asrkb.asr.*
@@ -74,6 +75,10 @@ class AsrSessionManager(
 
     // ASR 请求耗时记录
     private var lastRequestDurationMs: Long? = null
+
+    // 会话录音时长统计（毫秒）
+    private var sessionStartUptimeMs: Long = 0L
+    private var lastAudioMsForStats: Long = 0L
 
     fun setListener(l: Listener) {
         listener = l
@@ -200,6 +205,10 @@ class AsrSessionManager(
      */
     fun startRecording(state: KeyboardState) {
         currentState = state
+        try { sessionStartUptimeMs = SystemClock.uptimeMillis() } catch (t: Throwable) {
+            Log.w(TAG, "Failed to get uptime for session start", t)
+            sessionStartUptimeMs = 0L
+        }
         // 若为本地 SenseVoice 且使用文件识别模式，在录音触发时后台开始加载模型
         try {
             if (prefs.asrVendor == AsrVendor.SenseVoice && !prefs.svPseudoStreamingEnabled) {
@@ -238,6 +247,15 @@ class AsrSessionManager(
     }
 
     /**
+     * 读取并清空最近一次会话的录音时长（毫秒）。
+     */
+    fun popLastAudioMsForStats(): Long {
+        val v = lastAudioMsForStats
+        lastAudioMsForStats = 0L
+        return v
+    }
+
+    /**
      * 设置当前状态（用于外部状态变更）
      */
     fun setCurrentState(state: KeyboardState) {
@@ -256,6 +274,16 @@ class AsrSessionManager(
 
     override fun onFinal(text: String) {
         Log.d(TAG, "onFinal: text='$text', state=$currentState")
+        // 若尚未收到 onStopped，则以当前时间近似计算一次时长
+        if (lastAudioMsForStats == 0L && sessionStartUptimeMs > 0L) {
+            try {
+                val dur = (SystemClock.uptimeMillis() - sessionStartUptimeMs).coerceAtLeast(0)
+                lastAudioMsForStats = dur
+                sessionStartUptimeMs = 0L
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to compute audio duration on onFinal", t)
+            }
+        }
         listener?.onAsrFinal(text, currentState)
     }
 
@@ -277,6 +305,17 @@ class AsrSessionManager(
 
     override fun onStopped() {
         Log.d(TAG, "onStopped: state=$currentState")
+        // 计算本次会话录音时长
+        if (sessionStartUptimeMs > 0L) {
+            try {
+                val dur = (SystemClock.uptimeMillis() - sessionStartUptimeMs).coerceAtLeast(0)
+                lastAudioMsForStats = dur
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to compute audio duration on onStopped", t)
+            } finally {
+                sessionStartUptimeMs = 0L
+            }
+        }
         listener?.onAsrStopped()
     }
 

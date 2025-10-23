@@ -2,6 +2,7 @@ package com.brycewg.asrkb.ui.floatingball
 
 import android.content.Context
 import android.util.Log
+import android.os.SystemClock
 import com.brycewg.asrkb.asr.*
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.AsrAccessibilityService.FocusContext
@@ -45,9 +46,17 @@ class AsrSessionManager(
     private var processingTimeoutJob: Job? = null
     private var hasCommittedResult: Boolean = false
 
+    // 统计：录音时长
+    private var sessionStartUptimeMs: Long = 0L
+    private var lastAudioMsForStats: Long = 0L
+
     /** 开始录音 */
     fun startRecording() {
         Log.d(TAG, "startRecording called")
+        try { sessionStartUptimeMs = SystemClock.uptimeMillis() } catch (t: Throwable) {
+            Log.w(TAG, "Failed to read uptime for session start", t)
+            sessionStartUptimeMs = 0L
+        }
 
         // 检查本地 SenseVoice 模型（如果需要）
         if (!checkSenseVoiceModel()) {
@@ -99,6 +108,15 @@ class AsrSessionManager(
         startProcessingTimeout()
     }
 
+    /**
+     * 读取并清空最近一次会话的录音时长（毫秒）。
+     */
+    fun popLastAudioMsForStats(): Long {
+        val v = lastAudioMsForStats
+        lastAudioMsForStats = 0L
+        return v
+    }
+
     /** 清理会话 */
     fun cleanup() {
         try {
@@ -133,6 +151,17 @@ class AsrSessionManager(
 
             var finalText = text
             val stillRecording = (asrEngine?.isRunning == true)
+            // 若未收到 onStopped，则在此近似计算录音时长
+            if (lastAudioMsForStats == 0L && sessionStartUptimeMs > 0L) {
+                try {
+                    val dur = (SystemClock.uptimeMillis() - sessionStartUptimeMs).coerceAtLeast(0)
+                    lastAudioMsForStats = dur
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Failed to compute audio duration in onFinal", t)
+                } finally {
+                    sessionStartUptimeMs = 0L
+                }
+            }
 
             // AI 后处理
             if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
@@ -184,6 +213,17 @@ class AsrSessionManager(
     override fun onStopped() {
         serviceScope.launch {
             listener.onSessionStateChanged(FloatingBallState.Processing)
+            // 计算本次会话录音时长
+            if (sessionStartUptimeMs > 0L) {
+                try {
+                    val dur = (SystemClock.uptimeMillis() - sessionStartUptimeMs).coerceAtLeast(0)
+                    lastAudioMsForStats = dur
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Failed to compute audio duration in onStopped", t)
+                } finally {
+                    sessionStartUptimeMs = 0L
+                }
+            }
             startProcessingTimeout()
         }
     }

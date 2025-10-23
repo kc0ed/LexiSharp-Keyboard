@@ -8,6 +8,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.reflect.KProperty
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("asr_prefs", Context.MODE_PRIVATE)
@@ -683,6 +685,130 @@ class Prefs(context: Context) {
         totalAsrChars = next
     }
 
+    // ===== 使用统计（聚合） =====
+
+    @Serializable
+    data class VendorAgg(
+        var sessions: Long = 0,
+        var chars: Long = 0,
+        var audioMs: Long = 0
+    )
+
+    @Serializable
+    data class DayAgg(
+        var sessions: Long = 0,
+        var chars: Long = 0,
+        var audioMs: Long = 0
+    )
+
+    @Serializable
+    data class UsageStats(
+        var totalSessions: Long = 0,
+        var totalChars: Long = 0,
+        var totalAudioMs: Long = 0,
+        var perVendor: MutableMap<String, VendorAgg> = mutableMapOf(),
+        var daily: MutableMap<String, DayAgg> = mutableMapOf(),
+        var firstUseDate: String = ""
+    )
+
+    private var usageStatsJson: String by stringPref(KEY_USAGE_STATS_JSON, "")
+
+    // 首次使用日期（yyyyMMdd）。若为空将在首次读取 UsageStats 时写入今天。
+    var firstUseDate: String by stringPref(KEY_FIRST_USE_DATE, "")
+
+    fun getUsageStats(): UsageStats {
+        if (usageStatsJson.isBlank()) {
+            val today = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+            if (firstUseDate.isBlank()) firstUseDate = today
+            return UsageStats(firstUseDate = firstUseDate)
+        }
+        return try {
+            val stats = json.decodeFromString<UsageStats>(usageStatsJson)
+            // 兼容老数据：填充 firstUseDate
+            if (stats.firstUseDate.isBlank()) {
+                val fud = if (firstUseDate.isNotBlank()) firstUseDate else LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+                stats.firstUseDate = fud
+                setUsageStats(stats)
+            }
+            stats
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse UsageStats JSON", e)
+            val today = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+            if (firstUseDate.isBlank()) firstUseDate = today
+            UsageStats(firstUseDate = firstUseDate)
+        }
+    }
+
+    private fun setUsageStats(stats: UsageStats) {
+        try {
+            usageStatsJson = json.encodeToString(stats)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to serialize UsageStats", e)
+        }
+    }
+
+    /**
+     * 记录一次“最终提交”的使用统计（仅在有最终文本提交时调用）。
+     * @param source 用途来源："ime" / "floating" / "aiEdit"（当前仅 ime 与 floating 计入平均值）
+     * @param vendor 供应商（用于 perVendor 聚合）
+     * @param audioMs 本次会话的录音时长（毫秒）
+     * @param chars 提交的字符数
+     */
+    fun recordUsageCommit(source: String, vendor: AsrVendor, audioMs: Long, chars: Int) {
+        if (chars <= 0 && audioMs <= 0) return
+        val today = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+        val stats = getUsageStats()
+
+        stats.totalSessions += 1
+        stats.totalChars += chars.coerceAtLeast(0)
+        stats.totalAudioMs += audioMs.coerceAtLeast(0L)
+
+        val key = vendor.id
+        val va = stats.perVendor[key] ?: VendorAgg()
+        va.sessions += 1
+        va.chars += chars.coerceAtLeast(0)
+        va.audioMs += audioMs.coerceAtLeast(0L)
+        stats.perVendor[key] = va
+
+        val da = stats.daily[today] ?: DayAgg()
+        da.sessions += 1
+        da.chars += chars.coerceAtLeast(0)
+        da.audioMs += audioMs.coerceAtLeast(0L)
+        stats.daily[today] = da
+
+        // 裁剪 daily 至最近 400 天（防止无限增长）
+        try {
+            if (stats.daily.size > 400) {
+                val keys = stats.daily.keys.sorted()
+                val toDrop = keys.size - 400
+                keys.take(toDrop).forEach { stats.daily.remove(it) }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Failed to prune daily stats", t)
+        }
+
+        setUsageStats(stats)
+    }
+
+    /**
+     * 计算“陪伴天数”。若缺少 firstUseDate，以今天为首次使用（=1天）。
+     */
+    fun getDaysSinceFirstUse(): Long {
+        val fud = if (firstUseDate.isBlank()) {
+            val today = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+            firstUseDate = today
+            today
+        } else firstUseDate
+        return try {
+            val start = LocalDate.parse(fud, DateTimeFormatter.BASIC_ISO_DATE)
+            val now = LocalDate.now()
+            java.time.temporal.ChronoUnit.DAYS.between(start, now) + 1 // 含当天
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse firstUseDate '$fud'", e)
+            1
+        }
+    }
+
     // ---- SyncClipboard 偏好项 ----
     var syncClipboardEnabled: Boolean
         get() = sp.getBoolean(KEY_SC_ENABLED, false)
@@ -814,6 +940,8 @@ class Prefs(context: Context) {
         private const val KEY_SV_PRELOAD_ENABLED = "sv_preload_enabled"
         private const val KEY_SV_KEEP_ALIVE_MINUTES = "sv_keep_alive_minutes"
         private const val KEY_SV_PSEUDO_STREAMING_ENABLED = "sv_pseudo_streaming_enabled"
+        private const val KEY_USAGE_STATS_JSON = "usage_stats"
+        private const val KEY_FIRST_USE_DATE = "first_use_date"
 
         // SyncClipboard keys
         private const val KEY_SC_ENABLED = "syncclip_enabled"
@@ -976,6 +1104,9 @@ class Prefs(context: Context) {
         o.put(KEY_PUNCT_4, punct4)
         // 统计信息
         o.put(KEY_TOTAL_ASR_CHARS, totalAsrChars)
+        // 使用统计（聚合）与首次使用日期
+        try { o.put(KEY_USAGE_STATS_JSON, usageStatsJson) } catch (t: Throwable) { Log.w(TAG, "Failed to export usage stats", t) }
+        try { o.put(KEY_FIRST_USE_DATE, firstUseDate) } catch (t: Throwable) { Log.w(TAG, "Failed to export first use date", t) }
         // 兼容性模式
         o.put(KEY_FLOATING_WRITE_COMPAT_ENABLED, floatingWriteTextCompatEnabled)
         o.put(KEY_FLOATING_WRITE_COMPAT_PACKAGES, floatingWriteCompatPackages)
@@ -1090,6 +1221,9 @@ class Prefs(context: Context) {
                 val v = try { o.optLong(KEY_TOTAL_ASR_CHARS) } catch (_: Throwable) { 0L }
                 if (v >= 0L) totalAsrChars = v
             }
+            // 使用统计（可选）
+            optString(KEY_USAGE_STATS_JSON)?.let { usageStatsJson = it }
+            optString(KEY_FIRST_USE_DATE)?.let { firstUseDate = it }
             // SenseVoice（本地 ASR）
             optString(KEY_SV_MODEL_DIR)?.let { svModelDir = it }
             optString(KEY_SV_MODEL_VARIANT)?.let { svModelVariant = it }

@@ -499,6 +499,13 @@ class KeyboardActionHandler(
         // 统计字数
         try {
             prefs.addAsrChars(finalProcessed.length)
+            // 记录使用统计（IME）
+            try {
+                val audioMs = asrManager.popLastAudioMsForStats()
+                prefs.recordUsageCommit("ime", prefs.asrVendor, audioMs, finalProcessed.length)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to record usage stats (with postprocess)", t)
+            }
         } catch (_: Throwable) { }
 
         uiListener?.onVibrate()
@@ -583,6 +590,13 @@ class KeyboardActionHandler(
         // 统计字数
         try {
             prefs.addAsrChars(finalText.length)
+            // 记录使用统计（IME）
+            try {
+                val audioMs = asrManager.popLastAudioMsForStats()
+                prefs.recordUsageCommit("ime", prefs.asrVendor, audioMs, finalText.length)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to record usage stats (no postprocess)", t)
+            }
         } catch (_: Throwable) { }
 
         uiListener?.onVibrate()

@@ -67,8 +67,91 @@
         android:textSize="14sp"
         android:text="@string/about_desc" />
 
+      <!-- 使用统计 -->
+      <TextView
+        android:id="@+id/tvStatsTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:text="@string/about_stats_title" />
+
+      <TextView
+        android:id="@+id/tvDaysWithYou"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp"
+        android:text="" />
+
+      <TextView
+        android:id="@+id/tvSummaryLine1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp"
+        android:text="" />
+
+      <TextView
+        android:id="@+id/tvSummaryLine2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp"
+        android:text="" />
+
+      <TextView
+        android:id="@+id/tvDailyWeeklyAvg"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp"
+        android:text="" />
+
+      <!-- 按供应商条形图容器 -->
+      <TextView
+        android:id="@+id/tvByVendorTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:text="@string/about_by_vendor" />
+
+      <LinearLayout
+        android:id="@+id/containerVendorBars"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="6dp" />
+
+      <!-- 最近 7 天 / 最近 30 天（字数）条形图容器 -->
+      <TextView
+        android:id="@+id/tvLast7Title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:text="@string/about_last_7_days" />
+
+      <LinearLayout
+        android:id="@+id/containerLast7"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="6dp" />
+
+
     </LinearLayout>
   </ScrollView>
 
 </LinearLayout>
-

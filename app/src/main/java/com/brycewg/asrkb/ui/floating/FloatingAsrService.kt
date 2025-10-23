@@ -283,6 +283,12 @@ class FloatingAsrService : Service(),
         handler.post {
             if (success) {
                 viewManager.showCompletionTick()
+                try {
+                    val audioMs = asrSessionManager.popLastAudioMsForStats()
+                    prefs.recordUsageCommit("floating", prefs.asrVendor, audioMs, text.length)
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Failed to record usage stats (floating)", t)
+                }
             }
         }
     }
