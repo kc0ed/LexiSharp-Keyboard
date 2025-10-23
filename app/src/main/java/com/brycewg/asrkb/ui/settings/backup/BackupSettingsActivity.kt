@@ -172,7 +172,7 @@ class BackupSettingsActivity : AppCompatActivity() {
         // 使用PROPFIND检查目录是否存在
         val checkReqBuilder = Request.Builder()
             .url(dirUrl)
-            .method("PROPFIND", RequestBody.create(null, ByteArray(0)))
+            .method("PROPFIND", ByteArray(0).toRequestBody(null))
             .addHeader("Depth", "0")
         addBasicAuthIfNeeded(checkReqBuilder)
 
@@ -206,7 +206,7 @@ class BackupSettingsActivity : AppCompatActivity() {
         // 使用MKCOL创建目录
         val mkdirReqBuilder = Request.Builder()
             .url(dirUrl)
-            .method("MKCOL", RequestBody.create(null, ByteArray(0)))
+            .method("MKCOL", ByteArray(0).toRequestBody(null))
         addBasicAuthIfNeeded(mkdirReqBuilder)
 
         try {

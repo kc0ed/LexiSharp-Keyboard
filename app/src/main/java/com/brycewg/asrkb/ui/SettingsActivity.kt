@@ -699,7 +699,13 @@ class SettingsActivity : AppCompatActivity() {
                 if (!isFinishing && !isDestroyed) {
                     finish()
                     try {
-                        overridePendingTransition(0, 0)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            // Android 14+ 使用新的过渡覆盖 API，替代已废弃的 overridePendingTransition
+                            overrideActivityTransition(android.app.Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            overridePendingTransition(0, 0)
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to override pending transition", e)
                     }
