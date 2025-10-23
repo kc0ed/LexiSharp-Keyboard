@@ -3,6 +3,9 @@ package com.brycewg.asrkb.ui.floatingball
 import android.content.Context
 import android.util.Log
 import android.os.SystemClock
+import android.media.AudioManager
+import android.media.AudioFocusRequest
+import android.media.AudioAttributes
 import com.brycewg.asrkb.asr.*
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.AsrAccessibilityService.FocusContext
@@ -49,6 +52,8 @@ class AsrSessionManager(
     // 统计：录音时长
     private var sessionStartUptimeMs: Long = 0L
     private var lastAudioMsForStats: Long = 0L
+    // 音频焦点请求句柄
+    private var audioFocusRequest: AudioFocusRequest? = null
 
     /** 开始录音 */
     fun startRecording() {
@@ -56,6 +61,12 @@ class AsrSessionManager(
         try { sessionStartUptimeMs = SystemClock.uptimeMillis() } catch (t: Throwable) {
             Log.w(TAG, "Failed to read uptime for session start", t)
             sessionStartUptimeMs = 0L
+        }
+        // 开始录音前请求短时独占音频焦点，促使媒体暂停/静音
+        try {
+            requestTransientAudioFocus()
+        } catch (t: Throwable) {
+            Log.e(TAG, "requestTransientAudioFocus failed", t)
         }
 
         // 检查本地 SenseVoice 模型（如果需要）
@@ -100,6 +111,12 @@ class AsrSessionManager(
     fun stopRecording() {
         Log.d(TAG, "stopRecording called")
         asrEngine?.stop()
+        // 归还音频焦点
+        try {
+            abandonAudioFocusIfNeeded()
+        } catch (t: Throwable) {
+            Log.w(TAG, "abandonAudioFocusIfNeeded failed on stopRecording", t)
+        }
 
         // 进入处理阶段
         listener.onSessionStateChanged(FloatingBallState.Processing)
@@ -128,6 +145,11 @@ class AsrSessionManager(
             processingTimeoutJob?.cancel()
         } catch (e: Throwable) {
             Log.w(TAG, "Failed to cancel timeout job", e)
+        }
+        try {
+            abandonAudioFocusIfNeeded()
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to abandon audio focus in cleanup", e)
         }
     }
 
@@ -224,7 +246,60 @@ class AsrSessionManager(
                     sessionStartUptimeMs = 0L
                 }
             }
+            // 确保归还音频焦点
+            try {
+                abandonAudioFocusIfNeeded()
+            } catch (t: Throwable) {
+                Log.w(TAG, "abandonAudioFocusIfNeeded failed in onStopped", t)
+            }
             startProcessingTimeout()
+        }
+    }
+
+    // ========== 音频焦点控制 ==========
+    private fun requestTransientAudioFocus(): Boolean {
+        try {
+            val am = context.getSystemService(AudioManager::class.java)
+            if (am == null) {
+                Log.w(TAG, "AudioManager is null, skip audio focus")
+                return false
+            }
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+                .setAudioAttributes(attrs)
+                .setOnAudioFocusChangeListener({ /* no-op */ })
+                .build()
+            val granted = am.requestAudioFocus(req) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            if (granted) {
+                audioFocusRequest = req
+                Log.d(TAG, "Audio focus granted (TRANSIENT_EXCLUSIVE)")
+            } else {
+                Log.w(TAG, "Audio focus not granted")
+            }
+            return granted
+        } catch (t: Throwable) {
+            Log.e(TAG, "requestTransientAudioFocus exception", t)
+            return false
+        }
+    }
+
+    private fun abandonAudioFocusIfNeeded() {
+        val req = audioFocusRequest ?: return
+        try {
+            val am = context.getSystemService(AudioManager::class.java)
+            if (am == null) {
+                Log.w(TAG, "AudioManager is null when abandoning focus")
+                return
+            }
+            am.abandonAudioFocusRequest(req)
+            Log.d(TAG, "Audio focus abandoned")
+        } catch (t: Throwable) {
+            Log.w(TAG, "abandonAudioFocusRequest exception", t)
+        } finally {
+            audioFocusRequest = null
         }
     }
 
