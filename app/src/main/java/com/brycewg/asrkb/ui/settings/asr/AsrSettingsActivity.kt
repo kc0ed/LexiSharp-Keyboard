@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.store.Prefs
+import com.brycewg.asrkb.asr.VadDetector
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -167,6 +168,10 @@ class AsrSettingsActivity : AppCompatActivity() {
         switchAutoStopSilence.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)
             viewModel.updateAutoStopSilence(isChecked)
+            // 若开启，则立即预加载全局 VAD，避免下次录音首次加载
+            if (isChecked) {
+                try { VadDetector.preload(applicationContext, 16000, prefs.autoStopSilenceSensitivity) } catch (_: Throwable) { }
+            }
         }
 
         // Sliders
@@ -177,6 +182,18 @@ class AsrSettingsActivity : AppCompatActivity() {
         setupSlider(sliderSilenceSensitivity) { value ->
             viewModel.updateSilenceSensitivity(value.toInt().coerceIn(1, 10))
         }
+        // 在松手时“立即生效”：重建全局 VAD，以新的灵敏度用于后续会话
+        sliderSilenceSensitivity.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) { /* no-op */ }
+            override fun onStopTrackingTouch(slider: Slider) {
+                try {
+                    if (prefs.autoStopOnSilenceEnabled) {
+                        VadDetector.rebuildGlobal(applicationContext, 16000, prefs.autoStopSilenceSensitivity)
+                        Toast.makeText(this@AsrSettingsActivity, R.string.toast_vad_sensitivity_applied, Toast.LENGTH_SHORT).show()
+                    }
+                } catch (_: Throwable) { }
+            }
+        })
 
     }
 

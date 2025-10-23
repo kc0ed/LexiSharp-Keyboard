@@ -11,6 +11,7 @@ import com.brycewg.asrkb.store.Prefs
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import com.brycewg.asrkb.ui.floating.FloatingAsrService
+import com.brycewg.asrkb.asr.VadDetector
 
 class App : Application() {
     override fun onCreate() {
@@ -42,6 +43,14 @@ class App : Application() {
                     action = FloatingAsrService.ACTION_SHOW
                 }
                 startService(intent)
+            }
+        } catch (_: Throwable) { }
+
+        // 预加载 VAD：仅当已开启“静音自动停止”时，避免首次录音时的模型加载延迟
+        try {
+            val prefs = Prefs(this)
+            if (prefs.autoStopOnSilenceEnabled) {
+                VadDetector.preload(this, 16000, prefs.autoStopSilenceSensitivity)
             }
         } catch (_: Throwable) { }
 

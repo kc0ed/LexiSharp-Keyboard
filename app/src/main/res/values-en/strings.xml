@@ -144,6 +144,7 @@
     <string name="toast_setup_all_done">All set</string>
     <string name="toast_setup_enable_keyboard_first">Enable the keyboard in system settings, then come back</string>
     <string name="toast_setup_choose_keyboard">Please select "LexiSharp Keyboard" as the current input method</string>
+    <string name="toast_vad_sensitivity_applied">VAD sensitivity updated; will apply to the next recording</string>
 
     <!-- Floating ASR status messages -->
     <string name="floating_asr_recording">Recording…</string>

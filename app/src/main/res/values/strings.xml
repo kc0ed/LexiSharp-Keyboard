@@ -424,6 +424,6 @@
     <string name="sc_open_browser_failed">无法打开浏览器</string>
     <string name="hint_sc_server_base_placeholder">https://your-server.com/path</string>
 
-    <!-- Audio compatibility -->
     <string name="label_audio_compat_prefer_mic">录音兼容模式（小米手机推荐开启）</string>
+    <string name="toast_vad_sensitivity_applied">已应用 VAD 灵敏度，将在下次录音生效</string>
 </resources>

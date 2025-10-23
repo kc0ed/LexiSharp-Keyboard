@@ -60,6 +60,57 @@ class VadDetector(
             0.12f, // 9
             0.08f  // 10 更敏感
         )
+        // 全局共享 VAD 实例（App 启动时可预加载）
+        @Volatile
+        private var sharedVad: Vad? = null
+
+        // 预加载全局 VAD（若已存在则跳过）
+        fun preload(context: Context, sampleRate: Int, sensitivityLevel: Int) {
+            if (sharedVad != null) return
+            try {
+                val lvl = sensitivityLevel.coerceIn(1, LEVELS)
+                val threshold = when (lvl) {
+                    in 1..3 -> 0.40f
+                    in 4..7 -> 0.50f
+                    else -> 0.60f
+                }
+                val minSilenceDuration = MIN_SILENCE_DURATION_MAP[lvl - 1]
+
+                val sileroConfig = SileroVadModelConfig(
+                    model = "vad/silero_vad.onnx",
+                    threshold = threshold,
+                    minSilenceDuration = minSilenceDuration,
+                    minSpeechDuration = 0.25f,
+                    windowSize = 512
+                )
+                val vadConfig = VadModelConfig(
+                    sileroVadModelConfig = sileroConfig,
+                    sampleRate = sampleRate,
+                    numThreads = 1,
+                    provider = "cpu",
+                    debug = false
+                )
+                sharedVad = Vad(
+                    assetManager = context.assets,
+                    config = vadConfig
+                )
+                Log.i(TAG, "Global VAD preloaded (sr=$sampleRate, sensitivity=$lvl)")
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to preload global VAD", t)
+            }
+        }
+
+        // 重建全局 VAD（用于灵敏度调整后“立即生效”）。
+        // 不直接释放旧实例，避免影响正在录音的会话；旧实例会在该会话结束时被各自的 release() 回收。
+        fun rebuildGlobal(context: Context, sampleRate: Int, sensitivityLevel: Int) {
+            try {
+                sharedVad = null
+                preload(context, sampleRate, sensitivityLevel)
+                Log.i(TAG, "Global VAD rebuilt (sr=$sampleRate, sensitivity=${sensitivityLevel.coerceIn(1, LEVELS)})")
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to rebuild global VAD", t)
+            }
+        }
     }
 
     private var vad: Vad? = null
@@ -117,6 +168,13 @@ class VadDetector(
      * 初始化 sherpa-onnx Vad
      */
     private fun initVad() {
+        // Reuse global instance if available
+        val g = sharedVad
+        if (g != null) {
+            vad = g
+            Log.d(TAG, "Reusing global VAD instance")
+            return
+        }
         // 1. 构建 SileroVadModelConfig
         val sileroConfig = SileroVadModelConfig(
             model = "vad/silero_vad.onnx",  // 模型路径（相对于 assets）
@@ -141,7 +199,7 @@ class VadDetector(
             config = vadConfig
         )
 
-        Log.d(TAG, "Vad instance created successfully")
+        Log.d(TAG, "Vad instance created successfully (non-global)")
     }
 
     /**
@@ -225,6 +283,11 @@ class VadDetector(
      * 释放 VAD 资源
      */
     fun release() {
+        // Skip releasing when using global instance
+        if (vad != null && vad === sharedVad) {
+            Log.d(TAG, "Skip releasing global VAD instance")
+            return
+        }
         try {
             vad?.release()
             Log.d(TAG, "VAD released successfully")

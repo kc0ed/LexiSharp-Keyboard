@@ -150,11 +150,6 @@ class LocalModelPseudoStreamAsrEngine(
                 Log.d(TAG, "Creating recognition stream")
                 val stream = svManager.createStreamOrNull()
                 if (stream == null) {
-                    if (stream != null) try {
-                        svManager.releaseStream(stream)
-                    } catch (t: Throwable) {
-                        Log.e(TAG, "Failed to release stream", t)
-                    }
                     listener.onError(context.getString(R.string.error_local_asr_not_ready))
                     return@launch
                 }
@@ -175,7 +170,9 @@ class LocalModelPseudoStreamAsrEngine(
                         }
                     } catch (t: Throwable) {
                         Log.e(TAG, "Failed to decode final after late load", t)
-                        try { listener.onFinal("") } catch (_: Throwable) {}
+                        try { listener.onFinal("") } catch (notifyError: Throwable) {
+                            Log.e(TAG, "Failed to notify final after late load", notifyError)
+                        }
                     } finally {
                         try { streamMutex.withLock { svManager.releaseStream(stream) } } catch (t: Throwable) {
                             Log.e(TAG, "Failed to release stream after late load", t)
