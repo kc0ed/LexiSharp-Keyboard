@@ -180,13 +180,24 @@ class KeyboardActionHandler(
         val targetText = if (targetIsSelection) {
             selected.toString()
         } else {
-            // 无选区：使用最后一次 ASR 提交的文本
-            val lastText = sessionContext.lastAsrCommitText
-            if (lastText.isNullOrEmpty()) {
-                uiListener?.onStatusMessage(context.getString(R.string.status_last_asr_not_found))
-                return
+            // 无选区：根据偏好选择来源（上次识别结果 或 整个输入框文本）
+            if (prefs.aiEditDefaultToLastAsr) {
+                val lastText = sessionContext.lastAsrCommitText
+                if (lastText.isNullOrEmpty()) {
+                    uiListener?.onStatusMessage(context.getString(R.string.status_last_asr_not_found))
+                    return
+                }
+                lastText
+            } else {
+                val before = inputHelper.getTextBeforeCursor(ic, 10000)?.toString() ?: ""
+                val after = inputHelper.getTextAfterCursor(ic, 10000)?.toString() ?: ""
+                val all = before + after
+                if (all.isEmpty()) {
+                    uiListener?.onStatusMessage(context.getString(R.string.hint_cannot_read_text))
+                    return
+                }
+                all
             }
-            lastText
         }
 
         // 开始 AI 编辑录音
@@ -466,10 +477,18 @@ class KeyboardActionHandler(
 
         // AI 后处理
         val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
+        var postprocFailed = false
         val processed = try {
-            llmPostProcessor.process(raw, prefs).ifBlank { raw }
+            val res = llmPostProcessor.processWithStatus(raw, prefs)
+            postprocFailed = !res.ok
+            if (!res.ok) {
+                uiListener?.onStatusMessage(context.getString(R.string.status_llm_failed_used_raw))
+            }
+            res.text.ifBlank { raw }
         } catch (e: Throwable) {
             Log.e(TAG, "LLM post-processing failed", e)
+            postprocFailed = true
+            uiListener?.onStatusMessage(context.getString(R.string.status_llm_failed_used_raw))
             raw
         }
 
@@ -510,13 +529,20 @@ class KeyboardActionHandler(
 
         uiListener?.onVibrate()
 
-        // 分段录音期间保持 Listening；否则进入 Processing 并延时返回 Idle
+        // 分段录音期间保持 Listening；
+        // 否则：若后处理失败，直接回到 Idle 并保留错误提示；成功则显示耗时后回到 Idle。
         if (asrManager.isRunning()) {
             transitionToState(KeyboardState.Listening())
         } else {
-            transitionToState(KeyboardState.Processing)
-            scheduleProcessingTimeout()
-            transitionToIdleWithTiming()
+            if (postprocFailed) {
+                // 回到 Idle 后再次设置错误提示，避免被 Idle 文案覆盖
+                transitionToIdle()
+                uiListener?.onStatusMessage(context.getString(R.string.status_llm_failed_used_raw))
+            } else {
+                transitionToState(KeyboardState.Processing)
+                scheduleProcessingTimeout()
+                transitionToIdleWithTiming()
+            }
         }
     }
 
@@ -633,19 +659,27 @@ class KeyboardActionHandler(
             return
         }
 
-        val edited = try {
-            llmPostProcessor.editText(original, instruction, prefs)
+        val (ok, edited) = try {
+            val res = llmPostProcessor.editTextWithStatus(original, instruction, prefs)
+            res.ok to res.text
         } catch (e: Throwable) {
             Log.e(TAG, "AI edit failed", e)
-            ""
+            false to ""
         }
 
         // 若已被取消，退出
         if (seq != opSeq) return
-        if (edited.isBlank()) {
-            uiListener?.onStatusMessage(context.getString(R.string.status_llm_empty_result))
+        if (!ok) {
             uiListener?.onVibrate()
-            transitionToIdleWithTiming()
+            // 先归位到 Idle，再设置错误消息，确保不会被 Idle 覆盖
+            transitionToIdle()
+            uiListener?.onStatusMessage(context.getString(R.string.status_llm_edit_failed))
+            return
+        }
+        if (edited.isBlank()) {
+            uiListener?.onVibrate()
+            transitionToIdle()
+            uiListener?.onStatusMessage(context.getString(R.string.status_llm_empty_result))
             return
         }
 

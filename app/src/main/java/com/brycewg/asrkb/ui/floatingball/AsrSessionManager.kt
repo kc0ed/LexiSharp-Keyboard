@@ -194,7 +194,9 @@ class AsrSessionManager(
 
                 val raw = if (prefs.trimFinalTrailingPunct) trimTrailingPunctuation(text) else text
                 finalText = try {
-                    postproc.process(raw, prefs).ifBlank { raw }
+                    val res = postproc.processWithStatus(raw, prefs)
+                    if (!res.ok) Log.w(TAG, "Post-processing failed; using raw text: ${res.httpCode ?: ""} ${res.errorMessage ?: ""}")
+                    res.text.ifBlank { raw }
                 } catch (e: Throwable) {
                     Log.e(TAG, "Post-processing failed", e)
                     raw
@@ -438,7 +440,9 @@ class AsrSessionManager(
         if (prefs.trimFinalTrailingPunct) textOut = trimTrailingPunctuation(textOut)
         if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
             try {
-                textOut = postproc.process(textOut, prefs).ifBlank { textOut }
+                val res = postproc.processWithStatus(textOut, prefs)
+                if (!res.ok) Log.w(TAG, "Post-processing failed in timeout fallback; using raw text: ${res.httpCode ?: ""} ${res.errorMessage ?: ""}")
+                textOut = res.text.ifBlank { textOut }
             } catch (e: Throwable) {
                 Log.e(TAG, "Post-processing failed in timeout fallback", e)
             }

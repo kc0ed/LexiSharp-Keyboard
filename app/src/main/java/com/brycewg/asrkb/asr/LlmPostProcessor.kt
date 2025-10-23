@@ -45,6 +45,16 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
   )
 
   /**
+   * 标准化的上层处理结果，用于向调用方传递是否成功以及返回文本。
+   */
+  data class LlmProcessResult(
+    val ok: Boolean,
+    val text: String,
+    val errorMessage: String? = null,
+    val httpCode: Int? = null
+  )
+
+  /**
    * LLM 请求配置
    */
   private data class LlmRequestConfig(
@@ -200,6 +210,30 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
   }
 
   /**
+   * 带一次自动重试的调用。
+   */
+  private suspend fun performChatWithRetry(
+    config: LlmRequestConfig,
+    messages: JSONArray,
+    maxRetry: Int = 1
+  ): RawCallResult {
+    var attempt = 0
+    var last: RawCallResult
+    while (true) {
+      attempt++
+      last = performChat(config, messages)
+      if (last.ok) return last
+      if (attempt > maxRetry) return last
+      Log.w(TAG, "performChat failed (attempt=$attempt), will retry once: ${last.httpCode ?: ""} ${last.error ?: ""}")
+      try {
+        kotlinx.coroutines.delay(350)
+      } catch (t: Throwable) {
+        Log.w(TAG, "Retry delay interrupted", t)
+      }
+    }
+  }
+
+  /**
    * 测试 LLM 调用是否可用：发送最简单 Prompt，看是否有返回内容。
    * 不改变任何业务状态，仅用于连通性自检/配置校验。
    */
@@ -238,9 +272,17 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
    * @return 处理后的文本，失败时返回原始输入
    */
   suspend fun process(input: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
+    val res = processWithStatus(input, prefs)
+    res.text
+  }
+
+  /**
+   * 与 process 等价，但返回是否成功及错误信息，便于 UI 反馈。
+   */
+  suspend fun processWithStatus(input: String, prefs: Prefs): LlmProcessResult = withContext(Dispatchers.IO) {
     if (input.isBlank()) {
       Log.d(TAG, "Input is blank, skipping processing")
-      return@withContext input
+      return@withContext LlmProcessResult(ok = true, text = input)
     }
 
     val config = getActiveConfig(prefs)
@@ -257,19 +299,19 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
       })
     }
 
-    val result = performChat(config, messages)
+    val result = performChatWithRetry(config, messages)
     if (!result.ok) {
       if (result.httpCode != null) {
         Log.w(TAG, "LLM process() failed: HTTP ${result.httpCode}, ${result.error}")
       } else {
         Log.w(TAG, "LLM process() failed: ${result.error}")
       }
-      return@withContext input
+      return@withContext LlmProcessResult(false, text = input, errorMessage = result.error, httpCode = result.httpCode)
     }
 
     val text = result.text ?: input
     Log.d(TAG, "Text processing completed, output length: ${text.length}")
-    return@withContext text
+    return@withContext LlmProcessResult(true, text = text)
   }
 
   /**
@@ -286,9 +328,17 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
    * @return 编辑后的文本，失败时返回原始文本不变
    */
   suspend fun editText(original: String, instruction: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
+    val res = editTextWithStatus(original, instruction, prefs)
+    res.text
+  }
+
+  /**
+   * 与 editText 等价，但返回是否成功及错误信息，便于 UI 反馈。
+   */
+  suspend fun editTextWithStatus(original: String, instruction: String, prefs: Prefs): LlmProcessResult = withContext(Dispatchers.IO) {
     if (original.isBlank() || instruction.isBlank()) {
       Log.d(TAG, "Original or instruction is blank, skipping edit")
-      return@withContext original
+      return@withContext LlmProcessResult(true, text = original)
     }
 
     val config = getActiveConfig(prefs)
@@ -341,19 +391,19 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
       })
     }
 
-    val result = performChat(config, messages)
+    val result = performChatWithRetry(config, messages)
     if (!result.ok) {
       if (result.httpCode != null) {
         Log.w(TAG, "LLM editText() failed: HTTP ${result.httpCode}, ${result.error}")
       } else {
         Log.w(TAG, "LLM editText() failed: ${result.error}")
       }
-      return@withContext original
+      return@withContext LlmProcessResult(false, text = original, errorMessage = result.error, httpCode = result.httpCode)
     }
 
     val out = result.text ?: original
 
     Log.d(TAG, "Text editing completed, output length: ${out.length}")
-    return@withContext out
+    return@withContext LlmProcessResult(true, text = out)
   }
 }

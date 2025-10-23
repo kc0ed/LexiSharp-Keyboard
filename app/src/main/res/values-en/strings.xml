@@ -28,10 +28,13 @@
     <string name="status_last_asr_not_found">Last ASR result not found; canceled</string>
     <string name="hint_need_llm_keys">Configure AI post-processing first</string>
     <string name="hint_cannot_read_text">Current app text is not readable</string>
+    <string name="status_llm_failed_used_raw">AI post-process failed; used raw text</string>
+    <string name="status_llm_edit_failed">AI edit failed. Please try again</string>
     <string name="hint_need_permission">Microphone permission is required for voice input</string>
     <string name="status_postproc">AI Post-process: %1$s</string>
     <string name="toggle_on">ON</string>
     <string name="toggle_off">OFF</string>
+    <string name="label_ai_edit_default_use_last_asr">AI edit default scope: use last transcript</string>
 
     <string name="settings_instructions">First-time setup:\n1. Tap "Enable Keyboard" and enable LexiSharp Keyboard in system settings\n2. Tap "Choose Keyboard" to switch to LexiSharp Keyboard\n3. Grant microphone permission, then long‑press the mic button on the keyboard to try</string>
     <string name="btn_one_click_setup">One-click Setup</string>

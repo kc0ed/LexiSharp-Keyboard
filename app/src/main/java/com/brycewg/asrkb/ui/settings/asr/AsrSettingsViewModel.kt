@@ -37,6 +37,7 @@ class AsrSettingsViewModel : ViewModel() {
             autoStopSilenceEnabled = prefs.autoStopOnSilenceEnabled,
             silenceWindowMs = prefs.autoStopSilenceWindowMs,
             silenceSensitivity = prefs.autoStopSilenceSensitivity,
+            aiEditPreferLastAsr = prefs.aiEditDefaultToLastAsr,
             // Volc settings
             volcStreamingEnabled = prefs.volcStreamingEnabled,
             volcDdcEnabled = prefs.volcDdcEnabled,
@@ -145,6 +146,11 @@ class AsrSettingsViewModel : ViewModel() {
     fun updateOpenAiUsePrompt(enabled: Boolean) {
         prefs.oaAsrUsePrompt = enabled
         _uiState.value = _uiState.value.copy(oaAsrUsePrompt = enabled)
+    }
+
+    fun updateAiEditPreferLastAsr(enabled: Boolean) {
+        prefs.aiEditDefaultToLastAsr = enabled
+        _uiState.value = _uiState.value.copy(aiEditPreferLastAsr = enabled)
     }
 
     fun updateAudioCompatPreferMic(enabled: Boolean) {
@@ -271,6 +277,7 @@ data class AsrSettingsUiState(
     val autoStopSilenceEnabled: Boolean = false,
     val silenceWindowMs: Int = 1200,
     val silenceSensitivity: Int = 4,
+    val aiEditPreferLastAsr: Boolean = false,
     // Volcengine settings
     val volcStreamingEnabled: Boolean = false,
     val volcDdcEnabled: Boolean = false,

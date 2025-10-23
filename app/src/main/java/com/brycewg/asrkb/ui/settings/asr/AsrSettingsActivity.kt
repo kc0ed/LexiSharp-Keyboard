@@ -83,10 +83,20 @@ class AsrSettingsActivity : AppCompatActivity() {
 
         setupToolbar()
         initializeViews()
+        setupAiEditDefaultScopeSwitch()
         setupVendorSelection()
         setupSilenceDetection()
         setupVendorSpecificSettings()
         observeViewModel()
+    }
+
+    private fun setupAiEditDefaultScopeSwitch() {
+        val sw = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switchAiEditPreferLastAsr)
+        sw.isChecked = prefs.aiEditDefaultToLastAsr
+        sw.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            viewModel.updateAiEditPreferLastAsr(isChecked)
+        }
     }
 
     override fun onResume() {
