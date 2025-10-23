@@ -84,7 +84,6 @@ class AsrSettingsActivity : AppCompatActivity() {
         setupVendorSelection()
         setupSilenceDetection()
         setupVendorSpecificSettings()
-        setupAudioCompatibility()
         observeViewModel()
     }
 
@@ -806,16 +805,6 @@ class AsrSettingsActivity : AppCompatActivity() {
                 .setNegativeButton(R.string.btn_cancel, null)
                 .create()
                 .show()
-        }
-    }
-
-    private fun setupAudioCompatibility() {
-        findViewById<MaterialSwitch>(R.id.switchAudioCompatPreferMic).apply {
-            isChecked = prefs.audioCompatPreferMic
-            setOnCheckedChangeListener { btn, isChecked ->
-                hapticTapIfEnabled(btn)
-                viewModel.updateAudioCompatPreferMic(isChecked)
-            }
         }
     }
 

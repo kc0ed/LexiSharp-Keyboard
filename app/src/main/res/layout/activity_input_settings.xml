@@ -79,6 +79,13 @@
           android:layout_marginTop="8dp"
           android:text="@string/label_hide_recent_task_card" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchAudioCompatPreferMic"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_audio_compat_prefer_mic" />
+
         <!-- 键盘高度 -->
         <TextView
             android:layout_width="match_parent"

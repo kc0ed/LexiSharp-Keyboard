@@ -34,6 +34,7 @@ class InputSettingsActivity : AppCompatActivity() {
         val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
         val switchFcitx5ReturnOnSwitcher = findViewById<MaterialSwitch>(R.id.switchFcitx5ReturnOnSwitcher)
         val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
+        val switchAudioCompatPreferMic = findViewById<MaterialSwitch>(R.id.switchAudioCompatPreferMic)
         val tvKeyboardHeight = findViewById<TextView>(R.id.tvKeyboardHeightValue)
         val tvLanguage = findViewById<TextView>(R.id.tvLanguageValue)
 
@@ -45,6 +46,7 @@ class InputSettingsActivity : AppCompatActivity() {
             switchSwapAiEditWithSwitcher.isChecked = prefs.swapAiEditWithImeSwitcher
             switchFcitx5ReturnOnSwitcher.isChecked = prefs.fcitx5ReturnOnImeSwitch
             switchHideRecentTasks.isChecked = prefs.hideRecentTaskCard
+            switchAudioCompatPreferMic.isChecked = prefs.audioCompatPreferMic
         }
         applyPrefsToUi()
 
@@ -88,6 +90,10 @@ class InputSettingsActivity : AppCompatActivity() {
             hapticTapIfEnabled(btn)
             prefs.hideRecentTaskCard = isChecked
             applyExcludeFromRecents(isChecked)
+        }
+        switchAudioCompatPreferMic.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.audioCompatPreferMic = isChecked
         }
 
         // 初始应用一次"从最近任务中排除"设置
