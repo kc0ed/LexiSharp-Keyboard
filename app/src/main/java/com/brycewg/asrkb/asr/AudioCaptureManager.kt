@@ -54,6 +54,14 @@ class AudioCaptureManager(
     private val prefs: Prefs
 ) {
     private val bytesPerSample = 2 // 16bit mono PCM
+    private val debugLoggingEnabled: Boolean by lazy {
+        try {
+            (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        } catch (t: Throwable) {
+            Log.w(TAG, "Failed to read debuggable flag", t)
+            false
+        }
+    }
 
     companion object {
         private const val TAG = "AudioCaptureManager"
@@ -82,7 +90,7 @@ class AudioCaptureManager(
      *
      * ## 兼容模式说明
      * - **兼容模式**（audioCompatPreferMic = true）：连续多帧预热并写入缓冲，避免会话闪断
-     * - **非兼容模式**（audioCompatPreferMic = false）：单帧探测 + 自动回退，丢弃无信号的预热数据
+     * - **非兼容模式**（audioCompatPreferMic = false）：两帧小窗探测 + 自动回退（仅在两帧均近乎全零时回退）
      *
      * @return Flow<ByteArray> 音频数据流，每个 ByteArray 是一个音频块（约 chunkMillis 时长）
      * @throws SecurityException 如果缺少录音权限
@@ -115,11 +123,11 @@ class AudioCaptureManager(
             null
         }
 
-        // 4. 回退到 MIC（如果 VOICE_RECOGNITION 失败）
-        if (recorder != null && recorder.state != AudioRecord.STATE_INITIALIZED) {
-            Log.w(TAG, "VOICE_RECOGNITION source not initialized, falling back to MIC")
+        // 4. 回退到 MIC（如果 VOICE_RECOGNITION 失败：构造异常或未初始化）
+        if (recorder == null || recorder.state != AudioRecord.STATE_INITIALIZED) {
+            Log.w(TAG, "VOICE_RECOGNITION source unavailable, falling back to MIC")
             try {
-                recorder.release()
+                recorder?.release()
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to release failed recorder", t)
             }
@@ -215,10 +223,9 @@ class AudioCaptureManager(
      * - 不进行音频源切换
      *
      * ## 非兼容模式（audioCompatPreferMic = false）
-     * - 读取 1 帧预热数据
-     * - 检测是否包含非零振幅信号
-     * - 如果无信号，stop + release 并重建为 MIC 源
-     * - 重建后再读取 1 帧并返回
+     * - 读取 2 帧预热数据（必要时对第2帧）
+     * - 若第1帧即存在明显信号则短路返回
+     * - 若两帧均近乎全零，stop + release 并重建为 MIC 源，再读取 1 帧返回
      *
      * @param current 当前的 AudioRecord 实例（已启动）
      * @param buf 音频数据缓冲区
@@ -283,29 +290,70 @@ class AudioCaptureManager(
 
             Pair(recorder, combined)
         } else {
-            // 非兼容模式：单帧探测 + 回退
-            Log.d(TAG, "Warmup: non-compat mode, probing signal")
-            val preRead = try {
+            // 非兼容模式：两帧小窗探测 + 保守回退（仅识别“坏源”）
+            if (debugLoggingEnabled) Log.d(TAG, "Warmup: non-compat mode, probing 2 frames")
+
+            // 第1帧
+            val preRead1 = try {
                 recorder.read(buf, 0, buf.size)
             } catch (t: Throwable) {
-                Log.e(TAG, "Error during warmup probe read", t)
+                Log.e(TAG, "Error during warmup probe read #1", t)
                 -1
             }
-
-            var hasSignal = false
-            var firstChunk: ByteArray? = null
-
-            if (preRead > 0) {
-                hasSignal = hasNonZeroAmplitude(buf, preRead)
-                Log.d(TAG, "Warmup probe: read $preRead bytes, hasSignal=$hasSignal")
-                if (hasSignal) {
-                    firstChunk = buf.copyOf(preRead)
+            var frame1Bytes: ByteArray? = null
+            var frame1HasSignal = false
+            var frame1IsNearZero = false
+            if (preRead1 > 0) {
+                val st1 = computeFrameStats16le(buf, preRead1, 30)
+                val rms1sq = if (st1.sampleCount > 0) st1.sumSquares.toDouble() / st1.sampleCount else 0.0
+                // 阈值 4.0 的平方为 16.0，避免开方计算
+                frame1HasSignal = st1.countAboveThreshold > 0
+                frame1IsNearZero = (st1.maxAbs < 12 && rms1sq < 16.0 && st1.countAboveThreshold == 0)
+                if (debugLoggingEnabled) {
+                    val rms1 = kotlin.math.sqrt(rms1sq)
+                    Log.d(TAG, "Warmup frame#1: read=$preRead1, max=${st1.maxAbs}, rms=${"%.1f".format(rms1)}, cnt>30=${st1.countAboveThreshold}, nearZero=$frame1IsNearZero")
                 }
+                if (frame1HasSignal) frame1Bytes = buf.copyOf(preRead1)
             }
 
-            if (!hasSignal) {
-                // 无信号：重建为 MIC 源
-                Log.i(TAG, "Warmup: no signal detected, rebuilding with MIC source")
+            // 若第1帧已确认存在有效信号，则直接返回，避免读取第2帧以节省时延与计算
+            if (frame1HasSignal && frame1Bytes != null) {
+                if (debugLoggingEnabled) Log.d(TAG, "Warmup: signal confirmed on frame#1, short-circuit")
+                return Pair(recorder, frame1Bytes)
+            }
+
+            // 第2帧
+            val preRead2 = try {
+                recorder.read(buf, 0, buf.size)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Error during warmup probe read #2", t)
+                -1
+            }
+            var frame2Bytes: ByteArray? = null
+            var frame2HasSignal = false
+            var frame2IsNearZero = false
+            if (preRead2 > 0) {
+                val st2 = computeFrameStats16le(buf, preRead2, 30)
+                val rms2sq = if (st2.sampleCount > 0) st2.sumSquares.toDouble() / st2.sampleCount else 0.0
+                frame2HasSignal = st2.countAboveThreshold > 0
+                frame2IsNearZero = (st2.maxAbs < 12 && rms2sq < 16.0 && st2.countAboveThreshold == 0)
+                if (debugLoggingEnabled) {
+                    val rms2 = kotlin.math.sqrt(rms2sq)
+                    Log.d(TAG, "Warmup frame#2: read=$preRead2, max=${st2.maxAbs}, rms=${"%.1f".format(rms2)}, cnt>30=${st2.countAboveThreshold}, nearZero=$frame2IsNearZero")
+                }
+                if (frame2HasSignal) frame2Bytes = buf.copyOf(preRead2)
+            }
+
+            val nearZeroBoth = frame1IsNearZero && frame2IsNearZero
+            var firstChunk: ByteArray? = when {
+                frame1HasSignal -> frame1Bytes
+                frame2HasSignal -> frame2Bytes
+                else -> null
+            }
+
+            if (nearZeroBoth) {
+                // 两帧均近乎全零：重建为 MIC 源（识别“坏源”场景，例如 VOICE_RECOGNITION 管线失效）
+                Log.i(TAG, "Warmup: near-zero on both frames, rebuilding with MIC source")
                 try {
                     recorder.stop()
                 } catch (t: Throwable) {
