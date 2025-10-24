@@ -1,8 +1,8 @@
 {
-  "version": "3.2.3",
-  "version_code": 78,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.2.3",
-  "release_notes": "本次更新包含 3 个提交:\n- refactor(ui): 为主设置页按钮添加图标\n- refactor(floatingball): 调整图标大小以随悬浮球缩放\n- refactor(ui): 全面使用新的图标资产,增加按钮点按图标反馈",
+  "version": "3.2.4",
+  "version_code": 79,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.2.4",
+  "release_notes": "本次更新包含 5 个提交:\n- feat(floating): 实现悬浮球静息时贴边半隐与浮现\n- feat(ime): 为非流式识别失败提供重试入口\n- fix(floating): 确保悬浮菜单操作期间应用保持焦点\n- feat(audio): 增加录音时音频暂停开关\n- refactor(asr): 优化非兼容模式下的音频源回退逻辑",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-23T14:14:59Z"
+  "update_time": "2025-10-24T06:32:17Z"
 }
