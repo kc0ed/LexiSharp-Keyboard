@@ -44,6 +44,8 @@ class KeyboardActionHandler(
         fun onVibrate()
         fun onShowClipboardPreview(preview: ClipboardPreview)
         fun onHideClipboardPreview()
+        fun onShowRetryChip(label: String)
+        fun onHideRetryChip()
     }
 
     private var uiListener: UiListener? = null
@@ -384,6 +386,15 @@ class KeyboardActionHandler(
             transitionToIdle(keepMessage = true)
             uiListener?.onStatusMessage(message)
             uiListener?.onVibrate()
+            try {
+                if (shouldOfferRetry(message)) {
+                    uiListener?.onShowRetryChip(context.getString(R.string.btn_retry))
+                } else {
+                    uiListener?.onHideRetryChip()
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to evaluate/show retry chip", t)
+            }
         }
     }
 
@@ -423,6 +434,9 @@ class KeyboardActionHandler(
             is KeyboardState.AiEditListening -> asrManager.setCurrentState(newState)
             else -> { /* keep previous contextual state in AsrSessionManager */ }
         }
+        if (newState !is KeyboardState.Idle) {
+            try { uiListener?.onHideRetryChip() } catch (_: Throwable) {}
+        }
         uiListener?.onStateChanged(newState)
     }
 
@@ -443,10 +457,49 @@ class KeyboardActionHandler(
         try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
         processingTimeoutJob = null
         dropPendingFinal = false
+        try { uiListener?.onHideRetryChip() } catch (_: Throwable) {}
         val state = KeyboardState.Listening()
         transitionToState(state)
         asrManager.startRecording(state)
         uiListener?.onStatusMessage(context.getString(R.string.status_listening))
+    }
+
+    /**
+     * 判断是否应提供“重试”入口（仅非流式 + 网络错误 + 有片段 + 非空结果错误）。
+     */
+    private fun shouldOfferRetry(message: String): Boolean {
+        val engine = try { asrManager.getEngine() } catch (_: Throwable) { null }
+        val isFileEngine = engine is com.brycewg.asrkb.asr.BaseFileAsrEngine
+        if (!isFileEngine) return false
+
+        val msgLower = message.lowercase()
+        val isEmptyResult = ("为空" in message) || ("empty" in msgLower)
+        if (isEmptyResult) return false
+
+        val networkKeywords = arrayOf(
+            "网络", "超时", "timeout", "timed out", "connect", "connection", "socket", "host", "unreachable"
+        )
+        val looksNetwork = networkKeywords.any { kw -> kw in message || kw in msgLower }
+        if (!looksNetwork) return false
+
+        return try { asrManager.canRetryLastFileRecognition() } catch (_: Throwable) { false }
+    }
+
+    /**
+     * 处理“重试”点击：隐藏芯片，进入 Processing，并触发重试。
+     */
+    fun handleRetryClick() {
+        try { uiListener?.onHideRetryChip() } catch (_: Throwable) {}
+        transitionToState(KeyboardState.Processing)
+        scheduleProcessingTimeout()
+        uiListener?.onStatusMessage(context.getString(R.string.status_recognizing))
+        val ok = try { asrManager.retryLastFileRecognition() } catch (t: Throwable) {
+            Log.e(TAG, "retryLastFileRecognition threw", t)
+            false
+        }
+        if (!ok) {
+            transitionToIdle()
+        }
     }
 
     // ========== 私有方法：处理最终识别结果 ==========

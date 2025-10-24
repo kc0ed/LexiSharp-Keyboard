@@ -36,6 +36,7 @@ abstract class BaseFileAsrEngine(
     private var audioJob: Job? = null
     private var processingJob: Job? = null
     private var segmentChan: Channel<ByteArray>? = null
+    private var lastSegmentForRetry: ByteArray? = null
 
     protected open val sampleRate: Int = 16000
     protected open val channelConfig: Int = AudioFormat.CHANNEL_IN_MONO
@@ -67,6 +68,8 @@ abstract class BaseFileAsrEngine(
             try {
                 for (seg in chan) {
                     try {
+                        // 记录最近一次用于识别的片段，供“重试”功能使用
+                        lastSegmentForRetry = seg
                         recognize(seg)
                     } catch (t: Throwable) {
                         Log.e(TAG, "Recognition failed for segment", t)
@@ -345,4 +348,38 @@ abstract class BaseFileAsrEngine(
      * @param pcm PCM 格式音频数据
      */
     protected abstract suspend fun recognize(pcm: ByteArray)
+
+    /**
+     * 是否存在可用于重试的片段
+     */
+    fun hasRetryableSegment(): Boolean {
+        val data = lastSegmentForRetry
+        return data != null && data.isNotEmpty()
+    }
+
+    /**
+     * 对最近一次片段发起重新识别（不重新录音）。
+     * 该操作不会修改 running 状态；仅触发一次识别请求。
+     */
+    fun retryLastSegment() {
+        val data = lastSegmentForRetry
+        if (data == null || data.isEmpty()) {
+            Log.w(TAG, "retryLastSegment: no segment available")
+            return
+        }
+        scope.launch(Dispatchers.IO) {
+            try {
+                recognize(data)
+            } catch (t: Throwable) {
+                Log.e(TAG, "retryLastSegment recognize failed", t)
+                try {
+                    listener.onError(
+                        context.getString(R.string.error_recognize_failed_with_reason, t.message ?: "")
+                    )
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Failed to notify recognition error (retry)", e)
+                }
+            }
+        }
+    }
 }

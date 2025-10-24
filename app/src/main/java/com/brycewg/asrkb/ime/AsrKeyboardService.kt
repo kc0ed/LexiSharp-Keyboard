@@ -599,6 +599,29 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
         } catch (_: Throwable) { }
     }
 
+    override fun onShowRetryChip(label: String) {
+        val tv = txtStatus ?: return
+        tv.text = label
+        // 使用与剪贴板预览相同的芯片样式
+        try { tv.setBackgroundResource(R.drawable.bg_status_chip) } catch (_: Throwable) { }
+        try {
+            val d = tv.resources.displayMetrics.density
+            val ph = (12f * d + 0.5f).toInt()
+            val pv = (4f * d + 0.5f).toInt()
+            tv.setPaddingRelative(ph, pv, ph, pv)
+        } catch (_: Throwable) { }
+        tv.isClickable = true
+        tv.isFocusable = true
+        tv.setOnClickListener { v ->
+            performKeyHaptic(v)
+            actionHandler.handleRetryClick()
+        }
+    }
+
+    override fun onHideRetryChip() {
+        clearStatusTextStyle()
+    }
+
     private fun checkAsrReady(): Boolean {
         if (!hasRecordAudioPermission()) {
             refreshPermissionUi()

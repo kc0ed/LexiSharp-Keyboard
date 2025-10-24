@@ -288,6 +288,39 @@ class AsrSessionManager(
         listener = null
     }
 
+    /**
+     * 是否可以对最近一次非流式片段进行重试
+     */
+    fun canRetryLastFileRecognition(): Boolean {
+        val e = asrEngine
+        return try {
+            (e is BaseFileAsrEngine) && e.hasRetryableSegment()
+        } catch (t: Throwable) {
+            Log.e(TAG, "canRetryLastFileRecognition check failed", t)
+            false
+        }
+    }
+
+    /**
+     * 发起对最近一次非流式片段的重新识别（不重新录音）。
+     * 返回是否成功触发。
+     */
+    fun retryLastFileRecognition(): Boolean {
+        val e = asrEngine
+        return if (e is BaseFileAsrEngine && e.hasRetryableSegment()) {
+            try {
+                e.retryLastSegment()
+                true
+            } catch (t: Throwable) {
+                Log.e(TAG, "retryLastFileRecognition failed", t)
+                false
+            }
+        } else {
+            Log.w(TAG, "retryLastFileRecognition: engine not retryable or no segment")
+            false
+        }
+    }
+
     // ========== StreamingAsrEngine.Listener 实现 ==========
 
     override fun onFinal(text: String) {
