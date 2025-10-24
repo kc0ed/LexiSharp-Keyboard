@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 允许共享整个 cache 目录下的文件（仅用于调试日志分享） -->
+    <cache-path name="cache" path="." />
+</paths>
+

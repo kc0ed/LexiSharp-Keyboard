@@ -17,6 +17,7 @@ import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.LocaleHelper
 import com.brycewg.asrkb.ui.floating.FloatingAsrService
 import com.brycewg.asrkb.ui.floating.FloatingImeHints
+import com.brycewg.asrkb.store.debug.DebugLogManager
 
 /**
  * 无障碍服务,用于悬浮球语音识别后将文本插入到当前焦点的输入框中
@@ -201,6 +202,7 @@ class AsrAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         Log.d(TAG, "Accessibility service connected")
+        DebugLogManager.log("a11y", "service_connected")
         // 刚连接时推送一次当前输入场景状态
         try {
             handler.post { tryDispatchImeVisibilityHint() }
@@ -213,6 +215,7 @@ class AsrAccessibilityService : AccessibilityService() {
         super.onDestroy()
         instance = null
         Log.d(TAG, "Accessibility service destroyed")
+        DebugLogManager.log("a11y", "service_destroyed")
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -220,11 +223,29 @@ class AsrAccessibilityService : AccessibilityService() {
     private var lastImeSceneActive: Boolean? = null
     private var lastEditableFocusAt: Long = 0L
     private val holdAfterFocusMs: Long = 600L
+    private var lastA11yAggEmitAt: Long = 0L
+    private var aggWinStateChanged: Int = 0
+    private var aggWinContentChanged: Int = 0
+    private var aggViewFocused: Int = 0
+    private var aggTextSelChanged: Int = 0
+    private var aggTextChanged: Int = 0
+    private var aggWindowsChanged: Int = 0
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // 现用于辅助判断"仅在输入法面板显示时显示悬浮球"的场景
         // 为避免频繁遍历树，做轻量节流
         if (event == null) return
+
+        // 事件计数（1s 聚合输出一次）
+        when (event.eventType) {
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> aggWinStateChanged++
+            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> aggWinContentChanged++
+            AccessibilityEvent.TYPE_VIEW_FOCUSED -> aggViewFocused++
+            AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED -> aggTextSelChanged++
+            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> aggTextChanged++
+            AccessibilityEvent.TYPE_WINDOWS_CHANGED -> aggWindowsChanged++
+        }
+        maybeEmitA11yAgg()
 
         if (!isRelevantEventType(event.eventType)) {
             return
@@ -267,6 +288,30 @@ class AsrAccessibilityService : AccessibilityService() {
 
         val active = determineImeSceneActive(now, prefs)
         updateImeVisibilityState(active)
+    }
+
+    private fun maybeEmitA11yAgg() {
+        val now = System.currentTimeMillis()
+        if (now - lastA11yAggEmitAt >= 1000L) {
+            lastA11yAggEmitAt = now
+            val pkg = try { getActiveWindowPackage() } catch (_: Throwable) { null } ?: ""
+            val d = mapOf(
+                "pkgTop" to pkg,
+                "winStateChanged" to aggWinStateChanged,
+                "winContentChanged" to aggWinContentChanged,
+                "viewFocused" to aggViewFocused,
+                "textSelChanged" to aggTextSelChanged,
+                "textChanged" to aggTextChanged,
+                "windowsChanged" to aggWindowsChanged
+            )
+            DebugLogManager.log("a11y", "events", d)
+            aggWinStateChanged = 0
+            aggWinContentChanged = 0
+            aggViewFocused = 0
+            aggTextSelChanged = 0
+            aggTextChanged = 0
+            aggWindowsChanged = 0
+        }
     }
 
     /**
@@ -329,8 +374,47 @@ class AsrAccessibilityService : AccessibilityService() {
         val prev = lastImeSceneActive
         if (prev == null || prev != active) {
             lastImeSceneActive = active
+            DebugLogManager.log(
+                category = "ime",
+                event = if (active) "scene_active" else "scene_inactive",
+                data = mapOf(
+                    "by" to "a11y",
+                    "pkg" to (getActiveWindowPackage() ?: "")
+                )
+            )
+            // 附带一次决策解释
+            try {
+                val prefs = Prefs(this)
+                val snapshot = buildImeDecisionSnapshot(prefs)
+                DebugLogManager.log("ime", "check", snapshot)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Failed to log IME decision snapshot", e)
+            }
             notifyFloatingServices(active)
         }
+    }
+
+    private fun buildImeDecisionSnapshot(prefs: Prefs): Map<String, Any> {
+        val now = System.currentTimeMillis()
+        val winVisible = isImeWindowVisible()
+        val imePkgDetected = isImePackageDetected()
+        val holdByFocus = (now - lastEditableFocusAt <= holdAfterFocusMs)
+        val compatEnabled = try { prefs.floatingImeVisibilityCompatEnabled } catch (_: Throwable) { false }
+        val compatPkgs = try { prefs.getFloatingImeVisibilityCompatPackageRules() } catch (_: Throwable) { emptyList() }
+        val activePkg = getActiveWindowPackage()
+        val compatTarget = compatEnabled && !activePkg.isNullOrEmpty() && compatPkgs.any { it == activePkg }
+        val strategyUsed = if (compatTarget) "compat_pkg" else if (winVisible) "ime_window" else if (holdByFocus) "hold_focus" else "none"
+        val resultActive = if (compatTarget) imePkgDetected else (winVisible || holdByFocus)
+        return mapOf(
+            "winVisible" to winVisible,
+            "imePkgDetected" to imePkgDetected,
+            "holdByFocus" to holdByFocus,
+            "compatEnabled" to compatEnabled,
+            "compatTarget" to compatTarget,
+            "strategyUsed" to strategyUsed,
+            "activePkg" to (activePkg ?: ""),
+            "resultActive" to resultActive
+        )
     }
 
     /**
@@ -370,6 +454,7 @@ class AsrAccessibilityService : AccessibilityService() {
             val rootNode = rootInActiveWindow
             if (rootNode == null) {
                 Log.w(TAG, "Root node is null")
+                DebugLogManager.log("insert", "fallback_clipboard", mapOf("reason" to "root_null"))
                 copyToClipboard(this, text)
                 Toast.makeText(this, getString(com.brycewg.asrkb.R.string.floating_asr_copied), Toast.LENGTH_SHORT).show()
                 return false
@@ -379,6 +464,31 @@ class AsrAccessibilityService : AccessibilityService() {
 
             if (target != null) {
                 Log.d(TAG, "Found editable/focusable node; trying ACTION_SET_TEXT")
+                try {
+                    val nodeClass = try { target.className?.toString() } catch (_: Throwable) { null } ?: ""
+                    val editable = try { target.isEditable } catch (_: Throwable) { false }
+                    val hasSetText = nodeHasAction(target, AccessibilityNodeInfo.ACTION_SET_TEXT)
+                    val hasPaste = nodeHasAction(target, AccessibilityNodeInfo.ACTION_PASTE)
+                    val hasLongClick = nodeHasAction(target, AccessibilityNodeInfo.ACTION_LONG_CLICK)
+                    val textLen = try { target.text?.length ?: 0 } catch (_: Throwable) { 0 }
+                    val selStart = try { target.textSelectionStart } catch (_: Throwable) { -1 }
+                    val selEnd = try { target.textSelectionEnd } catch (_: Throwable) { -1 }
+                    DebugLogManager.log(
+                        "insert", "cap",
+                        mapOf(
+                            "nodeClass" to nodeClass,
+                            "editable" to editable,
+                            "hasSetText" to hasSetText,
+                            "hasPaste" to hasPaste,
+                            "hasLongClick" to hasLongClick,
+                            "textLen" to textLen,
+                            "selStart" to selStart,
+                            "selEnd" to selEnd
+                        )
+                    )
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Failed to log insert capabilities", t)
+                }
                 // 先尝试 ACTION_SET_TEXT 直接写入
                 val args = Bundle().apply {
                     putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
@@ -398,6 +508,7 @@ class AsrAccessibilityService : AccessibilityService() {
                 }
 
                 if (setOk) {
+                    DebugLogManager.log("insert", "path_set_text")
                     @Suppress("DEPRECATION")
                     target.recycle()
                     return true
@@ -408,6 +519,7 @@ class AsrAccessibilityService : AccessibilityService() {
                 @Suppress("DEPRECATION")
                 target.recycle()
                 if (pasteOk) {
+                    DebugLogManager.log("insert", "path_paste_fallback")
                     return true
                 }
             } else {
@@ -415,12 +527,21 @@ class AsrAccessibilityService : AccessibilityService() {
             }
 
             // 兜底：复制剪贴板
+            DebugLogManager.log("insert", "fallback_clipboard", mapOf("reason" to "no_target"))
             copyToClipboard(this, text)
             Toast.makeText(this, getString(com.brycewg.asrkb.R.string.floating_asr_copied), Toast.LENGTH_SHORT).show()
             return false
         } catch (e: Throwable) {
             // 发生错误,复制到剪贴板
             Log.e(TAG, "Error inserting text", e)
+            DebugLogManager.log(
+                "insert",
+                "fallback_clipboard",
+                mapOf(
+                    "reason" to (e::class.java.simpleName),
+                    "msg" to (e.message?.take(80) ?: "")
+                )
+            )
             copyToClipboard(this, text)
             Toast.makeText(this, getString(com.brycewg.asrkb.R.string.floating_asr_copied), Toast.LENGTH_SHORT).show()
             return false

@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 import com.google.android.material.color.MaterialColors
 import com.brycewg.asrkb.LocaleHelper
 import com.brycewg.asrkb.clipboard.SyncClipboardManager
+import com.brycewg.asrkb.store.debug.DebugLogManager
 
 /**
  * ASR 键盘服务
@@ -188,6 +189,23 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        try {
+            DebugLogManager.log(
+                category = "ime",
+                event = "start_input_view",
+                data = mapOf(
+                    "pkg" to (info?.packageName ?: ""),
+                    "inputType" to (info?.inputType ?: 0),
+                    "imeOptions" to (info?.imeOptions ?: 0),
+                    "icNull" to (currentInputConnection == null),
+                    "isPassword" to isPasswordEditor(info),
+                    "isMultiLine" to ((info?.inputType ?: 0) and android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE != 0),
+                    "actionId" to ((info?.imeOptions ?: 0) and android.view.inputmethod.EditorInfo.IME_MASK_ACTION)
+                )
+            )
+        } catch (t: Throwable) {
+            android.util.Log.w("AsrKeyboardService", "Failed to log start_input_view", t)
+        }
 
         // 键盘面板首次出现时，按需异步预加载本地 SenseVoice
         tryPreloadSenseVoice()
@@ -235,6 +253,9 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        try {
+            DebugLogManager.log("ime", "finish_input_view")
+        } catch (_: Throwable) { }
         try {
             syncClipboardManager?.stop()
         } catch (_: Throwable) { }

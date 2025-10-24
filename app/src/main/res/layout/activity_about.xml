@@ -150,6 +150,41 @@
         android:orientation="vertical"
         android:layout_marginTop="6dp" />
 
+      <!-- 调试日志 -->
+      <TextView
+        android:id="@+id/tvDebugTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:text="@string/about_debug_title" />
+
+      <TextView
+        android:id="@+id/tvDebugDesc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp"
+        android:text="@string/about_debug_desc" />
+
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnToggleDebugRecording"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        style="@style/Widget.Material3.Button"
+        android:text="@string/btn_debug_start_recording" />
+
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnExportDebugLog"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:text="@string/btn_debug_export" />
 
     </LinearLayout>
   </ScrollView>

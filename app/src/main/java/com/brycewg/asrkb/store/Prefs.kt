@@ -1,9 +1,11 @@
 package com.brycewg.asrkb.store
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
 import androidx.core.content.edit
 import com.brycewg.asrkb.asr.AsrVendor
+import com.brycewg.asrkb.store.debug.DebugLogManager
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -13,6 +15,9 @@ import java.time.format.DateTimeFormatter
 
 class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("asr_prefs", Context.MODE_PRIVATE)
+    init {
+        registerGlobalToggleListenerIfNeeded()
+    }
 
     // --- JSON 配置：宽松模式（容忍未知键，优雅处理格式错误）---
     private val json = Json {
@@ -70,6 +75,17 @@ class Prefs(context: Context) {
 
     private fun setPrefString(key: String, value: String) {
         sp.edit { putString(key, value.trim()) }
+    }
+
+    private fun registerGlobalToggleListenerIfNeeded() {
+        if (!TOGGLE_LISTENER_REGISTERED) {
+            try {
+                sp.registerOnSharedPreferenceChangeListener(globalToggleListener)
+                TOGGLE_LISTENER_REGISTERED = true
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to register global toggle listener", t)
+            }
+        }
     }
 
     // 火山引擎凭证
@@ -874,6 +890,17 @@ class Prefs(context: Context) {
 
     companion object {
         private const val TAG = "Prefs"
+        @Volatile private var TOGGLE_LISTENER_REGISTERED: Boolean = false
+        private val globalToggleListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+            try {
+                val v = prefs.all[key]
+                if (v is Boolean) {
+                    DebugLogManager.log("prefs", "toggle", mapOf("key" to key, "value" to v))
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to log pref toggle", t)
+            }
+        }
 
         private const val KEY_APP_KEY = "app_key"
         private const val KEY_ACCESS_KEY = "access_key"

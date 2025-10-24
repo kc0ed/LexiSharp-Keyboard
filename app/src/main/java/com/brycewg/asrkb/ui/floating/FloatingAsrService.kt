@@ -22,6 +22,7 @@ import com.brycewg.asrkb.ui.floatingball.*
 import com.brycewg.asrkb.ui.floating.FloatingImeHints
 import com.brycewg.asrkb.ui.AsrAccessibilityService
 import com.brycewg.asrkb.ui.SettingsActivity
+import com.brycewg.asrkb.store.debug.DebugLogManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -79,17 +80,23 @@ class FloatingAsrService : Service(),
     // 本地模型预加载标记
     private var svPreloadTriggered: Boolean = false
 
+    // 显示尝试去重
+    private var lastShowAttemptAt: Long = 0L
+    private var lastShowAttemptSig: String? = null
+
     // 广播接收器
     private val hintReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 FloatingImeHints.ACTION_HINT_IME_VISIBLE -> {
                     imeVisible = true
-                    updateVisibilityByPref()
+                    DebugLogManager.log("float", "hint", mapOf("action" to "VISIBLE"))
+                    updateVisibilityByPref("hint_visible")
                 }
                 FloatingImeHints.ACTION_HINT_IME_HIDDEN -> {
                     imeVisible = false
-                    updateVisibilityByPref()
+                    DebugLogManager.log("float", "hint", mapOf("action" to "HIDDEN"))
+                    updateVisibilityByPref("hint_hidden")
                 }
             }
         }
@@ -132,17 +139,19 @@ class FloatingAsrService : Service(),
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand: action=${intent?.action}, floatingAsrEnabled=${prefs.floatingAsrEnabled}")
         when (intent?.action) {
-            ACTION_SHOW -> updateVisibilityByPref()
+            ACTION_SHOW -> updateVisibilityByPref("start_action_show")
             ACTION_HIDE -> hideBall()
             FloatingImeHints.ACTION_HINT_IME_VISIBLE -> {
                 imeVisible = true
-                updateVisibilityByPref()
+                DebugLogManager.log("float", "hint", mapOf("action" to "VISIBLE"))
+                updateVisibilityByPref("start_hint_visible")
             }
             FloatingImeHints.ACTION_HINT_IME_HIDDEN -> {
                 imeVisible = false
-                updateVisibilityByPref()
+                DebugLogManager.log("float", "hint", mapOf("action" to "HIDDEN"))
+                updateVisibilityByPref("start_hint_hidden")
             }
-            else -> showBall()
+            else -> showBall("start_default")
         }
         return START_STICKY
     }
@@ -174,16 +183,38 @@ class FloatingAsrService : Service(),
 
     // ==================== 视图管理 ====================
 
-    private fun showBall() {
+    private fun showBall(src: String = "update_visibility") {
         Log.d(TAG, "showBall called: floatingAsrEnabled=${prefs.floatingAsrEnabled}, hasOverlay=${hasOverlayPermission()}")
+        // 去重 300ms 内相同签名
+        val enabledPref = try { prefs.floatingAsrEnabled } catch (_: Throwable) { false }
+        val onlyWhenImeVisible = try { prefs.floatingSwitcherOnlyWhenImeVisible } catch (_: Throwable) { false }
+        val sig = "${src}|${enabledPref}|${hasOverlayPermission()}|${imeVisible}|${onlyWhenImeVisible}"
+        val now = System.currentTimeMillis()
+        if (!(now - lastShowAttemptAt < 300L && lastShowAttemptSig == sig)) {
+            DebugLogManager.log(
+            category = "float",
+            event = "show_attempt",
+            data = mapOf(
+                "src" to src,
+                "enabled" to enabledPref,
+                "overlay" to hasOverlayPermission(),
+                "imeVisible" to imeVisible,
+                "onlyWhenImeVisible" to onlyWhenImeVisible
+            )
+        )
+            lastShowAttemptAt = now
+            lastShowAttemptSig = sig
+        }
         if (!prefs.floatingAsrEnabled || !hasOverlayPermission()) {
             Log.w(TAG, "Cannot show ball: permission or setting issue")
+            DebugLogManager.log("float", "show_skip", mapOf("reason" to "pref_or_permission"))
             hideBall()
             return
         }
 
         if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible && !stateMachine.isRecording) {
             Log.d(TAG, "Pref requires IME visible; hiding for now")
+            DebugLogManager.log("float", "show_skip", mapOf("reason" to "ime_not_visible"))
             hideBall()
             return
         }
@@ -206,8 +237,10 @@ class FloatingAsrService : Service(),
         )
 
         if (!success) {
+            DebugLogManager.log("float", "show_failed")
             return
         }
+        DebugLogManager.log("float", "show_success")
 
         // 悬浮球首次出现时，按需异步预加载本地 SenseVoice
         tryPreloadSenseVoiceOnce()
@@ -224,9 +257,10 @@ class FloatingAsrService : Service(),
 
     private fun hideBall() {
         viewManager.hideBall()
+        DebugLogManager.log("float", "hide")
     }
 
-    private fun updateVisibilityByPref() {
+    private fun updateVisibilityByPref(src: String = "update_visibility") {
         val forceVisible = (radialMenuView != null || vendorMenuView != null ||
                            stateMachine.isMoveMode || touchActiveGuard)
         if (!prefs.floatingAsrEnabled) {
@@ -238,7 +272,7 @@ class FloatingAsrService : Service(),
             hideBall()
             return
         }
-        showBall()
+        showBall(src)
     }
 
     // ==================== ASR 会话控制 ====================

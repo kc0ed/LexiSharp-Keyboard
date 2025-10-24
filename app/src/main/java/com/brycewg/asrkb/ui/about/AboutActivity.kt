@@ -15,6 +15,11 @@ import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.store.Prefs
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.brycewg.asrkb.store.debug.DebugLogManager
+import com.brycewg.asrkb.ui.AsrAccessibilityService
+import android.provider.Settings
+import android.os.PowerManager
+import android.Manifest
 import java.text.NumberFormat
 import java.util.Locale
 import java.time.LocalDate
@@ -56,6 +61,73 @@ class AboutActivity : AppCompatActivity() {
       } catch (e: Throwable) {
         Log.e(TAG, "Failed to open GitHub URL", e)
         Toast.makeText(this, R.string.error_open_browser, Toast.LENGTH_SHORT).show()
+      }
+    }
+
+    // 调试日志控制：开始/停止、导出分享
+    val btnToggle = findViewById<Button>(R.id.btnToggleDebugRecording)
+    val btnExport = findViewById<Button>(R.id.btnExportDebugLog)
+    updateToggleText(btnToggle)
+    btnToggle.setOnClickListener {
+      try {
+        if (DebugLogManager.isRecording()) {
+          DebugLogManager.stop()
+          Toast.makeText(this, R.string.toast_debug_recording_stopped, Toast.LENGTH_SHORT).show()
+        } else {
+          DebugLogManager.start(this)
+          Toast.makeText(this, R.string.toast_debug_recording_started, Toast.LENGTH_SHORT).show()
+          try {
+            val overlayOk = try { Settings.canDrawOverlays(this) } catch (_: Throwable) { false }
+            val pm = try { getSystemService(PowerManager::class.java) } catch (_: Throwable) { null }
+            val batteryIgnore = try { pm?.isIgnoringBatteryOptimizations(packageName) ?: false } catch (_: Throwable) { false }
+            val notifGranted = try {
+              if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+              } else true
+            } catch (_: Throwable) { null } ?: true
+            DebugLogManager.log(
+              category = "env",
+              event = "permissions",
+              data = mapOf(
+                "overlay" to overlayOk,
+                "a11y" to AsrAccessibilityService.isEnabled(),
+                "batteryIgnore" to batteryIgnore,
+                "notifGranted" to notifGranted
+              )
+            )
+          } catch (e: Throwable) {
+            Log.w(TAG, "Failed to log env status", e)
+          }
+        }
+        updateToggleText(btnToggle)
+      } catch (t: Throwable) {
+        Log.e(TAG, "Failed toggling debug recording", t)
+        Toast.makeText(this, R.string.toast_debug_failed, Toast.LENGTH_SHORT).show()
+      }
+    }
+    btnExport.setOnClickListener {
+      try {
+        val result = DebugLogManager.buildShareIntent(this)
+        when (result) {
+          is DebugLogManager.ShareIntentResult.Success -> {
+            try {
+              startActivity(Intent.createChooser(result.intent, getString(R.string.btn_debug_export)))
+            } catch (e: Throwable) {
+              Log.e(TAG, "Failed to start share chooser", e)
+              Toast.makeText(this, R.string.toast_debug_export_failed, Toast.LENGTH_SHORT).show()
+            }
+          }
+          is DebugLogManager.ShareIntentResult.Error -> {
+            when (result.error) {
+              DebugLogManager.ShareError.RecordingActive -> Toast.makeText(this, R.string.toast_debug_stop_before_export, Toast.LENGTH_SHORT).show()
+              DebugLogManager.ShareError.NoLog -> Toast.makeText(this, R.string.toast_debug_no_log, Toast.LENGTH_SHORT).show()
+              DebugLogManager.ShareError.Failed -> Toast.makeText(this, R.string.toast_debug_export_failed, Toast.LENGTH_SHORT).show()
+            }
+          }
+        }
+      } catch (t: Throwable) {
+        Log.e(TAG, "Failed to export debug log", t)
+        Toast.makeText(this, R.string.toast_debug_export_failed, Toast.LENGTH_SHORT).show()
       }
     }
 
@@ -235,4 +307,9 @@ class AboutActivity : AppCompatActivity() {
   }
 
   private fun formatInt(v: Long): String = NumberFormat.getIntegerInstance().format(v)
+
+  private fun updateToggleText(btn: Button) {
+    val textRes = if (DebugLogManager.isRecording()) R.string.btn_debug_stop_recording else R.string.btn_debug_start_recording
+    btn.setText(textRes)
+  }
 }
