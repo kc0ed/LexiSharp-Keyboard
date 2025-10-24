@@ -53,6 +53,8 @@ class FloatingMenuHelper(
             val root = android.widget.FrameLayout(context).apply {
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 isClickable = true
+                isFocusable = true
+                isFocusableInTouchMode = true
                 setOnClickListener {
                     try {
                         windowManager.removeView(this)
@@ -63,6 +65,7 @@ class FloatingMenuHelper(
                 }
             }
             root.alpha = alpha
+            try { root.requestFocus() } catch (e: Throwable) { Log.w(TAG, "Failed to request focus for radial root", e) }
 
             val (centerX, centerY) = anchorCenter
             val isLeft = centerX < (context.resources.displayMetrics.widthPixels / 2)
@@ -76,14 +79,18 @@ class FloatingMenuHelper(
 
             items.forEachIndexed { index, item ->
                 val row = buildCapsule(item.iconRes, item.label, item.contentDescription) {
-                    // 先移除当前菜单，再执行动作，避免二级菜单与一级菜单重叠
+                    // 先执行动作，再移除菜单：确保动作期间应用保持前台焦点（例如读取剪贴板）
+                    try {
+                        item.onClick()
+                    } catch (e: Throwable) {
+                        Log.e(TAG, "Radial item action failed", e)
+                    }
                     try {
                         windowManager.removeView(root)
                     } catch (e: Throwable) {
                         Log.e(TAG, "Failed to remove radial root on item click", e)
                     }
                     onDismiss()
-                    item.onClick()
                 }
                 val lpRow = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -114,8 +121,8 @@ class FloatingMenuHelper(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                // 避免抢占焦点，仍然可响应触摸与点击
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                // 允许获得焦点，以便本应用在菜单展示期间具备前台焦点（例如读取剪贴板）
+                0,
                 PixelFormat.TRANSLUCENT
             )
             params.gravity = Gravity.TOP or Gravity.START
@@ -148,6 +155,8 @@ class FloatingMenuHelper(
             val root = android.widget.FrameLayout(context).apply {
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 isClickable = true
+                isFocusable = true
+                isFocusableInTouchMode = true
                 setOnClickListener {
                     try {
                         windowManager.removeView(this)
@@ -158,6 +167,7 @@ class FloatingMenuHelper(
                 }
             }
             root.alpha = alpha
+            try { root.requestFocus() } catch (e: Throwable) { Log.w(TAG, "Failed to request focus for panel root", e) }
 
             val container = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -189,13 +199,18 @@ class FloatingMenuHelper(
                     isClickable = true
                     isFocusable = true
                     setOnClickListener {
+                        // 同样先执行动作，再移除面板，保证动作期间具备前台焦点
+                        try {
+                            onClick()
+                        } catch (e: Throwable) {
+                            Log.e(TAG, "Panel item action failed", e)
+                        }
                         try {
                             windowManager.removeView(root)
                         } catch (e: Throwable) {
                             Log.e(TAG, "Failed to remove panel root on item click", e)
                         }
                         onDismiss()
-                        onClick()
                     }
                 }
                 container.addView(
@@ -230,7 +245,7 @@ class FloatingMenuHelper(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                0,
                 PixelFormat.TRANSLUCENT
             )
             params.gravity = Gravity.TOP or Gravity.START
