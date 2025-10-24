@@ -52,6 +52,9 @@ class FloatingBallViewManager(
     private var errorVisualActive: Boolean = false
     private var completionResetPosted: Boolean = false
     private var monetContext: Context? = null
+    
+    // 贴边半隐可视比例（仅显示该比例的宽度）
+    private val visibleFractionWhenHidden = 0.4f
 
     /** 获取悬浮球视图 */
     fun getBallView(): View? = ballView
@@ -238,6 +241,91 @@ class FloatingBallViewManager(
         }
     }
 
+    /**
+     * 若当前在左右边缘，执行“完全显示”的贴边浮现动画。
+     * - 仅对左右边缘生效；底部贴边不处理（保持完全显示）。
+     */
+    fun animateRevealFromEdgeIfNeeded() {
+        val p = lp ?: return
+        val v = ballView ?: return
+
+        val dock = detectDockSide()
+        if (dock == DockSide.BOTTOM || dock == DockSide.NONE) return
+
+        val target = fullyVisiblePositionForSide(dock)
+        val startX = p.x
+        val startY = p.y
+        val dx = target.first - startX
+        val dy = target.second - startY
+
+        if (dx == 0 && dy == 0) return
+
+        edgeAnimator?.cancel()
+        edgeAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 230
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val f = anim.animatedValue as Float
+                p.x = (startX + dx * f).toInt()
+                p.y = (startY + dy * f).toInt()
+                try {
+                    windowManager.updateViewLayout(ballView ?: v, p)
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Failed to update layout during reveal", e)
+                }
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    persistBallPosition()
+                }
+            })
+            start()
+        }
+    }
+
+    /**
+     * 若当前处于静息，应在左右贴边时执行半隐动画；
+     * - 不对底部贴边执行半隐，保持完全可见。
+     * - 若未贴边，则将自动吸附到就近左右边并半隐。
+     */
+    fun animateHideToEdgePartialIfNeeded() {
+        val p = lp ?: return
+        val v = ballView ?: return
+
+        val dock = detectDockSide(allowChooseNearest = true)
+        if (dock == DockSide.BOTTOM || dock == DockSide.NONE) return
+
+        val target = partiallyHiddenPositionForSide(dock)
+        val startX = p.x
+        val startY = p.y
+        val dx = target.first - startX
+        val dy = target.second - startY
+
+        if (dx == 0 && dy == 0) return
+
+        edgeAnimator?.cancel()
+        edgeAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 230
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val f = anim.animatedValue as Float
+                p.x = (startX + dx * f).toInt()
+                p.y = (startY + dy * f).toInt()
+                try {
+                    windowManager.updateViewLayout(ballView ?: v, p)
+                } catch (e: Throwable) {
+                    Log.e(TAG, "Failed to update layout during partial hide", e)
+                }
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    persistBallPosition()
+                }
+            })
+            start()
+        }
+    }
+
     /** 显示完成对勾 */
     fun showCompletionTick(durationMs: Long = 1000L) {
         val icon = ballIcon ?: return
@@ -259,6 +347,9 @@ class FloatingBallViewManager(
             }, durationMs)
         }
     }
+
+    /** 对勾展示是否仍在活动周期内（用于延后半隐） */
+    fun isCompletionTickActive(): Boolean = completionResetPosted
 
     /** 吸附到边缘（带动画） */
     fun animateSnapToEdge(v: View, onComplete: (() -> Unit)? = null) {
@@ -503,6 +594,83 @@ class FloatingBallViewManager(
             val targetY = p.y.coerceIn(minY, maxY)
             targetX to targetY
         }
+    }
+
+    // ============== 贴边/半隐计算 ==============
+
+    private enum class DockSide { LEFT, RIGHT, BOTTOM, NONE }
+
+    /**
+     * 检测当前贴边方向；当 allowChooseNearest=true 且未贴边时，选择更近的左右边。
+     */
+    private fun detectDockSide(allowChooseNearest: Boolean = false): DockSide {
+        val p = lp ?: return DockSide.NONE
+        val dm = context.resources.displayMetrics
+        val screenW = dm.widthPixels
+        val screenH = dm.heightPixels
+        val vw = (ballView?.width?.takeIf { it > 0 }) ?: (p.width)
+        val vh = (ballView?.height?.takeIf { it > 0 }) ?: (p.height)
+        val margin = dp(0)
+
+        val bottomY = (screenH - vh - margin)
+        val bottomDist = bottomY - p.y
+        val bottomSnapThreshold = dp(64)
+        if (bottomDist <= bottomSnapThreshold || p.y >= bottomY) return DockSide.BOTTOM
+
+        val leftX = margin
+        val rightX = screenW - vw - margin
+        val edgeThresholdX = dp(28)
+
+        if (p.x <= leftX + edgeThresholdX) return DockSide.LEFT
+        if (p.x >= rightX - edgeThresholdX) return DockSide.RIGHT
+
+        if (!allowChooseNearest) return DockSide.NONE
+
+        // 未贴边时，选择更近的一侧（不考虑顶部/底部，因为仅对左右生效）
+        val centerX = p.x + vw / 2
+        return if (centerX < screenW / 2) DockSide.LEFT else DockSide.RIGHT
+    }
+
+    /** 左/右侧完全可见位置 */
+    private fun fullyVisiblePositionForSide(side: DockSide): Pair<Int, Int> {
+        val p = lp ?: return 0 to 0
+        val dm = context.resources.displayMetrics
+        val screenW = dm.widthPixels
+        val screenH = dm.heightPixels
+        val vw = (ballView?.width?.takeIf { it > 0 }) ?: (p.width)
+        val vh = (ballView?.height?.takeIf { it > 0 }) ?: (p.height)
+        val margin = dp(0)
+        val x = when (side) {
+            DockSide.LEFT -> margin
+            DockSide.RIGHT -> screenW - vw - margin
+            else -> p.x
+        }
+        val minY = margin
+        val maxY = (screenH - vh - margin).coerceAtLeast(minY)
+        val y = p.y.coerceIn(minY, maxY)
+        return x to y
+    }
+
+    /** 左/右侧半隐位置（仅显示一定比例的宽度） */
+    private fun partiallyHiddenPositionForSide(side: DockSide): Pair<Int, Int> {
+        val p = lp ?: return 0 to 0
+        val dm = context.resources.displayMetrics
+        val screenW = dm.widthPixels
+        val screenH = dm.heightPixels
+        val vw = (ballView?.width?.takeIf { it > 0 }) ?: (p.width)
+        val vh = (ballView?.height?.takeIf { it > 0 }) ?: (p.height)
+        val margin = dp(0)
+
+        val visibleW = (vw * visibleFractionWhenHidden).toInt()
+        val x = when (side) {
+            DockSide.LEFT -> (margin - (vw - visibleW))
+            DockSide.RIGHT -> (screenW - visibleW - margin)
+            else -> p.x
+        }
+        val minY = margin
+        val maxY = (screenH - vh - margin).coerceAtLeast(minY)
+        val y = p.y.coerceIn(minY, maxY)
+        return x to y
     }
 
     private fun persistBallPosition() {

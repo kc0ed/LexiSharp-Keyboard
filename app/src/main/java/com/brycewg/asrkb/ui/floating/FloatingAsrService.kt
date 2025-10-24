@@ -211,6 +211,15 @@ class FloatingAsrService : Service(),
 
         // 悬浮球首次出现时，按需异步预加载本地 SenseVoice
         tryPreloadSenseVoiceOnce()
+
+        // 初始为静息场景：若在左右边缘或就近吸附，则执行半隐
+        if (stateMachine.isIdle) {
+            try {
+                viewManager.animateHideToEdgePartialIfNeeded()
+            } catch (e: Throwable) {
+                Log.w(TAG, "Failed to apply initial partial hide", e)
+            }
+        }
     }
 
     private fun hideBall() {
@@ -275,6 +284,25 @@ class FloatingAsrService : Service(),
         stateMachine.transitionTo(state)
         handler.post {
             viewManager.updateStateVisual(state)
+            // 视觉与布局：激活态浮现、静息态半隐
+            try {
+                when (state) {
+                    is FloatingBallState.Recording, is FloatingBallState.Processing ->
+                        viewManager.animateRevealFromEdgeIfNeeded()
+                    is FloatingBallState.Idle -> {
+                        if (!viewManager.isCompletionTickActive()) {
+                            viewManager.animateHideToEdgePartialIfNeeded()
+                        } else {
+                            // 正在展示对勾：避免立刻半隐，交由 onResultCommitted 的延迟兜底处理
+                        }
+                    }
+                    else -> {
+                        // Error/MoveMode：不改动贴边半隐
+                    }
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "Failed to apply edge reveal/hide on state change", e)
+            }
             updateVisibilityByPref()
         }
     }
@@ -289,6 +317,22 @@ class FloatingAsrService : Service(),
                 } catch (t: Throwable) {
                     Log.e(TAG, "Failed to record usage stats (floating)", t)
                 }
+
+                // 在展示完成对勾后，稍作延迟再尝试半隐（仅左右边缘）。
+                // 即使状态回调遗漏，这里也能保证一次隐入体验。
+                try {
+                    handler.postDelayed({
+                        if (stateMachine.isIdle) {
+                            try {
+                                viewManager.animateHideToEdgePartialIfNeeded()
+                            } catch (e: Throwable) {
+                                Log.w(TAG, "Failed to partial hide after commit", e)
+                            }
+                        }
+                    }, 3000L)
+                } catch (e: Throwable) {
+                    Log.w(TAG, "Failed to schedule post-commit partial hide", e)
+                }
             }
         }
     }
@@ -300,6 +344,20 @@ class FloatingAsrService : Service(),
                 showToast(mapped)
             } else {
                 showToast(getString(R.string.floating_asr_error, message))
+            }
+
+            // 错误或空结果等同于一次会话结束：
+            // 为了统一体验，在错误动画完成后，尝试执行一次边缘半隐。
+            try {
+                handler.postDelayed({
+                    try {
+                        viewManager.animateHideToEdgePartialIfNeeded()
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "Failed to partial hide after error", e)
+                    }
+                }, 3000L)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Failed to schedule partial hide after error", e)
             }
         }
     }
@@ -342,6 +400,13 @@ class FloatingAsrService : Service(),
             return
         }
 
+        // 点击时若处于左右半隐，先执行浮现动画
+        try {
+            viewManager.animateRevealFromEdgeIfNeeded()
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to reveal on tap", e)
+        }
+
         // 切换录音状态
         if (stateMachine.isRecording) {
             stopRecording()
@@ -360,6 +425,14 @@ class FloatingAsrService : Service(),
 
     override fun onMoveEnded() {
         touchActiveGuard = false
+        // 移动结束：在静息场景执行贴边吸附+半隐（底部除外）
+        try {
+            if (stateMachine.isIdle) {
+                viewManager.animateHideToEdgePartialIfNeeded()
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to partial hide after move end", e)
+        }
         updateVisibilityByPref()
     }
 
