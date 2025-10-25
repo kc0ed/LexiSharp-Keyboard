@@ -124,10 +124,6 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_AI_EDIT_DEFAULT_TO_LAST_ASR, false)
         set(value) = sp.edit { putBoolean(KEY_AI_EDIT_DEFAULT_TO_LAST_ASR, value) }
 
-    // 录音兼容模式（稳定会话）：开启后预热阶段不再 stop/release 重建，避免会话闪断
-    var audioCompatPreferMic: Boolean
-        get() = sp.getBoolean(KEY_AUDIO_COMPAT_PREFER_MIC, false)
-        set(value) = sp.edit { putBoolean(KEY_AUDIO_COMPAT_PREFER_MIC, value) }
 
     // 静音自动判停：开关
     var autoStopOnSilenceEnabled: Boolean
@@ -894,7 +890,6 @@ class Prefs(context: Context) {
         private const val KEY_MIC_HAPTIC_ENABLED = "mic_haptic_enabled"
         private const val KEY_MIC_TAP_TOGGLE_ENABLED = "mic_tap_toggle_enabled"
         private const val KEY_DUCK_MEDIA_ON_RECORD = "duck_media_on_record"
-        private const val KEY_AUDIO_COMPAT_PREFER_MIC = "audio_compat_prefer_mic"
         private const val KEY_AUTO_STOP_ON_SILENCE_ENABLED = "auto_stop_on_silence_enabled"
         private const val KEY_AUTO_STOP_SILENCE_WINDOW_MS = "auto_stop_silence_window_ms"
         private const val KEY_AUTO_STOP_SILENCE_SENSITIVITY = "auto_stop_silence_sensitivity"
@@ -1082,7 +1077,6 @@ class Prefs(context: Context) {
         o.put(KEY_MIC_HAPTIC_ENABLED, micHapticEnabled)
         o.put(KEY_MIC_TAP_TOGGLE_ENABLED, micTapToggleEnabled)
         o.put(KEY_DUCK_MEDIA_ON_RECORD, duckMediaOnRecordEnabled)
-        o.put(KEY_AUDIO_COMPAT_PREFER_MIC, audioCompatPreferMic)
         o.put(KEY_AUTO_STOP_ON_SILENCE_ENABLED, autoStopOnSilenceEnabled)
         o.put(KEY_AUTO_STOP_SILENCE_WINDOW_MS, autoStopSilenceWindowMs)
         o.put(KEY_AUTO_STOP_SILENCE_SENSITIVITY, autoStopSilenceSensitivity)
@@ -1190,7 +1184,6 @@ class Prefs(context: Context) {
             optBool(KEY_MIC_HAPTIC_ENABLED)?.let { micHapticEnabled = it }
             optBool(KEY_MIC_TAP_TOGGLE_ENABLED)?.let { micTapToggleEnabled = it }
             optBool(KEY_DUCK_MEDIA_ON_RECORD)?.let { duckMediaOnRecordEnabled = it }
-            optBool(KEY_AUDIO_COMPAT_PREFER_MIC)?.let { audioCompatPreferMic = it }
             optBool(KEY_AUTO_STOP_ON_SILENCE_ENABLED)?.let { autoStopOnSilenceEnabled = it }
             optInt(KEY_AUTO_STOP_SILENCE_WINDOW_MS)?.let { autoStopSilenceWindowMs = it }
             optInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY)?.let { autoStopSilenceSensitivity = it }

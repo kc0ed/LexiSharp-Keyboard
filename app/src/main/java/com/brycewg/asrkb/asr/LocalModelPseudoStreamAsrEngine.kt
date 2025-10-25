@@ -259,8 +259,7 @@ class LocalModelPseudoStreamAsrEngine(
                 sampleRate = sampleRate,
                 channelConfig = channelConfig,
                 audioFormat = audioFormat,
-                chunkMillis = targetChunkMs,
-                prefs = prefs
+                chunkMillis = targetChunkMs
             )
 
             if (!audioManager.hasPermission()) {

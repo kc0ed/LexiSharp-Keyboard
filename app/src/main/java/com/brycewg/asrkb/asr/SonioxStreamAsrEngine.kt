@@ -153,7 +153,7 @@ class SonioxStreamAsrEngine(
      * 使用 AudioCaptureManager 简化音频采集逻辑，包括：
      * - 权限检查和 AudioRecord 初始化
      * - 音频源回退（VOICE_RECOGNITION -> MIC）
-     * - 预热逻辑（兼容模式 vs 非兼容模式）
+     * - 预热逻辑（两帧探测 + 坏源回退）
      */
     private fun startCaptureAndSendAudio() {
         audioJob?.cancel()
@@ -164,8 +164,7 @@ class SonioxStreamAsrEngine(
                 sampleRate = sampleRate,
                 channelConfig = channelConfig,
                 audioFormat = audioFormat,
-                chunkMillis = chunkMillis,
-                prefs = prefs
+                chunkMillis = chunkMillis
             )
 
             if (!audioManager.hasPermission()) {

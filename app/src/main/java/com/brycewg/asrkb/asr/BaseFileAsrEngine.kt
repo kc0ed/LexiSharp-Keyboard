@@ -142,8 +142,7 @@ abstract class BaseFileAsrEngine(
             sampleRate = sampleRate,
             channelConfig = channelConfig,
             audioFormat = audioFormat,
-            chunkMillis = chunkMillis,
-            prefs = prefs
+            chunkMillis = chunkMillis
         )
 
         // 权限检查

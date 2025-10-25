@@ -59,9 +59,7 @@ class AsrSettingsViewModel : ViewModel() {
             svUseItn = prefs.svUseItn,
             svPreloadEnabled = prefs.svPreloadEnabled,
             svPseudoStreamingEnabled = prefs.svPseudoStreamingEnabled,
-            svKeepAliveMinutes = prefs.svKeepAliveMinutes,
-            // Audio compat
-            audioCompatPreferMic = prefs.audioCompatPreferMic
+            svKeepAliveMinutes = prefs.svKeepAliveMinutes
         )
     }
 
@@ -151,11 +149,6 @@ class AsrSettingsViewModel : ViewModel() {
     fun updateAiEditPreferLastAsr(enabled: Boolean) {
         prefs.aiEditDefaultToLastAsr = enabled
         _uiState.value = _uiState.value.copy(aiEditPreferLastAsr = enabled)
-    }
-
-    fun updateAudioCompatPreferMic(enabled: Boolean) {
-        prefs.audioCompatPreferMic = enabled
-        _uiState.value = _uiState.value.copy(audioCompatPreferMic = enabled)
     }
 
     fun updateSonioxStreaming(enabled: Boolean) {
@@ -299,9 +292,7 @@ data class AsrSettingsUiState(
     val svUseItn: Boolean = true,
     val svPreloadEnabled: Boolean = false,
     val svPseudoStreamingEnabled: Boolean = false,
-    val svKeepAliveMinutes: Int = -1,
-    // Audio compat
-    val audioCompatPreferMic: Boolean = false
+    val svKeepAliveMinutes: Int = -1
 ) {
     // Computed visibility properties based on selected vendor
     val isVolcVisible: Boolean get() = selectedVendor == AsrVendor.Volc

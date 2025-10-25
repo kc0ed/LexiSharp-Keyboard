@@ -447,8 +447,7 @@
     <string name="sc_open_browser_failed">Cannot open browser</string>
     <string name="hint_sc_server_base_placeholder">https://your-server.com/path</string>
 
-    <!-- Audio compatibility -->
-    <string name="label_audio_compat_prefer_mic">Recording compatibility mode (recommended for Xiaomi devices)</string>
+    <!-- Audio -->
     <string name="label_audio_ducking_on_record">Audio ducking during recording</string>
 
     <!-- About: Usage stats -->
