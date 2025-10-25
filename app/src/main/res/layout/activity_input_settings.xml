@@ -95,6 +95,13 @@
           android:layout_marginTop="8dp"
           android:text="@string/label_audio_ducking_on_record" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchHeadsetMicPriority"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_headset_mic_priority" />
+
         <!-- 键盘高度 -->
         <TextView
             android:layout_width="match_parent"

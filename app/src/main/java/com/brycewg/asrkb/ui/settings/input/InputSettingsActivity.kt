@@ -1,13 +1,19 @@
 package com.brycewg.asrkb.ui.settings.input
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.ime.AsrKeyboardService
@@ -19,6 +25,7 @@ class InputSettingsActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "InputSettingsActivity"
+        private const val REQ_BT_CONNECT = 2001
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +43,7 @@ class InputSettingsActivity : AppCompatActivity() {
         val switchFcitx5ReturnOnSwitcher = findViewById<MaterialSwitch>(R.id.switchFcitx5ReturnOnSwitcher)
         val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
         val switchDuckMediaOnRecord = findViewById<MaterialSwitch>(R.id.switchDuckMediaOnRecord)
+        val switchHeadsetMicPriority = findViewById<MaterialSwitch>(R.id.switchHeadsetMicPriority)
         val tvKeyboardHeight = findViewById<TextView>(R.id.tvKeyboardHeightValue)
         val tvLanguage = findViewById<TextView>(R.id.tvLanguageValue)
 
@@ -48,6 +56,7 @@ class InputSettingsActivity : AppCompatActivity() {
             switchFcitx5ReturnOnSwitcher.isChecked = prefs.fcitx5ReturnOnImeSwitch
             switchHideRecentTasks.isChecked = prefs.hideRecentTaskCard
             switchDuckMediaOnRecord.isChecked = prefs.duckMediaOnRecordEnabled
+            switchHeadsetMicPriority.isChecked = prefs.headsetMicPriorityEnabled
             switchMicSwipeUpAutoEnter.isChecked = prefs.micSwipeUpAutoEnterEnabled
         }
         applyPrefsToUi()
@@ -115,9 +124,46 @@ class InputSettingsActivity : AppCompatActivity() {
             hapticTapIfEnabled(btn)
             prefs.duckMediaOnRecordEnabled = isChecked
         }
+        switchHeadsetMicPriority.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            if (isChecked) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                    if (!granted) {
+                        try {
+                            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQ_BT_CONNECT)
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "requestPermissions BLUETOOTH_CONNECT failed", t)
+                            Toast.makeText(this, getString(R.string.toast_bt_connect_permission_required), Toast.LENGTH_SHORT).show()
+                        }
+                        // 临时回退 UI，待授权结果再更新偏好
+                        try { switchHeadsetMicPriority.isChecked = false } catch (_: Throwable) {}
+                        return@setOnCheckedChangeListener
+                    }
+                }
+            }
+            prefs.headsetMicPriorityEnabled = isChecked
+        }
 
         // 初始应用一次"从最近任务中排除"设置
         applyExcludeFromRecents(prefs.hideRecentTaskCard)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQ_BT_CONNECT) {
+            val switchHeadsetMicPriority = findViewById<MaterialSwitch>(R.id.switchHeadsetMicPriority)
+            val prefs = Prefs(this)
+            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            if (granted) {
+                prefs.headsetMicPriorityEnabled = true
+                try { switchHeadsetMicPriority.isChecked = true } catch (_: Throwable) {}
+            } else {
+                prefs.headsetMicPriorityEnabled = false
+                try { switchHeadsetMicPriority.isChecked = false } catch (_: Throwable) {}
+                try { Toast.makeText(this, getString(R.string.toast_bt_connect_permission_denied), Toast.LENGTH_SHORT).show() } catch (_: Throwable) {}
+            }
+        }
     }
 
     /**

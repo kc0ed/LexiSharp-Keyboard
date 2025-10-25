@@ -239,6 +239,9 @@
     <string name="toast_silence_autostop_on">已开启录音判停</string>
     <string name="toast_silence_autostop_off">已关闭录音判停</string>
     <string name="label_audio_ducking_on_record">录音时音频避让</string>
+    <string name="label_headset_mic_priority">耳机麦克风优先</string>
+    <string name="toast_bt_connect_permission_required">需要授予蓝牙连接权限，才能使用耳机麦克风</string>
+    <string name="toast_bt_connect_permission_denied">蓝牙连接权限已拒绝，已取消启用耳机优先</string>
 
     <!-- Stats -->
     <string name="label_asr_total_chars">历史语音识别总字数：%1$d</string>

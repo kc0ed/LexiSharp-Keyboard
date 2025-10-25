@@ -2,14 +2,24 @@ package com.brycewg.asrkb.asr
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
+import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 
 /**
  * 音频采集管理器
@@ -35,6 +45,7 @@ class AudioCaptureManager(
     private val chunkMillis: Int = 200
 ) {
     private val bytesPerSample = 2 // 16bit mono PCM
+    private val prefs by lazy { Prefs(context) }
     private val debugLoggingEnabled: Boolean by lazy {
         try {
             (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -79,6 +90,64 @@ class AudioCaptureManager(
             val error = SecurityException("Missing RECORD_AUDIO permission")
             Log.e(TAG, "Permission check failed", error)
             throw error
+        }
+
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        var scoStarted = false
+        var audioModeChanged = false
+        var previousAudioMode: Int? = null
+        var commDeviceSet = false
+        var commListener: Any? = null
+        var preferredInputDevice: AudioDeviceInfo? = null
+        var routePrepared = false
+
+        // 1.5. 如开启“耳机麦克风优先”，在构建 AudioRecord 之前准备音频路由
+        if (prefs.headsetMicPriorityEnabled) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val res = prepareCommunicationDevice(audioManager)
+                commDeviceSet = res.commDeviceSet
+                commListener = res.listenerToken
+                preferredInputDevice = res.selectedDevice
+                routePrepared = res.routeReady
+                if (!res.routeReady) {
+                    Log.w(TAG, "Communication device set but route not confirmed within timeout")
+                }
+            }
+
+            // 旧版/或现代 API 失败时：通过输入设备列表选择可用耳机，并在需要时启动 SCO
+            if (preferredInputDevice == null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val inputs = audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
+                    // 优先蓝牙（SCO/BLE），再有线耳机
+                    preferredInputDevice = inputs.find { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }
+                        ?: (if (Build.VERSION.SDK_INT >= 34) inputs.find { it.type == AudioDeviceInfo.TYPE_BLE_HEADSET } else null)
+                        ?: inputs.find { it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET }
+
+                    if (preferredInputDevice != null) {
+                        Log.i(TAG, "Preferred input device: ${preferredInputDevice!!.productName} (type=${preferredInputDevice!!.type})")
+                    }
+
+                    if (preferredInputDevice?.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
+                        // 通话模式可改善部分设备的路由与增益
+                        previousAudioMode = audioManager.mode
+                        try {
+                            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                            audioModeChanged = true
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "Failed to set audio mode to IN_COMMUNICATION", t)
+                        }
+
+                        val connected = startScoAndAwaitConnected(audioManager)
+                        if (connected) {
+                            scoStarted = true
+                            Log.i(TAG, "Bluetooth SCO connected")
+                            routePrepared = true
+                        } else {
+                            Log.w(TAG, "Bluetooth SCO did not connect in time; continue without SCO")
+                        }
+                    }
+                }
+            }
         }
 
         // 2. 计算缓冲区大小
@@ -130,6 +199,14 @@ class AudioCaptureManager(
         }
 
         var activeRecorder = recorder
+        // 优先路由到选中的输入设备（若存在）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && preferredInputDevice != null) {
+            try {
+                activeRecorder.preferredDevice = preferredInputDevice
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to set preferred input device on AudioRecord", t)
+            }
+        }
         val buf = ByteArray(chunkBytes)
 
         try {
@@ -146,7 +223,8 @@ class AudioCaptureManager(
             }
 
             // 7. 预热并获取可能替换的 recorder 和第一块数据
-            val warmupResult = warmupRecorder(activeRecorder, buf, bufferSize)
+            val avoidMicFallback = prefs.headsetMicPriorityEnabled && (routePrepared || preferredInputDevice != null || scoStarted)
+            val warmupResult = warmupRecorder(activeRecorder, buf, bufferSize, avoidMicFallback)
             activeRecorder = warmupResult.first
             val firstChunk = warmupResult.second
 
@@ -188,6 +266,29 @@ class AudioCaptureManager(
             } catch (t: Throwable) {
                 Log.e(TAG, "Error releasing AudioRecord", t)
             }
+            // 清理通信设备与 SCO / 恢复模式
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && commDeviceSet) {
+                    clearCommunicationDeviceSafely(audioManager, commListener)
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed clearing communication device", t)
+            }
+            if (scoStarted) {
+                try {
+                    audioManager.stopBluetoothSco()
+                    Log.i(TAG, "Bluetooth SCO stopped")
+                } catch (t: Throwable) {
+                    Log.w(TAG, "stopBluetoothSco failed", t)
+                }
+            }
+            if (audioModeChanged && previousAudioMode != null) {
+                try {
+                    audioManager.mode = previousAudioMode!!
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Failed to restore audio mode", t)
+                }
+            }
         }
     }
 
@@ -201,7 +302,8 @@ class AudioCaptureManager(
     private fun warmupRecorder(
         current: AudioRecord,
         buf: ByteArray,
-        bufferSize: Int
+        bufferSize: Int,
+        avoidMicFallback: Boolean
     ): Pair<AudioRecord, ByteArray?> {
         if (!hasPermission()) {
             val error = SecurityException("RECORD_AUDIO permission was revoked during warmup")
@@ -270,6 +372,11 @@ class AudioCaptureManager(
         }
 
         if (nearZeroBoth) {
+            // 若用户选择了耳机优先，并且已准备了路由（或正在使用耳机），不要贸然回退到 MIC
+            if (avoidMicFallback) {
+                if (debugLoggingEnabled) Log.i(TAG, "Warmup: near-zero on headset path, avoid MIC fallback; continue reading")
+                return Pair(recorder, null)
+            }
             // 两帧均近乎全零：重建为 MIC 源
             Log.i(TAG, "Warmup: near-zero on both frames, rebuilding with MIC source")
             try {
@@ -339,4 +446,151 @@ class AudioCaptureManager(
 
         return Pair(recorder, firstChunk)
     }
+
+    // ===== 蓝牙/耳机路由辅助 =====
+
+    /**
+     * API 31+：尝试将通信设备切换到蓝牙/有线耳机，并等待回调确认。
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    private suspend fun prepareCommunicationDevice(audioManager: AudioManager): CommRouteResult {
+        var selected: AudioDeviceInfo? = null
+        var listenerToken: Any? = null
+        var setOk = false
+        var routeReady = false
+        try {
+            val candidates = try {
+                audioManager.getAvailableCommunicationDevices()
+            } catch (se: SecurityException) {
+                Log.w(TAG, "BLUETOOTH_CONNECT not granted or unavailable when listing comm devices", se)
+                emptyList()
+            } catch (t: Throwable) {
+                Log.w(TAG, "getAvailableCommunicationDevices failed", t)
+                emptyList()
+            }
+
+            if (candidates.isEmpty()) return CommRouteResult(false, null, null, false)
+
+            // 选择优先级：BLE_HEADSET > BLUETOOTH_SCO > WIRED_HEADSET
+            selected = candidates.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLE_HEADSET }
+                ?: candidates.firstOrNull { it.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO }
+                ?: candidates.firstOrNull { it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET }
+
+            if (selected == null) return CommRouteResult(false, null, null, false)
+
+            setOk = try {
+                audioManager.setCommunicationDevice(selected)
+            } catch (t: Throwable) {
+                Log.w(TAG, "setCommunicationDevice failed", t)
+                false
+            }
+            if (!setOk) return CommRouteResult(false, selected, null, false)
+
+            val cur = try { audioManager.getCommunicationDevice() } catch (_: Throwable) { null }
+            if (cur != null && selected.id == cur.id) {
+                return CommRouteResult(true, selected, null, true)
+            }
+
+            // 等待通信设备切换
+            routeReady = withTimeoutOrNull(2000L) {
+                suspendCancellableCoroutine<Boolean> { cont ->
+                    val exec = java.util.concurrent.Executor { r ->
+                        try { r.run() } catch (t: Throwable) { Log.w(TAG, "CommDevice listener runnable error", t) }
+                    }
+                    val l = AudioManager.OnCommunicationDeviceChangedListener { dev ->
+                        if (dev != null && selected != null && dev.id == selected.id) {
+                            if (cont.isActive) cont.resume(true)
+                        }
+                    }
+                    listenerToken = l
+                    try {
+                        audioManager.addOnCommunicationDeviceChangedListener(exec, l)
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "addOnCommunicationDeviceChangedListener failed", t)
+                        if (cont.isActive) cont.resume(false)
+                    }
+                    cont.invokeOnCancellation {
+                        try { audioManager.removeOnCommunicationDeviceChangedListener(l) } catch (_: Throwable) {}
+                    }
+                }
+            } ?: false
+
+            return CommRouteResult(true, selected, listenerToken, routeReady)
+        } catch (t: Throwable) {
+            Log.w(TAG, "prepareCommunicationDevice exception", t)
+            return CommRouteResult(false, selected, listenerToken, false)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun clearCommunicationDeviceSafely(audioManager: AudioManager, listenerToken: Any?) {
+        try {
+            if (listenerToken is AudioManager.OnCommunicationDeviceChangedListener) {
+                try {
+                    audioManager.removeOnCommunicationDeviceChangedListener(listenerToken)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "removeOnCommunicationDeviceChangedListener failed", t)
+                }
+            }
+            try {
+                audioManager.clearCommunicationDevice()
+            } catch (t: Throwable) {
+                Log.w(TAG, "clearCommunicationDevice failed", t)
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "clearCommunicationDeviceSafely exception", t)
+        }
+    }
+
+    /**
+     * 旧版：启动 SCO 并等待 ACTION_SCO_AUDIO_STATE_UPDATED 变为 CONNECTED。
+     */
+    private suspend fun startScoAndAwaitConnected(am: AudioManager): Boolean {
+        return try {
+            if (!am.isBluetoothScoAvailableOffCall) {
+                Log.w(TAG, "Bluetooth SCO not available off call on this device")
+                return false
+            }
+
+            val filter = IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED)
+            var receiver: android.content.BroadcastReceiver? = null
+            val ok = withTimeoutOrNull(2500L) {
+                suspendCancellableCoroutine<Boolean> { cont ->
+                    receiver = object : android.content.BroadcastReceiver() {
+                        override fun onReceive(context: Context?, intent: Intent?) {
+                            if (intent?.action != AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED) return
+                            val state = intent.getIntExtra(
+                                AudioManager.EXTRA_SCO_AUDIO_STATE,
+                                AudioManager.SCO_AUDIO_STATE_ERROR
+                            )
+                            when (state) {
+                                AudioManager.SCO_AUDIO_STATE_CONNECTED -> if (cont.isActive) cont.resume(true)
+                                AudioManager.SCO_AUDIO_STATE_ERROR -> if (cont.isActive) cont.resume(false)
+                            }
+                        }
+                    }
+                    try { context.registerReceiver(receiver, filter) } catch (t: Throwable) { Log.w(TAG, "registerReceiver failed", t) }
+                    try { am.startBluetoothSco() } catch (t: Throwable) {
+                        Log.w(TAG, "startBluetoothSco failed", t)
+                        if (cont.isActive) cont.resume(false)
+                    }
+                    cont.invokeOnCancellation {
+                        try { if (receiver != null) context.unregisterReceiver(receiver) } catch (_: Throwable) {}
+                    }
+                }
+            } ?: false
+            try { if (receiver != null) context.unregisterReceiver(receiver) } catch (_: Throwable) {}
+            ok
+        } catch (t: Throwable) {
+            Log.w(TAG, "startScoAndAwaitConnected exception", t)
+            false
+        }
+    }
+
+    private data class CommRouteResult(
+        val commDeviceSet: Boolean,
+        val selectedDevice: AudioDeviceInfo?,
+        val listenerToken: Any?,
+        val routeReady: Boolean
+    )
 }

@@ -92,11 +92,15 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_DUCK_MEDIA_ON_RECORD, true)
         set(value) = sp.edit { putBoolean(KEY_DUCK_MEDIA_ON_RECORD, value) }
 
-    // AI 编辑默认范围：无选区时优先使用“上次识别结果”
+    // AI 编辑默认范围：无选区时优先使用"上次识别结果"
     var aiEditDefaultToLastAsr: Boolean
         get() = sp.getBoolean(KEY_AI_EDIT_DEFAULT_TO_LAST_ASR, false)
         set(value) = sp.edit { putBoolean(KEY_AI_EDIT_DEFAULT_TO_LAST_ASR, value) }
 
+    // 耳机麦克风优先（自动切换到蓝牙/有线耳机麦克风），默认开启
+    var headsetMicPriorityEnabled: Boolean
+        get() = sp.getBoolean(KEY_HEADSET_MIC_PRIORITY_ENABLED, true)
+        set(value) = sp.edit { putBoolean(KEY_HEADSET_MIC_PRIORITY_ENABLED, value) }
 
     // 静音自动判停：开关
     var autoStopOnSilenceEnabled: Boolean
@@ -943,6 +947,7 @@ class Prefs(context: Context) {
         private const val KEY_SV_KEEP_ALIVE_MINUTES = "sv_keep_alive_minutes"
         private const val KEY_SV_PSEUDO_STREAMING_ENABLED = "sv_pseudo_streaming_enabled"
         private const val KEY_AI_EDIT_DEFAULT_TO_LAST_ASR = "ai_edit_default_to_last_asr"
+        private const val KEY_HEADSET_MIC_PRIORITY_ENABLED = "headset_mic_priority_enabled"
         private const val KEY_USAGE_STATS_JSON = "usage_stats"
         private const val KEY_FIRST_USE_DATE = "first_use_date"
 
@@ -1070,6 +1075,7 @@ class Prefs(context: Context) {
         
         o.put(KEY_POSTPROC_ENABLED, postProcessEnabled)
         o.put(KEY_AI_EDIT_DEFAULT_TO_LAST_ASR, aiEditDefaultToLastAsr)
+        o.put(KEY_HEADSET_MIC_PRIORITY_ENABLED, headsetMicPriorityEnabled)
         o.put(KEY_LLM_ENDPOINT, llmEndpoint)
         o.put(KEY_LLM_API_KEY, llmApiKey)
         o.put(KEY_LLM_MODEL, llmModel)
@@ -1169,6 +1175,7 @@ class Prefs(context: Context) {
             optBool(KEY_HIDE_RECENT_TASK_CARD)?.let { hideRecentTaskCard = it }
             optString(KEY_APP_LANGUAGE_TAG)?.let { appLanguageTag = it }
             optBool(KEY_POSTPROC_ENABLED)?.let { postProcessEnabled = it }
+            optBool(KEY_HEADSET_MIC_PRIORITY_ENABLED)?.let { headsetMicPriorityEnabled = it }
             optBool(KEY_FLOATING_SWITCHER_ENABLED)?.let { floatingSwitcherEnabled = it }
             optFloat(KEY_FLOATING_SWITCHER_ALPHA)?.let { floatingSwitcherAlpha = it.coerceIn(0.2f, 1.0f) }
             optInt(KEY_FLOATING_BALL_SIZE_DP)?.let { floatingBallSizeDp = it.coerceIn(28, 96) }
