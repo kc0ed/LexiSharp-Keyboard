@@ -145,11 +145,30 @@ class FloatingAsrService : Service(),
                 imeVisible = true
                 DebugLogManager.log("float", "hint", mapOf("action" to "VISIBLE"))
                 updateVisibilityByPref("start_hint_visible")
+                // 半隐策略启用时：键盘或输入焦点出现，浮现并保持显现
+                if (!prefs.floatingSwitcherOnlyWhenImeVisible) {
+                    try {
+                        viewManager.animateRevealFromEdgeIfNeeded()
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "Failed to reveal on IME visible (start)", e)
+                    }
+                }
             }
             FloatingImeHints.ACTION_HINT_IME_HIDDEN -> {
                 imeVisible = false
                 DebugLogManager.log("float", "hint", mapOf("action" to "HIDDEN"))
                 updateVisibilityByPref("start_hint_hidden")
+                // 半隐策略启用时：键盘/焦点收起后（静息态）回到半隐
+                if (!prefs.floatingSwitcherOnlyWhenImeVisible) {
+                    val completionActive = try { viewManager.isCompletionTickActive() } catch (_: Throwable) { false }
+                    if (stateMachine.isIdle && !completionActive) {
+                        try {
+                            viewManager.animateHideToEdgePartialIfNeeded()
+                        } catch (e: Throwable) {
+                            Log.w(TAG, "Failed to partial hide on IME hidden (start)", e)
+                        }
+                    }
+                }
             }
             else -> showBall("start_default")
         }
@@ -251,7 +270,8 @@ class FloatingAsrService : Service(),
         tryPreloadSenseVoiceOnce()
 
         // 初始为静息场景：若在左右边缘或就近吸附，则执行半隐
-        if (stateMachine.isIdle) {
+        // 仅当未开启“仅在键盘显示时显示悬浮球”时启用半隐
+        if (stateMachine.isIdle && !prefs.floatingSwitcherOnlyWhenImeVisible) {
             try {
                 viewManager.animateHideToEdgePartialIfNeeded()
             } catch (e: Throwable) {
@@ -332,7 +352,8 @@ class FloatingAsrService : Service(),
                     is FloatingBallState.Recording, is FloatingBallState.Processing ->
                         viewManager.animateRevealFromEdgeIfNeeded()
                     is FloatingBallState.Idle -> {
-                        if (!viewManager.isCompletionTickActive()) {
+                        if (!viewManager.isCompletionTickActive() && !prefs.floatingSwitcherOnlyWhenImeVisible) {
+                            // 仅当未开启“仅在键盘显示时显示悬浮球”时执行半隐
                             viewManager.animateHideToEdgePartialIfNeeded()
                         } else {
                             // 正在展示对勾：避免立刻半隐，交由 onResultCommitted 的延迟兜底处理
@@ -364,7 +385,8 @@ class FloatingAsrService : Service(),
                 // 即使状态回调遗漏，这里也能保证一次隐入体验。
                 try {
                     handler.postDelayed({
-                        if (stateMachine.isIdle) {
+                        if (stateMachine.isIdle && !prefs.floatingSwitcherOnlyWhenImeVisible) {
+                            // 仅当未开启“仅在键盘显示时显示悬浮球”时执行半隐
                             try {
                                 viewManager.animateHideToEdgePartialIfNeeded()
                             } catch (e: Throwable) {
@@ -392,10 +414,13 @@ class FloatingAsrService : Service(),
             // 为了统一体验，在错误动画完成后，尝试执行一次边缘半隐。
             try {
                 handler.postDelayed({
-                    try {
-                        viewManager.animateHideToEdgePartialIfNeeded()
-                    } catch (e: Throwable) {
-                        Log.w(TAG, "Failed to partial hide after error", e)
+                    if (!prefs.floatingSwitcherOnlyWhenImeVisible) {
+                        // 仅当未开启“仅在键盘显示时显示悬浮球”时执行半隐
+                        try {
+                            viewManager.animateHideToEdgePartialIfNeeded()
+                        } catch (e: Throwable) {
+                            Log.w(TAG, "Failed to partial hide after error", e)
+                        }
                     }
                 }, 3000L)
             } catch (e: Throwable) {
@@ -469,7 +494,8 @@ class FloatingAsrService : Service(),
         touchActiveGuard = false
         // 移动结束：在静息场景执行贴边吸附+半隐（底部除外）
         try {
-            if (stateMachine.isIdle) {
+            if (stateMachine.isIdle && !prefs.floatingSwitcherOnlyWhenImeVisible) {
+                // 仅当未开启“仅在键盘显示时显示悬浮球”时执行半隐
                 viewManager.animateHideToEdgePartialIfNeeded()
             }
         } catch (e: Throwable) {

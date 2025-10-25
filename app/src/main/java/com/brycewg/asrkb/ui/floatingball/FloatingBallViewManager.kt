@@ -50,7 +50,7 @@ class FloatingBallViewManager(
     private var currentState: FloatingBallState = FloatingBallState.Idle
     
     // 贴边半隐可视比例（仅显示该比例的宽度）
-    private val visibleFractionWhenHidden = 0.4f
+    private val visibleFractionWhenHidden = 0.5f
 
     /** 获取悬浮球视图 */
     fun getBallView(): View? = ballView

@@ -326,7 +326,9 @@ class AsrAccessibilityService : AccessibilityService() {
      * 判断是否需要检测输入法可见性。
      */
     private fun shouldCheckImeVisibility(prefs: Prefs): Boolean {
-        if (!prefs.floatingSwitcherOnlyWhenImeVisible) return false
+        // 启用悬浮球时均进行检测：
+        // - 开启“仅在键盘显示时显示悬浮球”用于显隐控制（已有逻辑）
+        // - 关闭该开关时用于半隐联动（键盘/焦点出现浮现，收起回半隐）
         return prefs.floatingAsrEnabled
     }
 
