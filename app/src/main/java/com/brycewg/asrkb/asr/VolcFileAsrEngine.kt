@@ -2,7 +2,6 @@ package com.brycewg.asrkb.asr
 
 import android.content.Context
 import android.util.Base64
-import android.util.Log
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
@@ -28,7 +27,6 @@ class VolcFileAsrEngine(
 ) : BaseFileAsrEngine(context, scope, prefs, listener, onRequestDuration) {
 
     companion object {
-        private const val TAG = "VolcFileAsrEngine"
         private const val DEFAULT_FILE_RESOURCE = "volc.bigasr.auc_turbo"
     }
 

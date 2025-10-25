@@ -68,7 +68,7 @@ class FloatingBallTouchHandler(
                     handleActionMove(v, lp, e)
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    handleActionUp(v, lp)
+                    handleActionUp(v)
                 }
                 else -> false
             }
@@ -158,7 +158,7 @@ class FloatingBallTouchHandler(
         return true
     }
 
-    private fun handleActionUp(v: View, lp: WindowManager.LayoutParams): Boolean {
+    private fun handleActionUp(v: View): Boolean {
         cancelLongPress()
 
         if (longActionFired) {

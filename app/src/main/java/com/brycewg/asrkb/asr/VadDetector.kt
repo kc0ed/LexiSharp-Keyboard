@@ -19,14 +19,6 @@ import com.k2fsa.sherpa.onnx.VadModelConfig
  * - 调用 sherpa-onnx Vad 模型进行实时语音活动检测
  * - 累计连续非语音时长，超过窗口阈值时触发判停
  *
- * ## 使用示例
- * ```kotlin
- * val detector = VadDetector(context, windowMs = 1500, sensitivityLevel = 5)
- * if (detector.shouldStop(audioChunk, audioChunk.size)) {
- *     // 触发判停
- * }
- * detector.reset() // 重新开始录音时重置状态
- * ```
  *
  * @param context Android Context，用于访问 AssetManager
  * @param sampleRate 音频采样率（Hz），必须与 PCM 数据一致
@@ -260,22 +252,6 @@ class VadDetector(
         } catch (t: Throwable) {
             Log.e(TAG, "Error during VAD detection", t)
             return false
-        }
-    }
-
-    /**
-     * 重置 VAD 状态（用于新录音会话）
-     */
-    fun reset() {
-        silentMsAcc = 0
-        try {
-            hasDetectedSpeech = false
-            initialDebounceRemainingMs = initialDebounceMs
-            speechHangoverRemainingMs = 0
-            vad?.reset()
-            Log.d(TAG, "VAD reset successfully")
-        } catch (t: Throwable) {
-            Log.w(TAG, "Failed to reset VAD", t)
         }
     }
 

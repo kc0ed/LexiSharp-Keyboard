@@ -120,17 +120,18 @@ class FloatingAsrService : Service(),
         touchHandler = FloatingBallTouchHandler(this, prefs, viewManager, windowManager, this)
         menuHelper = FloatingMenuHelper(this, windowManager)
 
-        // 注册广播接收器
+        // 注册广播接收器（Android 13+ 要求显式导出标志；使用 ContextCompat 兼容处理）
         try {
             val filter = android.content.IntentFilter().apply {
                 addAction(FloatingImeHints.ACTION_HINT_IME_VISIBLE)
                 addAction(FloatingImeHints.ACTION_HINT_IME_HIDDEN)
             }
-            if (android.os.Build.VERSION.SDK_INT >= 33) {
-                registerReceiver(hintReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                registerReceiver(hintReceiver, filter)
-            }
+            androidx.core.content.ContextCompat.registerReceiver(
+                /* context = */ this,
+                /* receiver = */ hintReceiver,
+                /* filter = */ filter,
+                /* flags = */ androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+            )
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to register hint receiver", e)
         }

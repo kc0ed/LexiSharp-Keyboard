@@ -139,8 +139,15 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
         }
         prefsReceiver = r
         try {
-            registerReceiver(r, IntentFilter(ACTION_REFRESH_IME_UI))
-        } catch (_: Throwable) { }
+            androidx.core.content.ContextCompat.registerReceiver(
+                /* context = */ this,
+                /* receiver = */ r,
+                /* filter = */ IntentFilter(ACTION_REFRESH_IME_UI),
+                /* flags = */ androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+        } catch (e: Throwable) {
+            android.util.Log.e("AsrKeyboardService", "Failed to register prefsReceiver", e)
+        }
     }
 
     override fun onDestroy() {
@@ -149,10 +156,14 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
         serviceScope.cancel()
         try {
             syncClipboardManager?.stop()
-        } catch (_: Throwable) { }
+        } catch (e: Throwable) {
+            android.util.Log.e("AsrKeyboardService", "Failed to stop SyncClipboardManager", e)
+        }
         try {
             prefsReceiver?.let { unregisterReceiver(it) }
-        } catch (_: Throwable) { }
+        } catch (e: Throwable) {
+            android.util.Log.e("AsrKeyboardService", "Failed to unregister prefsReceiver", e)
+        }
         prefsReceiver = null
     }
 
@@ -401,7 +412,7 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
             if (!prefs.micTapToggleEnabled) return@setOnClickListener
             performKeyHaptic(v)
             if (!checkAsrReady()) return@setOnClickListener
-            actionHandler.handleMicTapToggle(currentInputConnection)
+            actionHandler.handleMicTapToggle()
         }
 
         btnMic?.setOnTouchListener { v, event ->

@@ -216,12 +216,4 @@ class BackspaceGestureHandler(
         try { view.isPressed = false } catch (e: Throwable) { android.util.Log.w("BackspaceGestureHandler", "Failed to set pressed=false (up)", e) }
     }
 
-    /**
-     * 清理资源（在组件销毁时调用）
-     */
-    fun cleanup(view: View) {
-        cancelTimers(view)
-        gestureSnapshot = null
-        listener = null
-    }
 }

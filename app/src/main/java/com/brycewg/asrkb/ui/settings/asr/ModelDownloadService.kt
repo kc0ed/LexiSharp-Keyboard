@@ -149,7 +149,7 @@ class ModelDownloadService : Service() {
       val modelDir = extractArchive(cacheFile, key, variant, notificationHandler)
 
       // 验证并安装模型
-      verifyAndInstallModel(modelDir, key, variant, notificationHandler)
+      verifyAndInstallModel(modelDir, variant)
 
       notificationHandler.notifySuccess(getString(R.string.sv_download_status_done))
     } catch (t: Throwable) {
@@ -260,9 +260,7 @@ class ModelDownloadService : Service() {
    */
   private suspend fun verifyAndInstallModel(
     tmpDir: File,
-    key: DownloadKey,
-    variant: String,
-    notificationHandler: NotificationHandler
+    variant: String
   ) = withContext(Dispatchers.IO) {
     Log.d(TAG, "Verifying model files for variant: $variant")
 

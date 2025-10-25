@@ -183,10 +183,6 @@ class OtherSettingsViewModel(private val prefs: Prefs) : ViewModel() {
         }
     }
 
-    fun clearNameError() {
-        _speechPresetsState.value = _speechPresetsState.value.copy(nameError = null)
-    }
-
     // Sync Clipboard Management
 
     private fun loadSyncClipboardSettings() {

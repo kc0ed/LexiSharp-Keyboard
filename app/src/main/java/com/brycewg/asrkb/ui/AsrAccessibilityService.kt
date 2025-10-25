@@ -294,7 +294,7 @@ class AsrAccessibilityService : AccessibilityService() {
         val hasFocus = hasEditableFocusNow()
         if (hasFocus) lastEditableFocusAt = now
 
-        val active = determineImeSceneActive(now, prefs)
+        val active = determineImeSceneActive(now)
         updateImeVisibilityState(active)
     }
 
@@ -335,7 +335,7 @@ class AsrAccessibilityService : AccessibilityService() {
     /**
      * 根据当前状态判断输入法场景是否活跃。
      */
-    private fun determineImeSceneActive(now: Long, prefs: Prefs): Boolean {
+    private fun determineImeSceneActive(now: Long): Boolean {
         val mWindow = isImeWindowVisible()
         val hold = (now - lastEditableFocusAt <= holdAfterFocusMs)
         return mWindow || hold
@@ -360,7 +360,7 @@ class AsrAccessibilityService : AccessibilityService() {
             // 附带一次决策解释
             try {
                 val prefs = Prefs(this)
-                val snapshot = buildImeDecisionSnapshot(prefs)
+                val snapshot = buildImeDecisionSnapshot()
                 DebugLogManager.log("ime", "check", snapshot)
             } catch (e: Throwable) {
                 Log.w(TAG, "Failed to log IME decision snapshot", e)
@@ -369,7 +369,7 @@ class AsrAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun buildImeDecisionSnapshot(prefs: Prefs): Map<String, Any> {
+    private fun buildImeDecisionSnapshot(): Map<String, Any> {
         val now = System.currentTimeMillis()
         val winVisible = isImeWindowVisible()
         val imePkgDetected = isImePackageDetected()
@@ -707,35 +707,6 @@ class AsrAccessibilityService : AccessibilityService() {
             @Suppress("DEPRECATION") f.recycle()
         }
         return findEditableNodeRecursive(root)
-    }
-
-    /**
-     * 更宽松的查找策略：
-     * 1) 优先已有输入焦点的可编辑样式节点；
-     * 2) 其次查找已聚焦且可编辑样式节点；
-     * 3) 最后回退查找第一个可编辑样式节点（未聚焦），需要先尝试 focus 再写入。
-     * 返回 Pair<节点, 是否需要先 focus>。
-     */
-    private fun findBestEditableNode(root: AccessibilityNodeInfo): Pair<AccessibilityNodeInfo, Boolean>? {
-        try {
-            // 1) 系统报告的输入焦点
-            root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { f ->
-                if (isEditableLike(f)) return Pair(f, false)
-                @Suppress("DEPRECATION") f.recycle()
-            }
-        } catch (t: Throwable) {
-            Log.w(TAG, "findBestEditableNode: FOCUS_INPUT failed", t)
-        }
-
-        // 2) 已聚焦且可编辑
-        val focused = try { findEditableNodeRecursive(root) } catch (t: Throwable) { null }
-        if (focused != null) return Pair(focused, false)
-
-        // 3) 首个可编辑样式节点（未聚焦）
-        val anyEditable = try { findAnyEditableNode(root) } catch (t: Throwable) { null }
-        if (anyEditable != null) return Pair(anyEditable, true)
-
-        return null
     }
 
     private fun findAnyEditableNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {

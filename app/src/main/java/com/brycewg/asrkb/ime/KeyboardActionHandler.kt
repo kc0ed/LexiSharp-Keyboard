@@ -2,7 +2,6 @@ package com.brycewg.asrkb.ime
 
 import android.content.Context
 import android.util.Log
-import android.os.SystemClock
 import android.view.inputmethod.InputConnection
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.LlmPostProcessor
@@ -11,7 +10,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import java.util.regex.Pattern
 
 /**
  * 键盘动作处理器：作为控制器/ViewModel 管理键盘的核心状态和业务逻辑
@@ -87,14 +85,9 @@ class KeyboardActionHandler(
     fun getCurrentState(): KeyboardState = currentState
 
     /**
-     * 获取会话上下文
-     */
-    fun getSessionContext(): KeyboardSessionContext = sessionContext
-
-    /**
      * 处理麦克风点击（点按切换模式）
      */
-    fun handleMicTapToggle(ic: InputConnection?) {
+    fun handleMicTapToggle() {
         when (currentState) {
             is KeyboardState.Idle -> {
                 // 开始录音
@@ -509,7 +502,7 @@ class KeyboardActionHandler(
 
         if (prefs.postProcessEnabled && prefs.hasLlmKeys()) {
             // AI 后处理流程
-            handleDictationWithPostprocess(ic, text, state, seq)
+            handleDictationWithPostprocess(ic, text, seq)
         } else {
             // 无后处理流程
             handleDictationWithoutPostprocess(ic, text, state, seq)
@@ -519,7 +512,6 @@ class KeyboardActionHandler(
     private suspend fun handleDictationWithPostprocess(
         ic: InputConnection,
         text: String,
-        state: KeyboardState.Listening,
         seq: Long
     ) {
         // 若已被取消，不再更新预览

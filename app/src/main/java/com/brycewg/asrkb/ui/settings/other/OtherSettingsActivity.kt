@@ -181,7 +181,7 @@ class OtherSettingsActivity : AppCompatActivity() {
         // Observe sync clipboard state
         lifecycleScope.launch {
             viewModel.syncClipboardState.collect { state ->
-                updateSyncClipboardUI(state)
+                updateSyncClipboardUI()
             }
         }
     }
@@ -317,7 +317,7 @@ class OtherSettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateSyncClipboardUI(state: OtherSettingsViewModel.SyncClipboardState) {
+    private fun updateSyncClipboardUI() {
         // Currently, sync clipboard state is updated via direct UI bindings
         // This method is kept for potential future reactive updates
     }

@@ -262,21 +262,7 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
     }
   }
 
-  /**
-   * 使用 LLM 处理识别文本
-   *
-   * 根据配置的提示词对输入文本进行后处理（例如：去除口语化、纠错、格式化）。
-   *
-   * @param input 待处理的文本
-   * @param prefs 应用偏好设置
-   * @return 处理后的文本，失败时返回原始输入
-   */
-  suspend fun process(input: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
-    val res = processWithStatus(input, prefs)
-    res.text
-  }
-
-  /**
+    /**
    * 与 process 等价，但返回是否成功及错误信息，便于 UI 反馈。
    */
   suspend fun processWithStatus(input: String, prefs: Prefs): LlmProcessResult = withContext(Dispatchers.IO) {
@@ -312,24 +298,6 @@ class LlmPostProcessor(private val client: OkHttpClient? = null) {
     val text = result.text ?: input
     Log.d(TAG, "Text processing completed, output length: ${text.length}")
     return@withContext LlmProcessResult(true, text = text)
-  }
-
-  /**
-   * 使用自然语言指令编辑现有文本，兼容 Chat Completions API。
-   *
-   * 根据用户提供的编辑指令对原文进行修改，例如：
-   * - "将口语化改为书面语"
-   * - "纠正错别字"
-   * - "把列表换成逗号分隔的一行"
-   *
-   * @param original 原始文本
-   * @param instruction 编辑指令
-   * @param prefs 应用偏好设置
-   * @return 编辑后的文本，失败时返回原始文本不变
-   */
-  suspend fun editText(original: String, instruction: String, prefs: Prefs): String = withContext(Dispatchers.IO) {
-    val res = editTextWithStatus(original, instruction, prefs)
-    res.text
   }
 
   /**

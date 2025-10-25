@@ -7,6 +7,7 @@ import androidx.core.content.edit
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.store.debug.DebugLogManager
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlin.reflect.KProperty
@@ -28,44 +29,13 @@ class Prefs(context: Context) {
 
     // --- 小工具：统一的偏好项委托，减少重复 getter/setter 代码 ---
     private fun stringPref(key: String, default: String = "") = object {
+        @Suppress("unused")
         operator fun getValue(thisRef: Prefs, property: KProperty<*>): String =
             sp.getString(key, default) ?: default
 
+        @Suppress("unused")
         operator fun setValue(thisRef: Prefs, property: KProperty<*>, value: String) {
             sp.edit { putString(key, value.trim()) }
-        }
-    }
-
-    private fun booleanPref(key: String, default: Boolean = false) = object {
-        operator fun getValue(thisRef: Prefs, property: KProperty<*>): Boolean =
-            sp.getBoolean(key, default)
-
-        operator fun setValue(thisRef: Prefs, property: KProperty<*>, value: Boolean) {
-            sp.edit { putBoolean(key, value) }
-        }
-    }
-
-    private fun intPref(key: String, default: Int = 0, range: IntRange? = null) = object {
-        operator fun getValue(thisRef: Prefs, property: KProperty<*>): Int {
-            val value = sp.getInt(key, default)
-            return if (range != null) value.coerceIn(range) else value
-        }
-
-        operator fun setValue(thisRef: Prefs, property: KProperty<*>, value: Int) {
-            val coerced = if (range != null) value.coerceIn(range) else value
-            sp.edit { putInt(key, coerced) }
-        }
-    }
-
-    private fun floatPref(key: String, default: Float = 0f, range: ClosedFloatingPointRange<Float>? = null) = object {
-        operator fun getValue(thisRef: Prefs, property: KProperty<*>): Float {
-            val value = sp.getFloat(key, default)
-            return if (range != null) value.coerceIn(range) else value
-        }
-
-        operator fun setValue(thisRef: Prefs, property: KProperty<*>, value: Float) {
-            val coerced = if (range != null) value.coerceIn(range) else value
-            sp.edit { putFloat(key, coerced) }
         }
     }
 
@@ -326,7 +296,7 @@ class Prefs(context: Context) {
         }
         return try {
             val list = json.decodeFromString<List<PromptPreset>>(promptPresetsJson)
-            if (list.isEmpty()) buildDefaultPromptPresets() else list
+            list.ifEmpty { buildDefaultPromptPresets() }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse PromptPresets JSON", e)
             buildDefaultPromptPresets()
@@ -742,7 +712,7 @@ class Prefs(context: Context) {
             val stats = json.decodeFromString<UsageStats>(usageStatsJson)
             // 兼容老数据：填充 firstUseDate
             if (stats.firstUseDate.isBlank()) {
-                val fud = if (firstUseDate.isNotBlank()) firstUseDate else LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+                val fud = firstUseDate.ifBlank { LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) }
                 stats.firstUseDate = fud
                 setUsageStats(stats)
             }
@@ -810,11 +780,11 @@ class Prefs(context: Context) {
      * 计算“陪伴天数”。若缺少 firstUseDate，以今天为首次使用（=1天）。
      */
     fun getDaysSinceFirstUse(): Long {
-        val fud = if (firstUseDate.isBlank()) {
+        val fud = firstUseDate.ifBlank {
             val today = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
             firstUseDate = today
             today
-        } else firstUseDate
+        }
         return try {
             val start = LocalDate.parse(fud, DateTimeFormatter.BASIC_ISO_DATE)
             val now = LocalDate.now()

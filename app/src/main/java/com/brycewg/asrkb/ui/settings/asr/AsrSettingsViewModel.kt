@@ -146,11 +146,6 @@ class AsrSettingsViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(oaAsrUsePrompt = enabled)
     }
 
-    fun updateAiEditPreferLastAsr(enabled: Boolean) {
-        prefs.aiEditDefaultToLastAsr = enabled
-        _uiState.value = _uiState.value.copy(aiEditPreferLastAsr = enabled)
-    }
-
     fun updateSonioxStreaming(enabled: Boolean) {
         prefs.sonioxStreamingEnabled = enabled
         _uiState.value = _uiState.value.copy(sonioxStreamingEnabled = enabled)

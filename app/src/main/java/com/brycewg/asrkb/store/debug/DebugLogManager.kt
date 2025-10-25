@@ -252,13 +252,7 @@ object DebugLogManager {
     appendString(sb, value)
   }
 
-  private fun appendField(sb: StringBuilder, name: String, value: Int) {
-    appendFieldName(sb, name)
-    sb.append(':')
-    sb.append(value)
-  }
-
-  private fun appendFieldName(sb: StringBuilder, name: String) {
+    private fun appendFieldName(sb: StringBuilder, name: String) {
     appendString(sb, name)
   }
 
