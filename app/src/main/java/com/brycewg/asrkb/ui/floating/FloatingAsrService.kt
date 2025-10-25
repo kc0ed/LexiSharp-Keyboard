@@ -212,7 +212,11 @@ class FloatingAsrService : Service(),
             return
         }
 
-        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible && !stateMachine.isRecording) {
+        val completionActive = try {
+            viewManager.isCompletionTickActive()
+        } catch (_: Throwable) { false }
+        if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible &&
+            !stateMachine.isRecording && !stateMachine.isProcessing && !completionActive) {
             Log.d(TAG, "Pref requires IME visible; hiding for now")
             DebugLogManager.log("float", "show_skip", mapOf("reason" to "ime_not_visible"))
             hideBall()
@@ -233,7 +237,8 @@ class FloatingAsrService : Service(),
         // 显示悬浮球
         val success = viewManager.showBall(
             onClickListener = { hapticTapIfEnabled(it) },
-            onTouchListener = touchListener
+            onTouchListener = touchListener,
+            initialState = stateMachine.state
         )
 
         if (!success) {
@@ -267,8 +272,11 @@ class FloatingAsrService : Service(),
             hideBall()
             return
         }
+        val completionActive2 = try {
+            viewManager.isCompletionTickActive()
+        } catch (_: Throwable) { false }
         if (prefs.floatingSwitcherOnlyWhenImeVisible && !imeVisible &&
-            !stateMachine.isRecording && !forceVisible) {
+            !stateMachine.isRecording && !stateMachine.isProcessing && !completionActive2 && !forceVisible) {
             hideBall()
             return
         }

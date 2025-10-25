@@ -41,8 +41,7 @@ class FloatingSettingsActivity : AppCompatActivity() {
     private lateinit var etFloatingWriteCompatPkgs: TextInputEditText
     private lateinit var switchFloatingWritePaste: MaterialSwitch
     private lateinit var etFloatingWritePastePkgs: TextInputEditText
-    private lateinit var switchImeVisibilityCompat: MaterialSwitch
-    private lateinit var etImeVisibilityCompatPkgs: TextInputEditText
+    
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,8 +82,6 @@ class FloatingSettingsActivity : AppCompatActivity() {
         etFloatingWriteCompatPkgs = findViewById(R.id.etFloatingWriteCompatPkgs)
         switchFloatingWritePaste = findViewById(R.id.switchFloatingWritePaste)
         etFloatingWritePastePkgs = findViewById(R.id.etFloatingWritePastePkgs)
-        switchImeVisibilityCompat = findViewById(R.id.switchImeVisibilityCompat)
-        etImeVisibilityCompatPkgs = findViewById(R.id.etImeVisibilityCompatPkgs)
     }
 
     /**
@@ -145,19 +142,9 @@ class FloatingSettingsActivity : AppCompatActivity() {
             }
         }
 
-        lifecycleScope.launch {
-            // 键盘可见性兼容
-            viewModel.imeVisibilityCompatEnabled.collect { enabled ->
-                if (switchImeVisibilityCompat.isChecked != enabled) {
-                    switchImeVisibilityCompat.isChecked = enabled
-                }
-            }
-        }
-
         // 初始化文本输入框（从 Prefs 加载）
         etFloatingWriteCompatPkgs.setText(prefs.floatingWriteCompatPackages)
         etFloatingWritePastePkgs.setText(prefs.floatingWritePastePackages)
-        etImeVisibilityCompatPkgs.setText(prefs.floatingImeVisibilityCompatPackages)
     }
 
     /**
@@ -168,12 +155,6 @@ class FloatingSettingsActivity : AppCompatActivity() {
         switchFloatingOnlyWhenImeVisible.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)
             handleOnlyWhenImeVisibleToggle(isChecked)
-        }
-
-        // 键盘可见性兼容模式
-        switchImeVisibilityCompat.setOnCheckedChangeListener { btn, isChecked ->
-            hapticTapIfEnabled(btn)
-            handleImeVisibilityCompatToggle(isChecked)
         }
 
         // 悬浮窗透明度
@@ -244,14 +225,6 @@ class FloatingSettingsActivity : AppCompatActivity() {
             }
         })
 
-        // 兼容目标包名（键盘可见性兼容）
-        etImeVisibilityCompatPkgs.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                viewModel.updateImeVisibilityCompatPackages(this@FloatingSettingsActivity, s?.toString() ?: "")
-            }
-        })
     }
 
     /**
@@ -279,17 +252,6 @@ class FloatingSettingsActivity : AppCompatActivity() {
      */
     private fun handleOnlyWhenImeVisibleToggle(enabled: Boolean) {
         val permissionRequest = viewModel.handleOnlyWhenImeVisibleToggle(this, enabled, serviceManager)
-        if (permissionRequest == FloatingSettingsViewModel.PermissionRequest.ACCESSIBILITY) {
-            showAccessibilityPermissionToast()
-            requestAccessibilityPermission()
-        }
-    }
-
-    /**
-     * 处理键盘可见性兼容模式开关变化
-     */
-    private fun handleImeVisibilityCompatToggle(enabled: Boolean) {
-        val permissionRequest = viewModel.handleImeVisibilityCompatToggle(this, enabled)
         if (permissionRequest == FloatingSettingsViewModel.PermissionRequest.ACCESSIBILITY) {
             showAccessibilityPermissionToast()
             requestAccessibilityPermission()

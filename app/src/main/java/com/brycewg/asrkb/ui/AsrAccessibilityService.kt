@@ -13,6 +13,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.Toast
+import android.graphics.Rect
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.LocaleHelper
 import com.brycewg.asrkb.ui.floating.FloatingAsrService
@@ -129,27 +130,34 @@ class AsrAccessibilityService : AccessibilityService() {
         fun getActiveWindowPackage(): String? {
             val service = instance ?: return null
             return try {
-                // 优先 rootInActiveWindow
-                val root = service.rootInActiveWindow
-                val pkg = root?.packageName?.toString()
-                if (!pkg.isNullOrEmpty()) return pkg
-
-                // 回退：遍历窗口，取 active/focused 的 root 包名
                 val ws = service.windows
                 if (ws != null) {
+                    var candidate: String? = null
                     for (w in ws) {
                         try {
                             if (w == null) continue
-                            if (w.isActive || w.isFocused) {
+                            if (w.type == AccessibilityWindowInfo.TYPE_APPLICATION && (w.isActive || w.isFocused)) {
                                 val r = w.root
                                 val p = r?.packageName?.toString()
                                 if (!p.isNullOrEmpty()) return p
+                            }
+                            // 记录一个非 IME 的候选（用于兜底）
+                            if (candidate == null && w.type == AccessibilityWindowInfo.TYPE_APPLICATION) {
+                                val r2 = w.root
+                                val p2 = r2?.packageName?.toString()
+                                if (!p2.isNullOrEmpty()) candidate = p2
                             }
                         } catch (e: Throwable) {
                             Log.e(TAG, "Error getting package from window", e)
                         }
                     }
+                    if (!candidate.isNullOrEmpty()) return candidate
                 }
+
+                // 再回退：rootInActiveWindow（可能是 IME，但总比空好）
+                val root = service.rootInActiveWindow
+                val pkg = root?.packageName?.toString()
+                if (!pkg.isNullOrEmpty()) return pkg
                 null
             } catch (e: Throwable) {
                 Log.e(TAG, "Error getting active window package", e)
@@ -326,46 +334,11 @@ class AsrAccessibilityService : AccessibilityService() {
      * 根据当前状态判断输入法场景是否活跃。
      */
     private fun determineImeSceneActive(now: Long, prefs: Prefs): Boolean {
-        // 兼容选项：仅当开关开启且当前前台包名命中规则时，采用"按 IME 包名检测"
-        val prefsCompat = try {
-            prefs.floatingImeVisibilityCompatEnabled
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error getting compat preference", e)
-            false
-        }
-
-        val compatPkgs = try {
-            prefs.getFloatingImeVisibilityCompatPackageRules()
-        } catch (e: Throwable) {
-            Log.e(TAG, "Error getting compat package rules", e)
-            emptyList()
-        }
-
-        // 默认检测：是否存在输入法窗口（更接近"键盘显示"）
         val mWindow = isImeWindowVisible()
-        // 兼容检测：是否能检测到 IME 窗口的包名
-        val mPkg = isImePackageDetected()
         val hold = (now - lastEditableFocusAt <= holdAfterFocusMs)
-
-        val activePkg = getActiveWindowPackage()
-        val isCompatTarget = isCompatibilityTargetApp(prefsCompat, activePkg, compatPkgs)
-        val compatVisible = if (isCompatTarget) mPkg else mWindow
-
-        return if (isCompatTarget) compatVisible else (compatVisible || hold)
+        return mWindow || hold
     }
 
-    /**
-     * 判断当前应用是否为兼容模式目标应用。
-     */
-    private fun isCompatibilityTargetApp(
-        compatEnabled: Boolean,
-        activePkg: String?,
-        compatPkgs: List<String>
-    ): Boolean {
-        return compatEnabled &&
-               !activePkg.isNullOrEmpty() &&
-               compatPkgs.any { it == activePkg }
-    }
 
     /**
      * 更新输入法可见性状态，并在状态变化时通知相关服务。
@@ -399,18 +372,13 @@ class AsrAccessibilityService : AccessibilityService() {
         val winVisible = isImeWindowVisible()
         val imePkgDetected = isImePackageDetected()
         val holdByFocus = (now - lastEditableFocusAt <= holdAfterFocusMs)
-        val compatEnabled = try { prefs.floatingImeVisibilityCompatEnabled } catch (_: Throwable) { false }
-        val compatPkgs = try { prefs.getFloatingImeVisibilityCompatPackageRules() } catch (_: Throwable) { emptyList() }
         val activePkg = getActiveWindowPackage()
-        val compatTarget = compatEnabled && !activePkg.isNullOrEmpty() && compatPkgs.any { it == activePkg }
-        val strategyUsed = if (compatTarget) "compat_pkg" else if (winVisible) "ime_window" else if (holdByFocus) "hold_focus" else "none"
-        val resultActive = if (compatTarget) imePkgDetected else (winVisible || holdByFocus)
+        val strategyUsed = if (winVisible) "ime_window" else if (holdByFocus) "hold_focus" else "none"
+        val resultActive = (winVisible || holdByFocus)
         return mapOf(
             "winVisible" to winVisible,
             "imePkgDetected" to imePkgDetected,
             "holdByFocus" to holdByFocus,
-            "compatEnabled" to compatEnabled,
-            "compatTarget" to compatTarget,
             "strategyUsed" to strategyUsed,
             "activePkg" to (activePkg ?: ""),
             "resultActive" to resultActive
@@ -714,6 +682,7 @@ class AsrAccessibilityService : AccessibilityService() {
             val focusedNode = findFocusedEditableNode(rootNode)
             if (focusedNode != null) {
                 try {
+                    @Suppress("UNCHECKED_CAST")
                     val result = action(focusedNode)
                     result
                 } finally {
@@ -730,13 +699,55 @@ class AsrAccessibilityService : AccessibilityService() {
     }
 
     private fun findFocusedEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        // 1) 优先取焦点节点且满足"可编辑或类名含 EditText 或支持 setText/paste"
+        // 旧逻辑保留但已由 findBestEditableNode 综合调用
         root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { f ->
             if (isEditableLike(f)) return f
             @Suppress("DEPRECATION") f.recycle()
         }
-        // 2) 递归寻找"已聚焦且可编辑样式"的节点
         return findEditableNodeRecursive(root)
+    }
+
+    /**
+     * 更宽松的查找策略：
+     * 1) 优先已有输入焦点的可编辑样式节点；
+     * 2) 其次查找已聚焦且可编辑样式节点；
+     * 3) 最后回退查找第一个可编辑样式节点（未聚焦），需要先尝试 focus 再写入。
+     * 返回 Pair<节点, 是否需要先 focus>。
+     */
+    private fun findBestEditableNode(root: AccessibilityNodeInfo): Pair<AccessibilityNodeInfo, Boolean>? {
+        try {
+            // 1) 系统报告的输入焦点
+            root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { f ->
+                if (isEditableLike(f)) return Pair(f, false)
+                @Suppress("DEPRECATION") f.recycle()
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "findBestEditableNode: FOCUS_INPUT failed", t)
+        }
+
+        // 2) 已聚焦且可编辑
+        val focused = try { findEditableNodeRecursive(root) } catch (t: Throwable) { null }
+        if (focused != null) return Pair(focused, false)
+
+        // 3) 首个可编辑样式节点（未聚焦）
+        val anyEditable = try { findAnyEditableNode(root) } catch (t: Throwable) { null }
+        if (anyEditable != null) return Pair(anyEditable, true)
+
+        return null
+    }
+
+    private fun findAnyEditableNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        if (isEditableLike(node)) return node
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val result = findAnyEditableNode(child)
+            if (result != null) {
+                @Suppress("DEPRECATION") child.recycle()
+                return result
+            }
+            @Suppress("DEPRECATION") child.recycle()
+        }
+        return null
     }
 
     private fun findEditableNodeRecursive(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
@@ -824,19 +835,33 @@ class AsrAccessibilityService : AccessibilityService() {
 
     private fun hasEditableFocusNow(): Boolean {
         return try {
-            val root = rootInActiveWindow ?: return false
-            val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            if (focused != null) {
-                val ok = focused.isEditable || (focused.className?.toString()?.contains("EditText", true) == true)
-                @Suppress("DEPRECATION")
-                focused.recycle()
-                if (ok) return true
+            // 严格判断：仅当存在“已聚焦且可编辑”的节点时返回 true
+            // 优先在应用窗口中寻找（避免 IME 窗口干扰）
+            val ws = windows
+            if (ws != null) {
+                for (w in ws) {
+                    try {
+                        if (w?.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
+                        val root = w.root ?: continue
+                        val node = findFocusedEditableNode(root)
+                        if (node != null) {
+                            @Suppress("DEPRECATION") node.recycle()
+                            return true
+                        }
+                    } catch (t: Throwable) {
+                        Log.w(TAG, "Error checking editable focus in app window", t)
+                    }
+                }
             }
-            // 回退：遍历查找是否存在可编辑且聚焦的节点
-            val found = findEditableNodeRecursive(root)
-            @Suppress("DEPRECATION")
-            root.recycle()
-            found != null
+
+            // 回退：rootInActiveWindow
+            val root = rootInActiveWindow ?: return false
+            val node = findFocusedEditableNode(root)
+            val ok = node != null
+            if (node != null) {
+                @Suppress("DEPRECATION") node.recycle()
+            }
+            ok
         } catch (e: Throwable) {
             Log.e(TAG, "Error checking editable focus", e)
             false
@@ -846,21 +871,23 @@ class AsrAccessibilityService : AccessibilityService() {
     private fun isImeWindowVisible(): Boolean {
         return try {
             val ws = windows ?: return false
-            var visible = false
             for (w in ws) {
                 try {
                     if (w?.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
-                        // 兼容性判定：活跃/聚焦任一为真则认为可见
-                        if (w.isActive || w.isFocused) {
-                            visible = true
-                            break
-                        }
+                        // 更稳健的可见性判断：
+                        // 1) root 存在；或 2) bounds 面积 > 0；或 3) active/focused 任一为真
+                        val root = w.root
+                        if (root != null) return true
+                        val r = Rect()
+                        try { w.getBoundsInScreen(r) } catch (_: Throwable) {}
+                        if (r.width() > 0 && r.height() > 0) return true
+                        if (w.isActive || w.isFocused) return true
                     }
                 } catch (e: Throwable) {
                     Log.e(TAG, "Error checking window visibility", e)
                 }
             }
-            visible
+            false
         } catch (e: Throwable) {
             Log.e(TAG, "Error checking IME window visibility", e)
             false

@@ -39,9 +39,6 @@ class FloatingSettingsViewModel : ViewModel() {
     private val _writePasteEnabled = MutableStateFlow(false)
     val writePasteEnabled: StateFlow<Boolean> = _writePasteEnabled.asStateFlow()
 
-    private val _imeVisibilityCompatEnabled = MutableStateFlow(false)
-    val imeVisibilityCompatEnabled: StateFlow<Boolean> = _imeVisibilityCompatEnabled.asStateFlow()
-
     /**
      * 初始化状态，从 Prefs 加载
      */
@@ -54,7 +51,6 @@ class FloatingSettingsViewModel : ViewModel() {
             _sizeDp.value = prefs.floatingBallSizeDp
             _writeCompatEnabled.value = prefs.floatingWriteTextCompatEnabled
             _writePasteEnabled.value = prefs.floatingWriteTextPasteEnabled
-            _imeVisibilityCompatEnabled.value = prefs.floatingImeVisibilityCompatEnabled
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to initialize state", e)
         }
@@ -135,31 +131,6 @@ class FloatingSettingsViewModel : ViewModel() {
         }
     }
 
-    /**
-     * 处理键盘可见性兼容模式开关变化
-     */
-    fun handleImeVisibilityCompatToggle(
-        context: Context,
-        enabled: Boolean
-    ): PermissionRequest? {
-        try {
-            val prefs = Prefs(context)
-            _imeVisibilityCompatEnabled.value = enabled
-            prefs.floatingImeVisibilityCompatEnabled = enabled
-
-            // 如果同时启用"仅在键盘显示时显示"且缺少无障碍权限，需要提示
-            if (_onlyWhenImeVisible.value && enabled && !isAccessibilityServiceEnabled(context)) {
-                Log.w(TAG, "ImeVisibilityCompat enabled but accessibility not granted")
-                return PermissionRequest.ACCESSIBILITY
-            }
-
-            Log.d(TAG, "ImeVisibilityCompat toggled: $enabled")
-            return null
-        } catch (e: Throwable) {
-            Log.e(TAG, "Failed to handle ImeVisibilityCompat toggle", e)
-            return null
-        }
-    }
 
     /**
      * 更新悬浮球透明度
@@ -261,18 +232,6 @@ class FloatingSettingsViewModel : ViewModel() {
         }
     }
 
-    /**
-     * 更新键盘可见性兼容包名列表
-     */
-    fun updateImeVisibilityCompatPackages(context: Context, packages: String) {
-        try {
-            val prefs = Prefs(context)
-            prefs.floatingImeVisibilityCompatPackages = packages
-            Log.d(TAG, "ImeVisibilityCompatPackages updated")
-        } catch (e: Throwable) {
-            Log.e(TAG, "Failed to update ImeVisibilityCompatPackages", e)
-        }
-    }
 
     /**
      * 检查无障碍服务是否已启用

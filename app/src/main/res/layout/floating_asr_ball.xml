@@ -55,14 +55,6 @@
             android:contentDescription="@string/cd_floating_asr" />
     </FrameLayout>
 
-    <!-- 进度环（置于顶层） -->
-    <ProgressBar
-        android:id="@+id/ballProgress"
-        style="?android:attr/progressBarStyle"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_gravity="center"
-        android:indeterminate="true"
-        android:visibility="gone" />
+    
 
 </FrameLayout>

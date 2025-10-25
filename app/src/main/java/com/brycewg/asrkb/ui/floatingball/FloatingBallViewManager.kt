@@ -2,7 +2,6 @@ package com.brycewg.asrkb.ui.floatingball
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
-import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.view.ContextThemeWrapper
@@ -14,8 +13,6 @@ import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
-import android.widget.ProgressBar
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.store.Prefs
@@ -37,7 +34,6 @@ class FloatingBallViewManager(
 
     private var ballView: View? = null
     private var ballIcon: ImageView? = null
-    private var ballProgress: ProgressBar? = null
     private var processingSpinner: ProcessingSpinnerView? = null
     private var ripple1: View? = null
     private var ripple2: View? = null
@@ -45,13 +41,13 @@ class FloatingBallViewManager(
     private var lp: WindowManager.LayoutParams? = null
 
     // 动画
-    private var pulseAnimator: ValueAnimator? = null
-    private var partialFeedbackAnimator: ValueAnimator? = null
+    
     private var rippleAnimators: MutableList<Animator> = mutableListOf()
     private var edgeAnimator: ValueAnimator? = null
     private var errorVisualActive: Boolean = false
     private var completionResetPosted: Boolean = false
     private var monetContext: Context? = null
+    private var currentState: FloatingBallState = FloatingBallState.Idle
     
     // 贴边半隐可视比例（仅显示该比例的宽度）
     private val visibleFractionWhenHidden = 0.4f
@@ -63,10 +59,11 @@ class FloatingBallViewManager(
     fun getLayoutParams(): WindowManager.LayoutParams? = lp
 
     /** 显示悬浮球 */
-    fun showBall(onClickListener: (View) -> Unit, onTouchListener: View.OnTouchListener): Boolean {
+    fun showBall(onClickListener: (View) -> Unit, onTouchListener: View.OnTouchListener, initialState: FloatingBallState): Boolean {
         if (ballView != null) {
             applyBallAlpha()
             applyBallSize()
+            try { updateStateVisual(currentState) } catch (e: Throwable) { Log.w(TAG, "Failed to refresh state on existing view", e) }
             return true
         }
 
@@ -77,7 +74,6 @@ class FloatingBallViewManager(
 
             val view = LayoutInflater.from(dynCtx).inflate(R.layout.floating_asr_ball, null, false)
             ballIcon = view.findViewById(R.id.ballIcon)
-            ballProgress = view.findViewById(R.id.ballProgress)
             ripple1 = view.findViewById(R.id.ripple1)
             ripple2 = view.findViewById(R.id.ripple2)
             ripple3 = view.findViewById(R.id.ripple3)
@@ -98,9 +94,6 @@ class FloatingBallViewManager(
                 colorSecondaryContainer
             )
 
-            // 设置 ProgressBar 颜色（轻量且同步）
-            setupProgressBarColor(colorSecondary)
-
             // 将相对更重的初始化（波纹背景/自定义进度指示器）延后到下一帧，
             // 以降低 addView 当帧的主线程压力，避免与 IME 显示竞争导致掉帧。
             view.post {
@@ -110,6 +103,8 @@ class FloatingBallViewManager(
                 try { setupProcessingSpinner(ballContainer, colorSecondary) } catch (e: Throwable) {
                     Log.w(TAG, "Deferred spinner setup failed", e)
                 }
+                // 延后初始化完成后，根据当前状态刷新一次，以确保 Processing 时能立刻显示动画
+                try { updateStateVisual(currentState) } catch (e: Throwable) { Log.w(TAG, "Failed to apply state after deferred init", e) }
             }
 
             // 绑定点击和拖动监听
@@ -126,6 +121,8 @@ class FloatingBallViewManager(
             lp = params
             applyBallAlpha()
             applyBallSize()
+            // 应用初始状态
+            try { updateStateVisual(initialState) } catch (e: Throwable) { Log.w(TAG, "Failed to apply initial state", e) }
             Log.d(TAG, "Ball view added successfully")
             return true
         } catch (e: Throwable) {
@@ -204,13 +201,13 @@ class FloatingBallViewManager(
 
     /** 更新悬浮球状态显示 */
     fun updateStateVisual(state: FloatingBallState) {
+        currentState = state
         // 清除颜色滤镜（错误视觉期间不清除）
         if (!errorVisualActive) ballIcon?.clearColorFilter()
 
         when (state) {
             is FloatingBallState.Recording -> {
                 try { ballIcon?.setImageResource(R.drawable.microphone_fill) } catch (e: Throwable) { Log.w(TAG, "Failed to set ball icon (recording)", e) }
-                ballProgress?.visibility = View.GONE
                 processingSpinner?.visibility = View.GONE
                 stopProcessingSpinner()
                 startRippleAnimation()
@@ -218,13 +215,11 @@ class FloatingBallViewManager(
             is FloatingBallState.Processing -> {
                 try { ballIcon?.setImageResource(R.drawable.microphone) } catch (e: Throwable) { Log.w(TAG, "Failed to set ball icon (processing)", e) }
                 stopRippleAnimation()
-                ballProgress?.visibility = View.GONE
                 processingSpinner?.visibility = View.VISIBLE
                 startProcessingSpinner()
             }
             is FloatingBallState.Error -> {
                 stopRippleAnimation()
-                ballProgress?.visibility = View.GONE
                 processingSpinner?.visibility = View.GONE
                 stopProcessingSpinner()
                 playErrorShakeAnimation()
@@ -233,7 +228,6 @@ class FloatingBallViewManager(
                 // Idle, MoveMode
                 try { ballIcon?.setImageResource(R.drawable.microphone) } catch (e: Throwable) { Log.w(TAG, "Failed to set ball icon (idle/move)", e) }
                 stopRippleAnimation()
-                ballProgress?.visibility = View.GONE
                 processingSpinner?.visibility = View.GONE
                 stopProcessingSpinner()
                 resetIconScale()
@@ -440,11 +434,8 @@ class FloatingBallViewManager(
 
     /** 清理所有动画 */
     fun cleanup() {
-        stopPulseAnimation()
         stopRippleAnimation()
         stopProcessingSpinner()
-        partialFeedbackAnimator?.cancel()
-        partialFeedbackAnimator = null
         edgeAnimator?.cancel()
         edgeAnimator = null
     }
@@ -460,18 +451,6 @@ class FloatingBallViewManager(
         } catch (e: Throwable) {
             Log.w(TAG, "Failed to resolve theme attribute $attr, using fallback", e)
             fallback
-        }
-    }
-
-    private fun setupProgressBarColor(color: Int) {
-        ballProgress?.let { pb ->
-            try {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                    pb.indeterminateTintList = android.content.res.ColorStateList.valueOf(color)
-                }
-            } catch (e: Throwable) {
-                Log.w(TAG, "Failed to set progress bar tint", e)
-            }
         }
     }
 
@@ -684,29 +663,6 @@ class FloatingBallViewManager(
     }
 
     // ==================== 动画方法 ====================
-
-    private fun startPulseAnimation() {
-        stopPulseAnimation()
-        val icon = ballIcon ?: return
-
-        pulseAnimator = ValueAnimator.ofFloat(0.85f, 1.15f).apply {
-            duration = 1200
-            repeatCount = ValueAnimator.INFINITE
-            repeatMode = ValueAnimator.REVERSE
-            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
-            addUpdateListener { anim ->
-                val scale = anim.animatedValue as Float
-                icon.scaleX = scale
-                icon.scaleY = scale
-            }
-            start()
-        }
-    }
-
-    private fun stopPulseAnimation() {
-        pulseAnimator?.cancel()
-        pulseAnimator = null
-    }
 
     private fun startRippleAnimation() {
         stopRippleAnimation()
