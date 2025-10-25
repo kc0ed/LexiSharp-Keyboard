@@ -151,10 +151,6 @@
     <string name="toast_vad_sensitivity_applied">VAD sensitivity updated; will apply to the next recording</string>
 
     <!-- Floating ASR status messages -->
-    <string name="floating_asr_recording">Recording…</string>
-    <string name="floating_asr_recognizing">Recognizing…</string>
-    <string name="floating_asr_processing">AI processing…</string>
-    <string name="floating_asr_completed">Recognition completed</string>
     <string name="floating_asr_error">Recognition failed: %1$s</string>
     <string name="floating_asr_copied">Copied to clipboard</string>
 
@@ -209,7 +205,6 @@
     <string name="toast_speech_preset_deleted">Preset deleted</string>
     <string name="dialog_speech_preset_delete_title">Delete Preset</string>
     <string name="dialog_speech_preset_delete_message">Delete \"%1$s\"?</string>
-    <string name="error_speech_preset_name_required">Name cannot be empty</string>
     <string name="speech_preset_intro">When the ASR result exactly equals a preset Name, it will be replaced by its Content. Useful for quick phrases, signatures, addresses, IDs. Matching: first case-sensitive, then case-insensitive if not matched; triggers only when the entire text equals the Name. May need to enable Trim trailing punctuation.</string>
 
     <!-- Language & misc -->
@@ -258,8 +253,6 @@
     <string name="toast_webdav_download_failed">Download/Import failed: %1$s</string>
     <string name="toast_webdav_url_required">Please enter the WebDAV base URL</string>
     <string name="toast_webdav_directory_created">LexiSharp directory created</string>
-    <string name="toast_webdav_check_failed">Directory check failed: %1$s</string>
-    <string name="toast_webdav_mkdir_failed">Directory creation failed: %1$s</string>
     <string name="tip_backup_contains_secrets">Note: Backup contains keys and credentials. Keep it private.</string>
     <string name="toast_silence_autostop_on">Auto-stop on silence enabled</string>
     <string name="toast_silence_autostop_off">Auto-stop on silence disabled</string>
@@ -269,7 +262,6 @@
 
     <!-- Errors (ASR engines) -->
     <string name="error_record_permission_denied">Record audio permission not granted</string>
-    <string name="error_audio_init_cannot">Failed to initialize recording: %1$s</string>
     <string name="error_audio_init_failed">Recording initialization failed</string>
     <string name="error_audio_error">Recording error: %1$s</string>
     <string name="error_audio_empty">Empty audio</string>
@@ -421,7 +413,6 @@
     <string name="sv_keep_alive_always">Always keep (until parameters change)</string>
     <string name="label_sv_pseudo_streaming">Pseudo-streaming (real-time while recording)</string>
     <string name="label_sv_threads">Threads (1-8)</string>
-    <string name="label_sv_use_nnapi">Enable NNAPI (experimental; try with 4 threads)</string>
     <string name="label_sv_language">Recognition language</string>
     <string name="sv_lang_auto">Auto</string>
     <string name="sv_lang_zh">Chinese (zh)</string>
@@ -441,7 +432,6 @@
     <string name="btn_sc_test_pull">Validate</string>
     <string name="sc_test_success">Pull succeeded</string>
     <string name="sc_test_failed">Pull failed. Please check URL and credentials.</string>
-    <string name="sc_status_pulled_new">Pulled new clipboard content</string>
     <string name="sc_status_uploaded">Clipboard uploaded successfully</string>
     <string name="btn_sc_project_home">Project Home</string>
     <string name="sc_open_browser_failed">Cannot open browser</string>
