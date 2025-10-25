@@ -480,7 +480,7 @@ class KeyboardActionHandler(
         if (isEmptyResult) return false
 
         val networkKeywords = arrayOf(
-            "网络", "超时", "timeout", "timed out", "connect", "connection", "socket", "host", "unreachable"
+            "网络", "超时", "timeout", "timed out", "connect", "connection", "socket", "host", "unreachable", "rate", "too many requests"
         )
         val looksNetwork = networkKeywords.any { kw -> kw in message || kw in msgLower }
         if (!looksNetwork) return false

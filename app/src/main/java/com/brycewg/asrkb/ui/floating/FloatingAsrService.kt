@@ -957,6 +957,7 @@ class FloatingAsrService : Service(),
             when (httpCode) {
                 401 -> return getString(R.string.asr_error_auth_invalid)
                 403 -> return getString(R.string.asr_error_auth_forbidden)
+                429 -> return getString(R.string.asr_error_auth_invalid)
             }
         } catch (e: Throwable) {
             Log.w(TAG, "Failed to parse HTTP code", e)
