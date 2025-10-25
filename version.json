@@ -1,8 +1,8 @@
 {
-  "version": "3.2.4",
-  "version_code": 79,
-  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.2.4",
-  "release_notes": "本次更新包含 5 个提交:\n- feat(floating): 实现悬浮球静息时贴边半隐与浮现\n- feat(ime): 为非流式识别失败提供重试入口\n- fix(floating): 确保悬浮菜单操作期间应用保持焦点\n- feat(audio): 增加录音时音频暂停开关\n- refactor(asr): 优化非兼容模式下的音频源回退逻辑",
+  "version": "3.2.5",
+  "version_code": 80,
+  "download_url": "https://github.com/BryceWG/LexiSharp-Keyboard/releases/tag/v3.2.5",
+  "release_notes": "本次更新包含 12 个提交:\n- refactor(floatingball): 简化文本写入占位符处理逻辑\n- feat(ime): 麦克风松手上滑自动发送功能,可选开关\n- refactor: 清理冗余导入和未使用的资源\n- refactor(floating): 优化悬浮球插入逻辑\n- feat(floating): 支持悬浮球包名规则前缀匹配\n- refactor: 清理冗余代码并简化内部 API\n- refactor(resource): 清理冗余的布局 ID 和未使用的资源\n- refactor(capture): 移除音频兼容配置\n- feat(floating): 实现悬浮球基于输入法可见性的动态半隐/浮现\n- refactor(accessibility): 移除键盘可见性兼容模式并增强无障碍检测\n- feat(readme): 更新感谢名单和技术支持列表，增加用户捐赠信息\n- feat(debug): 添加非敏感诊断日志系统",
   "min_supported_version": "2.6.5",
-  "update_time": "2025-10-24T06:32:17Z"
+  "update_time": "2025-10-25T12:36:58Z"
 }
