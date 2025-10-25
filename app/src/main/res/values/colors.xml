@@ -5,7 +5,6 @@
     <!-- Adaptive icon background color -->
     <color name="ic_launcher_background">#FFFFFFFF</color>
     <!-- 悬浮 ASR 进度环颜色 -->
-    <color name="floating_asr_progress">#2196F3</color>
     <!-- 悬浮 ASR 图标默认色 -->
     <color name="floating_asr_icon_tint">#757575</color>
 </resources>

@@ -50,8 +50,7 @@
         android:textColor="?attr/colorOnSurfaceVariant"
         android:text="@string/untitled_profile" />
       <Spinner
-        android:id="@+id/spLlmProfiles"
-        android:layout_width="match_parent"
+          android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="gone" />
 
@@ -181,8 +180,7 @@
         android:textColor="?attr/colorOnSurfaceVariant"
         android:text="@string/untitled_preset" />
       <Spinner
-        android:id="@+id/spPromptPresets"
-        android:layout_width="match_parent"
+          android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="gone" />
 

@@ -146,11 +146,7 @@
     <string name="toast_setup_choose_keyboard">请选择“言犀键盘”为当前输入法</string>
 
     <!-- Floating ASR status messages -->
-    <string name="floating_asr_recording">正在录音…</string>
-    <string name="floating_asr_recognizing">识别中…</string>
-    <string name="floating_asr_processing">AI处理中…</string>
-    <string name="floating_asr_completed">识别完成</string>
-    <string name="floating_asr_error">识别失败: %1$s</string>
+  <string name="floating_asr_error">识别失败: %1$s</string>
     <string name="floating_asr_copied">已复制到剪贴板</string>
     <string name="accessibility_service_description">允许言犀键盘悬浮球将语音识别结果自动插入到当前输入框中。不会收集或上传任何数据。</string>
 
@@ -205,8 +201,7 @@
     <string name="toast_speech_preset_deleted">已删除预置信息</string>
     <string name="dialog_speech_preset_delete_title">删除预置信息</string>
     <string name="dialog_speech_preset_delete_message">确定删除“%1$s”吗？</string>
-    <string name="error_speech_preset_name_required">名称不能为空</string>
-    <string name="speech_preset_intro">当语音识别结果与某个“名称”完全一致时，将自动替换为其“内容”。适合常用短语、签名、地址、工号等快速输入。匹配规则：先严格大小写匹配，未命中则忽略大小写匹配；仅当整段文本与名称相同才会触发。可能需要开启去除句尾标点</string>
+  <string name="speech_preset_intro">当语音识别结果与某个“名称”完全一致时，将自动替换为其“内容”。适合常用短语、签名、地址、工号等快速输入。匹配规则：先严格大小写匹配，未命中则忽略大小写匹配；仅当整段文本与名称相同才会触发。可能需要开启去除句尾标点</string>
     <!-- Language & misc -->
     <string name="label_language">应用语言</string>
     <string name="lang_follow_system">跟随系统</string>
@@ -253,17 +248,14 @@
     <string name="toast_webdav_download_failed">下载/导入失败：%1$s</string>
     <string name="toast_webdav_url_required">请先填写 WebDAV 服务器基础URL</string>
     <string name="toast_webdav_directory_created">已创建 LexiSharp 目录</string>
-    <string name="toast_webdav_check_failed">检查目录失败：%1$s</string>
-    <string name="toast_webdav_mkdir_failed">创建目录失败：%1$s</string>
-    <string name="tip_backup_contains_secrets">注意：备份包含密钥与凭证，仅用于个人备份，请妥善保管。</string>
+  <string name="tip_backup_contains_secrets">注意：备份包含密钥与凭证，仅用于个人备份，请妥善保管。</string>
 
     <!-- Stats -->
     <string name="label_asr_total_chars">历史语音识别总字数：%1$d</string>
 
     <!-- Errors (ASR engines) -->
     <string name="error_record_permission_denied">录音权限未授予</string>
-    <string name="error_audio_init_cannot">无法初始化录音: %1$s</string>
-    <string name="error_audio_init_failed">录音初始化失败</string>
+  <string name="error_audio_init_failed">录音初始化失败</string>
     <string name="error_audio_error">录音错误: %1$s</string>
     <string name="error_audio_empty">空音频</string>
     <string name="error_missing_gemini_key">未配置 Gemini API Key</string>
@@ -283,8 +275,7 @@
     <string name="label_soniox_api_key">API Key（Bearer）</string>
     <!-- SenseVoice local settings -->
     <string name="label_sv_threads">线程数（1-8）</string>
-    <string name="label_sv_use_nnapi">启用 NNAPI（实验性，可尝试配合4线程数）</string>
-    <string name="label_sv_language">识别语言</string>
+  <string name="label_sv_language">识别语言</string>
     <string name="sv_lang_auto">自动</string>
     <string name="sv_lang_zh">中文 (zh)</string>
     <string name="sv_lang_en">英语 (en)</string>
@@ -438,8 +429,7 @@
     <string name="btn_sc_test_pull">立即验证</string>
     <string name="sc_test_success">拉取成功</string>
     <string name="sc_test_failed">拉取失败，请检查地址与凭证</string>
-    <string name="sc_status_pulled_new">获取到新粘贴内容</string>
-    <string name="sc_status_uploaded">成功上传粘贴板</string>
+  <string name="sc_status_uploaded">成功上传粘贴板</string>
     <string name="btn_sc_project_home">项目主页</string>
     <string name="sc_open_browser_failed">无法打开浏览器</string>
     <string name="hint_sc_server_base_placeholder">https://your-server.com/path</string>

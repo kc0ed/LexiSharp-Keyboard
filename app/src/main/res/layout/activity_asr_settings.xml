@@ -103,8 +103,7 @@
         android:textColor="?attr/colorOnSurfaceVariant"
         android:text="@string/vendor_volc" />
       <Spinner
-        android:id="@+id/spAsrVendor"
-        android:layout_width="match_parent"
+          android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:visibility="gone" />
 
@@ -208,8 +207,7 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/volc_lang_auto" />
         <Spinner
-          android:id="@+id/spVolcLanguage"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
 
@@ -350,8 +348,7 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
-          android:id="@+id/tvElevenLanguageLabel"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           android:textColor="?attr/colorOnSurface"
@@ -368,8 +365,7 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/eleven_lang_auto" />
         <Spinner
-          android:id="@+id/spElevenLanguage"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
 
@@ -470,8 +466,7 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
-          android:id="@+id/tvOpenAiLanguageLabel"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           android:textColor="?attr/colorOnSurface"
@@ -488,8 +483,7 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/dash_lang_auto" />
         <Spinner
-          android:id="@+id/spOpenAiLanguage"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
 
@@ -568,8 +562,7 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
-          android:id="@+id/tvDashLanguageLabel"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           android:textColor="?attr/colorOnSurface"
@@ -587,8 +580,7 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/dash_lang_auto" />
         <Spinner
-          android:id="@+id/spDashLanguage"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
 
@@ -713,8 +705,7 @@
           android:text="@string/label_soniox_streaming" />
 
         <TextView
-          android:id="@+id/tvSonioxLanguageLabel"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
           android:textColor="?attr/colorOnSurface"
@@ -770,8 +761,7 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/sv_model_small_int8" />
         <Spinner
-          android:id="@+id/spSvModelVariant"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
 
@@ -794,8 +784,7 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/sv_lang_auto" />
         <Spinner
-          android:id="@+id/spSvLanguage"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
 
@@ -847,8 +836,7 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/sv_keep_alive_always" />
         <Spinner
-          android:id="@+id/spSvKeepAlive"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
 

@@ -109,8 +109,7 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/keyboard_height_medium" />
         <Spinner
-          android:id="@+id/spKeyboardHeight"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
 
@@ -135,8 +134,7 @@
           android:textColor="?attr/colorOnSurfaceVariant"
           android:text="@string/lang_follow_system" />
         <Spinner
-          android:id="@+id/spLanguage"
-          android:layout_width="match_parent"
+            android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:visibility="gone" />
 
