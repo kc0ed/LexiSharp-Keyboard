@@ -31,6 +31,7 @@ class InputSettingsActivity : AppCompatActivity() {
         val switchAutoSwitchPassword = findViewById<MaterialSwitch>(R.id.switchAutoSwitchPassword)
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
         val switchMicTapToggle = findViewById<MaterialSwitch>(R.id.switchMicTapToggle)
+        val switchMicSwipeUpAutoEnter = findViewById<MaterialSwitch>(R.id.switchMicSwipeUpAutoEnter)
         val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
         val switchFcitx5ReturnOnSwitcher = findViewById<MaterialSwitch>(R.id.switchFcitx5ReturnOnSwitcher)
         val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
@@ -47,6 +48,7 @@ class InputSettingsActivity : AppCompatActivity() {
             switchFcitx5ReturnOnSwitcher.isChecked = prefs.fcitx5ReturnOnImeSwitch
             switchHideRecentTasks.isChecked = prefs.hideRecentTaskCard
             switchDuckMediaOnRecord.isChecked = prefs.duckMediaOnRecordEnabled
+            switchMicSwipeUpAutoEnter.isChecked = prefs.micSwipeUpAutoEnterEnabled
         }
         applyPrefsToUi()
 
@@ -76,6 +78,24 @@ class InputSettingsActivity : AppCompatActivity() {
         switchMicTapToggle.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)
             prefs.micTapToggleEnabled = isChecked
+            if (isChecked) {
+                // 互斥：启用点按控制后，关闭“上滑自动发送”
+                if (prefs.micSwipeUpAutoEnterEnabled) {
+                    prefs.micSwipeUpAutoEnterEnabled = false
+                    try { switchMicSwipeUpAutoEnter.isChecked = false } catch (_: Throwable) { }
+                }
+            }
+        }
+        switchMicSwipeUpAutoEnter.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.micSwipeUpAutoEnterEnabled = isChecked
+            if (isChecked) {
+                // 互斥：启用“上滑自动发送”后，关闭点按控制
+                if (prefs.micTapToggleEnabled) {
+                    prefs.micTapToggleEnabled = false
+                    try { switchMicTapToggle.isChecked = false } catch (_: Throwable) { }
+                }
+            }
         }
         switchSwapAiEditWithSwitcher.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)

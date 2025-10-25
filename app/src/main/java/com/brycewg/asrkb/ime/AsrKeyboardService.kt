@@ -17,6 +17,7 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import android.view.inputmethod.InputMethodManager
+import android.view.ViewConfiguration
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -90,6 +91,8 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
     private var btnPunct4: TextView? = null
     private var txtStatus: TextView? = null
     private var groupMicStatus: View? = null
+    // 记录麦克风按下的原始Y坐标，用于检测上滑手势
+    private var micDownRawY: Float = 0f
 
     // ========== 剪贴板和其他辅助功能 ==========
     private var clipboardPreviewTimeout: Runnable? = null
@@ -424,11 +427,21 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                         v.performClick()
                         return@setOnTouchListener true
                     }
+                    micDownRawY = try { event.rawY } catch (_: Throwable) { event.y }
                     actionHandler.handleMicPressDown()
                     true
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    actionHandler.handleMicPressUp()
+                MotionEvent.ACTION_UP -> {
+                    val slop = try { ViewConfiguration.get(v.context).scaledTouchSlop } catch (_: Throwable) { 16 }
+                    val upY = try { event.rawY } catch (_: Throwable) { event.y }
+                    val dy = (micDownRawY - upY)
+                    val autoEnter = prefs.micSwipeUpAutoEnterEnabled && dy > slop
+                    actionHandler.handleMicPressUp(autoEnter)
+                    v.performClick()
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    actionHandler.handleMicPressUp(false)
                     v.performClick()
                     true
                 }

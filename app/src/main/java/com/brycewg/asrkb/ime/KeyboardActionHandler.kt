@@ -139,6 +139,14 @@ class KeyboardActionHandler(
      * 处理麦克风松开（长按模式）
      */
     fun handleMicPressUp() {
+        handleMicPressUp(false)
+    }
+
+    /**
+     * 处理麦克风松开（长按模式，可选：最终结果后自动回车）
+     */
+    fun handleMicPressUp(autoEnterAfterFinal: Boolean) {
+        autoEnterOnce = autoEnterAfterFinal
         if (asrManager.isRunning()) {
             asrManager.stopRecording()
             // 进入处理阶段（无论是否开启后处理）
@@ -438,6 +446,7 @@ class KeyboardActionHandler(
         opSeq++
         try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
         processingTimeoutJob = null
+        autoEnterOnce = false
         transitionToState(KeyboardState.Idle)
         if (!keepMessage) {
             uiListener?.onStatusMessage(context.getString(R.string.status_idle))
@@ -450,6 +459,7 @@ class KeyboardActionHandler(
         try { processingTimeoutJob?.cancel() } catch (_: Throwable) {}
         processingTimeoutJob = null
         dropPendingFinal = false
+        autoEnterOnce = false
         try { uiListener?.onHideRetryChip() } catch (_: Throwable) {}
         val state = KeyboardState.Listening()
         transitionToState(state)
@@ -549,6 +559,14 @@ class KeyboardActionHandler(
         // 提交最终文本
         inputHelper.setComposingText(ic, finalProcessed)
         inputHelper.finishComposingText(ic)
+
+        // 若需要，最终结果后自动发送回车（仅一次）
+        if (finalProcessed.isNotEmpty() && autoEnterOnce) {
+            try { inputHelper.sendEnter(ic) } catch (t: Throwable) {
+                Log.w(TAG, "sendEnter after postprocess failed", t)
+            }
+            autoEnterOnce = false
+        }
 
         // 记录后处理提交（用于撤销）
         if (finalProcessed.isNotEmpty() && finalProcessed != raw) {
@@ -657,6 +675,14 @@ class KeyboardActionHandler(
             lastAsrCommitText = finalText,
             lastPostprocCommit = null
         )
+
+        // 若需要，最终结果后自动发送回车（仅一次）
+        if (finalText.isNotEmpty() && autoEnterOnce) {
+            try { inputHelper.sendEnter(ic) } catch (t: Throwable) {
+                Log.w(TAG, "sendEnter after final failed", t)
+            }
+            autoEnterOnce = false
+        }
 
         // 统计字数
         try {
@@ -793,4 +819,7 @@ class KeyboardActionHandler(
     private fun getCurrentInputConnection(): InputConnection? {
         return currentInputConnectionProvider?.invoke()
     }
+
+    // 会话一次性标记：最终结果提交后是否自动发送回车
+    private var autoEnterOnce: Boolean = false
 }
