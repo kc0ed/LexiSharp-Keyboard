@@ -175,17 +175,6 @@ class AsrAccessibilityService : AccessibilityService() {
         }
 
         /**
-         * 选中全部并以粘贴方式替换为给定文本（静默）。
-         * - 备份并恢复剪贴板；
-         * - 尝试设置选区为[0, 当前文本长度]，失败则回退到大范围；
-         * - 粘贴完成后尝试把光标移到末尾。
-         */
-        fun selectAllAndPasteSilent(text: String): Boolean {
-            val service = instance ?: return false
-            return service.performSelectAllAndPasteSilent(text)
-        }
-
-        /**
          * 静默设置当前焦点输入框的选区（通常用于把光标移到指定位置）。
          * - start/end 以字符索引计（闭区间左端、开区间右端），若仅需设置光标请传相同值。
          * - 返回是否设置成功（目标节点存在且支持 ACTION_SET_SELECTION）。
@@ -590,89 +579,6 @@ class AsrAccessibilityService : AccessibilityService() {
         } ?: false
     }
 
-    // 选中全部并以"粘贴"方式替换文本（静默）
-    private fun performSelectAllAndPasteSilent(text: String): Boolean {
-        return withFocusedEditableNode { target ->
-            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-            val previous = try {
-                clipboard.primaryClip
-            } catch (e: Throwable) {
-                Log.e(TAG, "Error getting primary clip for select all", e)
-                null
-            }
-
-            val len = try {
-                val full = target.text?.toString() ?: ""
-                full.length
-            } catch (e: Throwable) {
-                Log.e(TAG, "Error getting text length", e)
-                0
-            }
-
-            // 先尽量聚焦
-            try {
-                target.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-            } catch (e: Throwable) {
-                Log.e(TAG, "Error focusing for select all", e)
-            }
-
-            // 选中全部（若失败，后续直接尝试粘贴也可能覆盖）
-            val selArgs = Bundle().apply {
-                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, 0)
-                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, if (len > 0) len else Int.MAX_VALUE)
-            }
-            try {
-                target.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selArgs)
-            } catch (e: Throwable) {
-                Log.e(TAG, "Error selecting all text", e)
-            }
-
-            // 设置剪贴板并粘贴
-            val clip = ClipData.newPlainText("ASR PasteAll", text)
-            clipboard.setPrimaryClip(clip)
-            var ok = try {
-                target.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-            } catch (e: Throwable) {
-                Log.e(TAG, "Error pasting text", e)
-                false
-            }
-
-            if (!ok) {
-                // 回退：长按后再粘贴一次
-                try {
-                    target.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK)
-                } catch (e: Throwable) {
-                    Log.e(TAG, "Error long clicking", e)
-                }
-                handler.postDelayed({
-                    try {
-                        target.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-                    } catch (e: Throwable) {
-                        Log.e(TAG, "Error pasting after long click", e)
-                    }
-                }, 100)
-            }
-
-            // 粘贴后把光标尽量移到末尾
-            if (ok) {
-                val endSel = Bundle().apply {
-                    putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, text.length)
-                    putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, text.length)
-                }
-                try {
-                    target.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, endSel)
-                } catch (e: Throwable) {
-                    Log.e(TAG, "Error setting cursor to end", e)
-                }
-            }
-
-            // 恢复剪贴板（或清空）
-            restoreClipboard(clipboard, previous)
-
-            ok
-        } ?: false
-    }
-
     /**
      * 高阶函数：查找焦点可编辑节点、执行操作、回收节点并统一处理异常。
      * @param action 对找到的节点执行的操作，返回操作结果
@@ -701,26 +607,11 @@ class AsrAccessibilityService : AccessibilityService() {
     }
 
     private fun findFocusedEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        // 旧逻辑保留但已由 findBestEditableNode 综合调用
         root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { f ->
             if (isEditableLike(f)) return f
             @Suppress("DEPRECATION") f.recycle()
         }
         return findEditableNodeRecursive(root)
-    }
-
-    private fun findAnyEditableNode(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        if (isEditableLike(node)) return node
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            val result = findAnyEditableNode(child)
-            if (result != null) {
-                @Suppress("DEPRECATION") child.recycle()
-                return result
-            }
-            @Suppress("DEPRECATION") child.recycle()
-        }
-        return null
     }
 
     private fun findEditableNodeRecursive(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {

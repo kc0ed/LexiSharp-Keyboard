@@ -338,6 +338,8 @@ class AsrSessionManager(
             // 清理会话上下文
             focusContext = null
             lastPartialForPreview = null
+            markerInserted = false
+            markerChar = null
         }
     }
 
@@ -494,25 +496,9 @@ class AsrSessionManager(
             // 不尝试插入文本：返回 false 表示未写入
             return false
         }
-        val writeCompat = try {
-            prefs.floatingWriteTextCompatEnabled
-        } catch (e: Throwable) {
-            Log.w(TAG, "Failed to get write compat preference", e)
-            true
-        }
-        val compatTarget = pkg != null && isPackageInCompatTargets(pkg)
 
-
-        // 兼容模式：优先 ACTION_SET_TEXT（不粘贴）；失败再“全选+粘贴”；仍失败通用兜底
-        val wrote: Boolean = if (writeCompat && compatTarget) {
-            val setOk = com.brycewg.asrkb.ui.AsrAccessibilityService.insertTextSilent(toWrite)
-            if (setOk) true else {
-                val pasteOk = com.brycewg.asrkb.ui.AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
-                if (pasteOk) true else com.brycewg.asrkb.ui.AsrAccessibilityService.insertText(context, toWrite)
-            }
-        } else {
-            com.brycewg.asrkb.ui.AsrAccessibilityService.insertText(context, toWrite)
-        }
+        // 统一使用通用插入方法（兼容模式的区别仅在于占位符的注入与清理）
+        val wrote: Boolean = com.brycewg.asrkb.ui.AsrAccessibilityService.insertText(context, toWrite)
 
         if (wrote) {
             try {
