@@ -137,7 +137,7 @@
     <string name="desc_floating_write_compat">在部分应用中文本框会出现背景文字被误识别，导致通过无障碍服务插入文字时会附带背景文字的情况。开启此模式后，在目标软件中使用悬浮球时会尝试“全选+粘贴”写入一个不可见字符，以屏蔽背景文字。</string>
     <string name="label_floating_write_compat_pkgs">兼容目标包名（每行一个）</string>
     <string name="hint_floating_write_compat_pkgs">请填写完整包名，采用前缀匹配（例如 org.telegram.messenger）。</string>
-    <string name="label_floating_write_paste">悬浮球写入文字采取粘贴方案</string>
+    <string name="label_floating_write_paste">悬浮球识别结果仅写入粘贴板</string>
     <string name="desc_floating_write_paste">仅对下方指定的应用生效：在这些应用内，使用悬浮球语音输入时会将结果复制到剪贴板，不尝试通过无障碍 API 插入文字。若列表中包含 all，则全局生效。</string>
     <string name="label_floating_write_paste_pkgs">目标包名（每行一个）</string>
     <string name="hint_floating_write_paste_pkgs">请填写完整包名进行精确匹配（例如 com.tencent.mm）。如需全局生效，单独添加一行 all。</string>
