@@ -502,10 +502,6 @@ class AsrSessionManager(
         }
         val compatTarget = pkg != null && isPackageInCompatTargets(pkg)
 
-        // 命中占位后仅使用最终文本覆盖（避免保留旧内容）
-        if (markerInserted) {
-            toWrite = text
-        }
 
         // 兼容模式：优先 ACTION_SET_TEXT（不粘贴）；失败再“全选+粘贴”；仍失败通用兜底
         val wrote: Boolean = if (writeCompat && compatTarget) {
@@ -524,7 +520,8 @@ class AsrSessionManager(
             } catch (e: Throwable) {
                 Log.e(TAG, "Failed to add ASR chars", e)
             }
-            val prefixLenForCursor = if (markerInserted) 0 else stripMarkersIfAny(ctx?.prefix ?: "").length
+            // 光标应定位到“前缀 + 新文本”的末尾；占位符已从前缀中移除
+            val prefixLenForCursor = stripMarkersIfAny(ctx?.prefix ?: "").length
             val desiredCursor = (prefixLenForCursor + text.length).coerceAtLeast(0)
             com.brycewg.asrkb.ui.AsrAccessibilityService.setSelectionSilent(desiredCursor)
         }
