@@ -187,7 +187,7 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_FLOATING_WRITE_PASTE_ENABLED, false)
         set(value) = sp.edit { putBoolean(KEY_FLOATING_WRITE_PASTE_ENABLED, value) }
 
-    // 粘贴方案目标包名（每行一个；all 表示全局生效）
+    // 粘贴方案目标包名（每行一个；all 表示全局生效；支持前缀匹配）
     var floatingWritePastePackages: String
         get() = sp.getString(KEY_FLOATING_WRITE_PASTE_PACKAGES, "") ?: ""
         set(value) = sp.edit { putString(KEY_FLOATING_WRITE_PASTE_PACKAGES, value) }
@@ -991,7 +991,7 @@ class Prefs(context: Context) {
 
         // 悬浮球默认大小（dp）
         const val DEFAULT_FLOATING_BALL_SIZE_DP = 44
-        // 悬浮写入兼容：默认目标包名（精准匹配，每行一个）
+        // 悬浮写入兼容：默认目标包名（每行一个；支持前缀匹配）
         const val DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES = "org.telegram.messenger\nnu.gpu.nagram\ncom.ss.android.ugc.aweme"
         
 

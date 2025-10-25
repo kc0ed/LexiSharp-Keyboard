@@ -541,7 +541,10 @@ class AsrSessionManager(
         }
         val rules = raw.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
         if (rules.any { it.equals("all", ignoreCase = true) }) return true
-        return rules.any { it == pkg }
+        // 改为前缀匹配（包名边界）
+        return rules.any { rule ->
+            pkg == rule || pkg.startsWith("$rule.")
+        }
     }
 
     private fun tryFixTelegramPlaceholderIfNeeded() {
@@ -590,7 +593,11 @@ class AsrSessionManager(
             ""
         }
         val rules = raw.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
-        return rules.any { it == pkg }
+        // 改为前缀匹配（包名边界）：
+        // 规则命中条件：完全相等，或以"规则."为前缀（例如 org.telegram 命中 org.telegram.messenger.web）
+        return rules.any { rule ->
+            pkg == rule || pkg.startsWith("$rule.")
+        }
     }
 
     private fun trimTrailingPunctuation(s: String): String {
