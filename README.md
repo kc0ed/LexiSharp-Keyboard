@@ -260,8 +260,8 @@
 在部分应用中文本框会出现背景文字被误识别，导致通过无障碍服务插入文字时会附带背景文字的情况。可在“悬浮球设置”开启【悬浮球写入文字兼容性模式】：
 
 - 开启后：在“兼容目标包名”列表中的应用里，悬浮球将尝试“全选+粘贴”写入一个不可见字符，以屏蔽背景文字。
-- 兼容目标包名：每行一个完整包名，采用精准匹配（示例：org.telegram.messenger、nu.gpu.nagram、com.ss.android.ugc.aweme）。
-- 已内置示例：org.telegram.messenger、nu.gpu.nagram、com.ss.android.ugc.aweme。 |
+- 兼容目标包名：每行一个完整包名，采用前缀匹配（示例：org.telegram.messenger、nu.gpu.nagram）。
+- 已内置示例：org.telegram.messenger、nu.gpu.nagram。 |
 
 </details>
 

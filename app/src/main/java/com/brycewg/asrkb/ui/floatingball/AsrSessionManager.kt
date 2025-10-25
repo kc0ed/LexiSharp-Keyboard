@@ -86,14 +86,14 @@ class AsrSessionManager(
         processingTimeoutJob = null
         hasCommittedResult = false
 
-        // Telegram 占位符修复
-        tryFixTelegramPlaceholderIfNeeded()
+        // 写入兼容模式：为命中包名注入占位符（粘贴方式），屏蔽原文本干扰
+        tryFixCompatPlaceholderIfNeeded()
 
         // 构建引擎
         asrEngine = buildEngineForCurrentMode()
         Log.d(TAG, "ASR engine created: ${asrEngine?.javaClass?.simpleName}")
 
-        // 记录焦点上下文
+        // 记录焦点上下文（占位后再取，保持与参考版本一致）
         focusContext = com.brycewg.asrkb.ui.AsrAccessibilityService.getCurrentFocusContext()
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             try {
@@ -470,7 +470,6 @@ class AsrSessionManager(
         Log.d(TAG, "Inserting text: $toWrite (previewCtx=${ctx != null})")
 
         val pkg = com.brycewg.asrkb.ui.AsrAccessibilityService.getActiveWindowPackage()
-        val isTg = pkg != null && isTelegramLikePackage(pkg)
         // 写入粘贴方案：命中规则则仅复制到剪贴板并提示
         val writePaste = try {
             prefs.floatingWriteTextPasteEnabled
@@ -503,16 +502,17 @@ class AsrSessionManager(
         }
         val compatTarget = pkg != null && isPackageInCompatTargets(pkg)
 
-        if (isTg && markerInserted) {
+        // 命中占位后仅使用最终文本覆盖（避免保留旧内容）
+        if (markerInserted) {
             toWrite = text
         }
 
+        // 兼容模式：优先 ACTION_SET_TEXT（不粘贴）；失败再“全选+粘贴”；仍失败通用兜底
         val wrote: Boolean = if (writeCompat && compatTarget) {
-            val success = com.brycewg.asrkb.ui.AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
-            if (!success) {
-                com.brycewg.asrkb.ui.AsrAccessibilityService.insertText(context, toWrite)
-            } else {
-                success
+            val setOk = com.brycewg.asrkb.ui.AsrAccessibilityService.insertTextSilent(toWrite)
+            if (setOk) true else {
+                val pasteOk = com.brycewg.asrkb.ui.AsrAccessibilityService.selectAllAndPasteSilent(toWrite)
+                if (pasteOk) true else com.brycewg.asrkb.ui.AsrAccessibilityService.insertText(context, toWrite)
             }
         } else {
             com.brycewg.asrkb.ui.AsrAccessibilityService.insertText(context, toWrite)
@@ -524,7 +524,7 @@ class AsrSessionManager(
             } catch (e: Throwable) {
                 Log.e(TAG, "Failed to add ASR chars", e)
             }
-            val prefixLenForCursor = if (isTg && markerInserted) 0 else stripMarkersIfAny(ctx?.prefix ?: "").length
+            val prefixLenForCursor = if (markerInserted) 0 else stripMarkersIfAny(ctx?.prefix ?: "").length
             val desiredCursor = (prefixLenForCursor + text.length).coerceAtLeast(0)
             com.brycewg.asrkb.ui.AsrAccessibilityService.setSelectionSilent(desiredCursor)
         }
@@ -541,13 +541,11 @@ class AsrSessionManager(
         }
         val rules = raw.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
         if (rules.any { it.equals("all", ignoreCase = true) }) return true
-        // 改为前缀匹配（包名边界）
-        return rules.any { rule ->
-            pkg == rule || pkg.startsWith("$rule.")
-        }
+        // 前缀匹配（包名边界）
+        return rules.any { rule -> pkg == rule || pkg.startsWith("$rule.") }
     }
 
-    private fun tryFixTelegramPlaceholderIfNeeded() {
+    private fun tryFixCompatPlaceholderIfNeeded() {
         markerInserted = false
         markerChar = null
         val pkg = com.brycewg.asrkb.ui.AsrAccessibilityService.getActiveWindowPackage() ?: return
@@ -557,7 +555,7 @@ class AsrSessionManager(
             Log.w(TAG, "Failed to get write compat preference", e)
             true
         }
-        if (!compat || !isTelegramLikePackage(pkg) || !isPackageInCompatTargets(pkg)) return
+        if (!compat || !isPackageInCompatTargets(pkg)) return
 
         val candidates = listOf("\u2060", "\u200B")
         for (m in candidates) {
@@ -565,7 +563,7 @@ class AsrSessionManager(
             if (ok) {
                 markerInserted = true
                 markerChar = m
-                Log.d(TAG, "Telegram fix: injected marker ${Integer.toHexString(m.codePointAt(0))}")
+                Log.d(TAG, "Compat fix: injected marker ${Integer.toHexString(m.codePointAt(0))}")
                 break
             }
         }
@@ -579,11 +577,6 @@ class AsrSessionManager(
         return out
     }
 
-    private fun isTelegramLikePackage(pkg: String): Boolean {
-        if (pkg.startsWith("org.telegram")) return true
-        if (pkg == "nu.gpu.nagram") return true
-        return false
-    }
 
     private fun isPackageInCompatTargets(pkg: String): Boolean {
         val raw = try {
@@ -593,11 +586,8 @@ class AsrSessionManager(
             ""
         }
         val rules = raw.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
-        // 改为前缀匹配（包名边界）：
-        // 规则命中条件：完全相等，或以"规则."为前缀（例如 org.telegram 命中 org.telegram.messenger.web）
-        return rules.any { rule ->
-            pkg == rule || pkg.startsWith("$rule.")
-        }
+        // 前缀匹配（包名边界）
+        return rules.any { rule -> pkg == rule || pkg.startsWith("$rule.") }
     }
 
     private fun trimTrailingPunctuation(s: String): String {

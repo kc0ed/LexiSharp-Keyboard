@@ -992,7 +992,7 @@ class Prefs(context: Context) {
         // 悬浮球默认大小（dp）
         const val DEFAULT_FLOATING_BALL_SIZE_DP = 44
         // 悬浮写入兼容：默认目标包名（每行一个；支持前缀匹配）
-        const val DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES = "org.telegram.messenger\nnu.gpu.nagram\ncom.ss.android.ugc.aweme"
+        const val DEFAULT_FLOATING_WRITE_COMPAT_PACKAGES = "org.telegram.messenger\nnu.gpu.nagram"
         
 
         // Soniox 默认端点

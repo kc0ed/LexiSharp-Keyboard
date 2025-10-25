@@ -260,8 +260,8 @@ English | [简体中文](README.md)
 In some apps, input fields expose background placeholder text to Accessibility, which contaminates the inserted content. Enable “Floating write-text compatibility mode” in Floating Ball settings:
 
 - When enabled: For apps listed under “Target package names”, the floating ball will attempt Select-All + Paste with an invisible character to mask the background placeholder.
-- Target packages: One full package name per line, exact match (e.g., org.telegram.messenger, nu.gpu.nagram, com.ss.android.ugc.aweme).
-- Built-in examples: org.telegram.messenger, nu.gpu.nagram, com.ss.android.ugc.aweme.
+- Target packages: One full package name per line, exact match (e.g., org.telegram.messenger, nu.gpu.nagram).
+- Built-in examples: org.telegram.messenger, nu.gpu.nagram.
 
 > 💡 Tip: If you encounter text insertion issues, enable compatibility mode and add the app's package here
 
