@@ -557,8 +557,13 @@ Apache 2.0 License - 自由使用、修改、分发，需保留版权声明
 ## 💝 感谢名单
 
 感谢以下用户的赞赏支持，你们的鼓励是项目持续发展的动力！
+王千郡 - 26.66 RMB
 
 天凉好个秋 - 16.66 RMB
+
+Return - 16.66 RMB
+
+树人 - 10.24 RMB
 
 flyhunterl - 6.66 RMB
 
@@ -567,6 +572,8 @@ flyhunterl - 6.66 RMB
 感谢以下开源项目为本项目提供的技术支持：
 
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) - 提供了本地 ASR 模型的技术方案支持，使离线语音识别成为可能
+- [SyncClipboard](https://github.com/Jeric-X/SyncClipboard) - 提供了剪贴板同步的后端服务(非软件本地运行,需要服务器)
+- [Phosphor](https://github.com/phosphor-icons/homepage) - 提供了软件内几乎所有 Icons
 
 ---
 

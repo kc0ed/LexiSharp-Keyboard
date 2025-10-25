@@ -28,7 +28,7 @@ English | [简体中文](README.md)
 - **Press & Hold Recording** - Simple and intuitive recording
 - **Smart Auto-Stop** - Automatically stops recording on silence
 - **Fast Recognition** - Release to upload, quick results
-- **Multi-Engine Support** - 7+ mainstream ASR services
+- **Multi-Engine Support** - 8+ mainstream ASR services
 - **Local ASR Model** - Offline voice recognition, no network required, privacy-focused
 - **AI Text Optimization** - LLM smart correction of recognition results
 
@@ -63,7 +63,7 @@ English | [简体中文](README.md)
 - **Keyboard Height Adjustment** - Three height levels to choose from
 - **Test Input** - Test input method directly in settings
 - **Statistics** - Recognition character count
-- **Vibration Feedback** - Customizable feedback intensity
+- **Vibration Feedback** - Microphone / keyboard button vibration
 - **Auto Update Check** - Daily automatic update check on app launch
 
 </td>
@@ -411,7 +411,7 @@ The settings page supports configuration switching by vendor, showing only corre
 - `API Key`: API key
 - `Recognition Language`: Multi-language support
 
-> 📝 Non-streaming mode Uses OSS relay, slightly higher latency
+> 📝 Non-streaming mode uses official relay, slightly higher latency
 
 </td>
 <td width="50%">
@@ -462,7 +462,7 @@ The settings page supports configuration switching by vendor, showing only corre
 
 - **Silence Auto-Stop**: Enable/disable auto-stop feature
 - **Stop Duration**: Adjustable from 0.5-3 seconds
-- **Stop Sensitivity**: Three levels - 1-10
+- **Stop Sensitivity**: 1-10 levels
 - **Recognition Prompt**: Support custom prompts for Gemini, DashScope and other engines
 - **Language Selection**: Soniox, DashScope support multi-language selection
 
@@ -503,7 +503,7 @@ The settings page supports configuration switching by vendor, showing only corre
 ### 🎨 Tech Stack
 
 ```
-Kotlin 1.9.24
+Kotlin 2.2.20
 Android SDK 34 (Min SDK 29)
 Material Design 3
 Coroutines (async processing)
@@ -562,7 +562,13 @@ If this project helps you, please give it a Star ⭐️ and feel free to buy me 
 
 Thanks to the following users for their support and appreciation. Your encouragement is the driving force for the project's continuous development!
 
+王千郡 - 26.66 RMB
+
 天凉好个秋 - 16.66 RMB
+
+Return - 16.66 RMB
+
+树人 - 10.24 RMB
 
 flyhunterl - 6.66 RMB
 
@@ -573,6 +579,8 @@ flyhunterl - 6.66 RMB
 Thanks to the following open-source projects for their technical support:
 
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) - Provides technical support for local ASR models, making offline voice recognition possible
+- [SyncClipboard](https://github.com/Jeric-X/SyncClipboard) - Provides clipboard synchronization backend service (not running locally, requires server)
+- [Phosphor](https://github.com/phosphor-icons/homepage) - Provides almost all icons used in the software
 
 ---
 
