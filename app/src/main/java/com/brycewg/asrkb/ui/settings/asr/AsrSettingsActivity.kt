@@ -506,11 +506,17 @@ class AsrSettingsActivity : AppCompatActivity() {
             setText(prefs.gemModel)
             bindString { prefs.gemModel = it }
         }
+        
+        // 自定义词汇输入框 - 支持直接编辑
         findViewById<EditText>(R.id.etGeminiPrompt).apply {
             setText(prefs.gemPrompt)
-            setOnClickListener {
-                showEditGeminiPromptDialog()
-            }
+            bindString { prefs.gemPrompt = it }
+        }
+        
+        // 编辑按钮点击事件 - 打开全屏编辑对话框
+        findViewById<MaterialButton>(R.id.btnGeminiEditPrompt).setOnClickListener { v ->
+            hapticTapIfEnabled(v)
+            showCustomWordsEditDialog()
         }
 
         findViewById<MaterialSwitch>(R.id.switchGeminiDisableThinking).apply {
@@ -527,23 +533,47 @@ class AsrSettingsActivity : AppCompatActivity() {
             openUrlSafely("https://aistudio.google.com/app/apikey")
         }
     }
-
-    private fun showEditGeminiPromptDialog() {
+    
+    private fun showCustomWordsEditDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_edit_custom_words, null)
-        val editText = dialogView.findViewById<EditText>(R.id.etDialogCustomWords)
-        editText.setText(prefs.gemPrompt)
-
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.label_gemini_prompt_edit_title)
+        val etCustomWords = dialogView.findViewById<EditText>(R.id.etCustomWords)
+        val toolbar = dialogView.findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
+        val btnCancel = dialogView.findViewById<MaterialButton>(R.id.btnCancel)
+        val btnSave = dialogView.findViewById<MaterialButton>(R.id.btnSave)
+        
+        // 设置当前内容
+        etCustomWords.setText(prefs.gemPrompt)
+        
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setView(dialogView)
-            .setPositiveButton(android.R.string.ok) { dialog, _ ->
-                val newText = editText.text.toString()
-                prefs.gemPrompt = newText
-                findViewById<EditText>(R.id.etGeminiPrompt).setText(newText)
-                dialog.dismiss()
-            }
-            .setNegativeButton(R.string.btn_cancel, null)
-            .show()
+            .create()
+        
+        // Toolbar 关闭按钮
+        toolbar.setNavigationOnClickListener {
+            dialog.dismiss()
+        }
+        
+        // 取消按钮
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+        
+        // 保存按钮
+        btnSave.setOnClickListener {
+            val newText = etCustomWords.text.toString()
+            prefs.gemPrompt = newText
+            // 更新主界面的预览
+            findViewById<EditText>(R.id.etGeminiPrompt).setText(newText)
+            dialog.dismiss()
+        }
+        
+        dialog.show()
+        
+        // 设置对话框为全屏
+        dialog.window?.setLayout(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT
+        )
     }
 
     private fun setupSonioxSettings() {

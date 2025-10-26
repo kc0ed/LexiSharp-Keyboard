@@ -1160,7 +1160,7 @@ class Prefs(context: Context) {
         o.put(KEY_SC_PASSWORD, syncClipboardPassword)
         o.put(KEY_SC_AUTO_PULL, syncClipboardAutoPullEnabled)
         o.put(KEY_SC_PULL_INTERVAL_SEC, syncClipboardPullIntervalSec)
-        // WebDAV（可选）
+        // WebDAV 备份
         o.put(KEY_WD_URL, webdavUrl)
         o.put(KEY_WD_USERNAME, webdavUsername)
         o.put(KEY_WD_PASSWORD, webdavPassword)

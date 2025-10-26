@@ -642,25 +642,40 @@
             android:textColorHint="?attr/colorOnSurfaceVariant" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
+        <LinearLayout
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
-          app:boxBackgroundMode="outline"
-          android:hint="@string/label_gemini_prompt">
+          android:orientation="horizontal"
+          android:gravity="center_vertical">
 
-          <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etGeminiPrompt"
-            android:layout_width="match_parent"
+          <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:inputType="textMultiLine"
-            android:minLines="3"
-            android:maxLines="8"
-            android:focusable="false"
-            android:clickable="true"
-            android:gravity="top|start"
-            android:textColor="?attr/colorOnSurface"
-            android:textColorHint="?attr/colorOnSurfaceVariant" />
-        </com.google.android.material.textfield.TextInputLayout>
+            android:layout_weight="1"
+            app:boxBackgroundMode="outline"
+            android:hint="@string/label_gemini_prompt">
+
+            <com.google.android.material.textfield.TextInputEditText
+              android:id="@+id/etGeminiPrompt"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:inputType="textMultiLine"
+              android:minLines="2"
+              android:maxLines="3"
+              android:gravity="top|start"
+              android:textColor="?attr/colorOnSurface"
+              android:textColorHint="?attr/colorOnSurfaceVariant" />
+          </com.google.android.material.textfield.TextInputLayout>
+
+          <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGeminiEditPrompt"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            app:icon="@drawable/pencil_simple_line"
+            android:contentDescription="@string/label_edit_custom_words" />
+        </LinearLayout>
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/switchGeminiDisableThinking"
