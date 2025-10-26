@@ -445,6 +445,7 @@
     <!-- Audio -->
     <string name="label_audio_ducking_on_record">Audio ducking during recording</string>
     <string name="label_headset_mic_priority">Prefer headset microphone</string>
+    <string name="label_return_prev_ime_on_hide">Switch back to previous IME when hidden</string>
     <string name="toast_bt_connect_permission_required">Bluetooth connect permission is required to use headset mic</string>
     <string name="toast_bt_connect_permission_denied">Bluetooth connect permission denied; headset priority disabled</string>
 

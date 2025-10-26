@@ -137,6 +137,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_FCITX5_RETURN_ON_SWITCHER, false)
         set(value) = sp.edit { putBoolean(KEY_FCITX5_RETURN_ON_SWITCHER, value) }
 
+    // 键盘收起后切回上一个输入法（默认关闭）
+    var returnPrevImeOnHide: Boolean
+        get() = sp.getBoolean(KEY_RETURN_PREV_IME_ON_HIDE, false)
+        set(value) = sp.edit { putBoolean(KEY_RETURN_PREV_IME_ON_HIDE, value) }
+
     // 后台隐藏任务卡片（最近任务不显示预览图）
     var hideRecentTaskCard: Boolean
         get() = sp.getBoolean(KEY_HIDE_RECENT_TASK_CARD, false)
@@ -885,6 +890,7 @@ class Prefs(context: Context) {
         private const val KEY_FLOATING_POS_Y = "floating_ball_pos_y"
         private const val KEY_SWAP_AI_EDIT_IME_SWITCHER = "swap_ai_edit_ime_switcher"
         private const val KEY_FCITX5_RETURN_ON_SWITCHER = "fcitx5_return_on_switcher"
+        private const val KEY_RETURN_PREV_IME_ON_HIDE = "return_prev_ime_on_hide"
         private const val KEY_HIDE_RECENT_TASK_CARD = "hide_recent_task_card"
         private const val KEY_FLOATING_WRITE_COMPAT_ENABLED = "floating_write_compat_enabled"
         private const val KEY_FLOATING_WRITE_PASTE_ENABLED = "floating_write_paste_enabled"
@@ -1070,6 +1076,7 @@ class Prefs(context: Context) {
         o.put(KEY_KEYBOARD_BOTTOM_PADDING_DP, keyboardBottomPaddingDp)
         o.put(KEY_SWAP_AI_EDIT_IME_SWITCHER, swapAiEditWithImeSwitcher)
         o.put(KEY_FCITX5_RETURN_ON_SWITCHER, fcitx5ReturnOnImeSwitch)
+        o.put(KEY_RETURN_PREV_IME_ON_HIDE, returnPrevImeOnHide)
         o.put(KEY_HIDE_RECENT_TASK_CARD, hideRecentTaskCard)
         o.put(KEY_APP_LANGUAGE_TAG, appLanguageTag)
         o.put(KEY_FLOATING_SWITCHER_ENABLED, floatingSwitcherEnabled)
@@ -1209,6 +1216,7 @@ class Prefs(context: Context) {
             optBool(KEY_VOLC_VAD_ENABLED)?.let { volcVadEnabled = it }
             optBool(KEY_VOLC_NONSTREAM_ENABLED)?.let { volcNonstreamEnabled = it }
             optString(KEY_VOLC_LANGUAGE)?.let { volcLanguage = it }
+            optBool(KEY_RETURN_PREV_IME_ON_HIDE)?.let { returnPrevImeOnHide = it }
             optBool(KEY_VOLC_FIRST_CHAR_ACCEL_ENABLED)?.let { volcFirstCharAccelEnabled = it }
             // Soniox（若提供数组则优先；否则回退单值）
             if (o.has(KEY_SONIOX_LANGUAGES)) {

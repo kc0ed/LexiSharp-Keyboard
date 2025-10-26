@@ -100,6 +100,7 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
     private var prefsReceiver: BroadcastReceiver? = null
     private var syncClipboardManager: SyncClipboardManager? = null
     private var svPreloadTriggered: Boolean = false
+    private var suppressReturnPrevImeOnHideOnce: Boolean = false
 
     // ========== 生命周期 ==========
 
@@ -228,11 +229,8 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
         // 如果当前字段是密码框且用户选择自动切换，切回上一个输入法
         if (prefs.autoSwitchOnPassword && isPasswordEditor(info)) {
             try {
-                val ok = try {
-                    switchToPreviousInputMethod()
-                } catch (_: Throwable) {
-                    false
-                }
+                suppressReturnPrevImeOnHideOnce = true
+                val ok = try { switchToPreviousInputMethod() } catch (_: Throwable) { false }
                 if (!ok) {
                     val imm = getSystemService(InputMethodManager::class.java)
                     imm?.showInputMethodPicker()
@@ -280,6 +278,23 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
 
         // 键盘收起，解除预热（若未在录音）
         try { BluetoothRouteManager.setImeActive(this, false) } catch (t: Throwable) { android.util.Log.w("AsrKeyboardService", "BluetoothRouteManager setImeActive(false)", t) }
+
+        // 如开启：键盘收起后自动切回上一个输入法
+        if (prefs.returnPrevImeOnHide) {
+            if (suppressReturnPrevImeOnHideOnce) {
+                // 清除一次性抑制标记，避免连环切换
+                suppressReturnPrevImeOnHideOnce = false
+            } else {
+                try {
+                    val ok = try { switchToPreviousInputMethod() } catch (_: Throwable) { false }
+                    if (!ok) {
+                        // 若系统未允许切回，不做额外操作
+                    }
+                } catch (e: Throwable) {
+                    android.util.Log.w("AsrKeyboardService", "Auto return previous IME on hide failed", e)
+                }
+            }
+        }
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -546,11 +561,8 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                 try {
                     if (asrManager.isRunning()) asrManager.stopRecording()
                 } catch (_: Throwable) { }
-                val switched = try {
-                    switchToPreviousInputMethod()
-                } catch (_: Throwable) {
-                    false
-                }
+                suppressReturnPrevImeOnHideOnce = true
+                val switched = try { switchToPreviousInputMethod() } catch (_: Throwable) { false }
                 if (!switched) {
                     showImePicker()
                 }

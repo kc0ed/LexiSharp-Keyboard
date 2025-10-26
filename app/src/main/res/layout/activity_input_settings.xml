@@ -80,6 +80,13 @@
           android:text="@string/label_fcitx5_return_on_switcher" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
+          android:id="@+id/switchReturnPrevImeOnHide"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/label_return_prev_ime_on_hide" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
           android:id="@+id/switchHideRecentTasks"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"

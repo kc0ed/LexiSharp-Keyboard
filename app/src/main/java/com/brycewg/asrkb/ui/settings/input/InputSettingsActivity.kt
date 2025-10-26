@@ -41,6 +41,7 @@ class InputSettingsActivity : AppCompatActivity() {
         val switchMicSwipeUpAutoEnter = findViewById<MaterialSwitch>(R.id.switchMicSwipeUpAutoEnter)
         val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
         val switchFcitx5ReturnOnSwitcher = findViewById<MaterialSwitch>(R.id.switchFcitx5ReturnOnSwitcher)
+        val switchReturnPrevImeOnHide = findViewById<MaterialSwitch>(R.id.switchReturnPrevImeOnHide)
         val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
         val switchDuckMediaOnRecord = findViewById<MaterialSwitch>(R.id.switchDuckMediaOnRecord)
         val switchHeadsetMicPriority = findViewById<MaterialSwitch>(R.id.switchHeadsetMicPriority)
@@ -56,6 +57,7 @@ class InputSettingsActivity : AppCompatActivity() {
             switchMicTapToggle.isChecked = prefs.micTapToggleEnabled
             switchSwapAiEditWithSwitcher.isChecked = prefs.swapAiEditWithImeSwitcher
             switchFcitx5ReturnOnSwitcher.isChecked = prefs.fcitx5ReturnOnImeSwitch
+            switchReturnPrevImeOnHide.isChecked = prefs.returnPrevImeOnHide
             switchHideRecentTasks.isChecked = prefs.hideRecentTaskCard
             switchDuckMediaOnRecord.isChecked = prefs.duckMediaOnRecordEnabled
             switchHeadsetMicPriority.isChecked = prefs.headsetMicPriorityEnabled
@@ -110,6 +112,10 @@ class InputSettingsActivity : AppCompatActivity() {
                     try { switchMicTapToggle.isChecked = false } catch (_: Throwable) { }
                 }
             }
+        }
+        switchReturnPrevImeOnHide.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.returnPrevImeOnHide = isChecked
         }
         switchSwapAiEditWithSwitcher.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)
