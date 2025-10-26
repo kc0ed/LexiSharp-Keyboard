@@ -982,23 +982,33 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
             3 -> 1.30f
             else -> 1.0f
         }
-        if (scale == 1.0f) return
 
         fun dp(v: Float): Int {
             val d = view.resources.displayMetrics.density
             return (v * d + 0.5f).toInt()
         }
 
+        // 应用底部间距（无论是否缩放都需要）
         try {
             val fl = view as? android.widget.FrameLayout
             if (fl != null) {
                 val ps = fl.paddingStart
                 val pe = fl.paddingEnd
                 val pt = dp(8f * scale)
-                val pb = dp(12f * scale)
+                val basePb = dp(12f * scale)
+                // 添加用户设置的底部间距
+                val extraPadding = try {
+                    dp(prefs.keyboardBottomPaddingDp.toFloat())
+                } catch (_: Throwable) {
+                    0
+                }
+                val pb = basePb + extraPadding
                 fl.setPaddingRelative(ps, pt, pe, pb)
             }
         } catch (_: Throwable) { }
+
+        // 如果没有缩放，不需要调整按钮大小
+        if (scale == 1.0f) return
 
         try {
             val topRow = view.findViewById<androidx.constraintlayout.widget.ConstraintLayout>(R.id.rowTop)

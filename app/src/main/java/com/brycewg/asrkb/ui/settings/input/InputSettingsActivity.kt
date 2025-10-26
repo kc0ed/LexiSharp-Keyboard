@@ -46,6 +46,8 @@ class InputSettingsActivity : AppCompatActivity() {
         val switchHeadsetMicPriority = findViewById<MaterialSwitch>(R.id.switchHeadsetMicPriority)
         val tvKeyboardHeight = findViewById<TextView>(R.id.tvKeyboardHeightValue)
         val tvLanguage = findViewById<TextView>(R.id.tvLanguageValue)
+        val sliderBottomPadding = findViewById<com.google.android.material.slider.Slider>(R.id.sliderBottomPadding)
+        val tvBottomPaddingValue = findViewById<TextView>(R.id.tvBottomPaddingValue)
 
         fun applyPrefsToUi() {
             switchTrimTrailingPunct.isChecked = prefs.trimFinalTrailingPunct
@@ -63,6 +65,9 @@ class InputSettingsActivity : AppCompatActivity() {
 
         // 键盘高度：三档（点击弹出单选对话框）
         setupKeyboardHeightSelection(prefs, tvKeyboardHeight)
+
+        // 底部间距调节
+        setupBottomPaddingSlider(prefs, sliderBottomPadding, tvBottomPaddingValue)
 
         // 应用语言选择（点击弹出单选对话框）
         setupLanguageSelection(prefs, tvLanguage)
@@ -207,6 +212,29 @@ class InputSettingsActivity : AppCompatActivity() {
                     }
                 }
             )
+        }
+    }
+
+    /**
+     * 设置底部间距调节滑动条
+     */
+    private fun setupBottomPaddingSlider(
+        prefs: Prefs,
+        slider: com.google.android.material.slider.Slider,
+        tvValue: TextView
+    ) {
+        // 初始化滑动条值
+        slider.value = prefs.keyboardBottomPaddingDp.toFloat()
+        tvValue.text = getString(R.string.keyboard_bottom_padding_value, prefs.keyboardBottomPaddingDp)
+
+        // 监听滑动条变化
+        slider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                val dp = value.toInt()
+                prefs.keyboardBottomPaddingDp = dp
+                tvValue.text = getString(R.string.keyboard_bottom_padding_value, dp)
+                sendRefreshBroadcast()
+            }
         }
     }
 

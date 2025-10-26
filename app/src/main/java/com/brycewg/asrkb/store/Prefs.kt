@@ -122,6 +122,11 @@ class Prefs(context: Context) {
         get() = sp.getInt(KEY_KEYBOARD_HEIGHT_TIER, 1).coerceIn(1, 3)
         set(value) = sp.edit { putInt(KEY_KEYBOARD_HEIGHT_TIER, value.coerceIn(1, 3)) }
 
+    // 键盘底部间距（单位 dp，范围 0-100，默认 0）
+    var keyboardBottomPaddingDp: Int
+        get() = sp.getInt(KEY_KEYBOARD_BOTTOM_PADDING_DP, 0).coerceIn(0, 100)
+        set(value) = sp.edit { putInt(KEY_KEYBOARD_BOTTOM_PADDING_DP, value.coerceIn(0, 100)) }
+
     // 是否交换 AI 编辑与输入法切换按钮位置
     var swapAiEditWithImeSwitcher: Boolean
         get() = sp.getBoolean(KEY_SWAP_AI_EDIT_IME_SWITCHER, false)
@@ -872,6 +877,7 @@ class Prefs(context: Context) {
         private const val KEY_AUTO_STOP_SILENCE_WINDOW_MS = "auto_stop_silence_window_ms"
         private const val KEY_AUTO_STOP_SILENCE_SENSITIVITY = "auto_stop_silence_sensitivity"
         private const val KEY_KEYBOARD_HEIGHT_TIER = "keyboard_height_tier"
+        private const val KEY_KEYBOARD_BOTTOM_PADDING_DP = "keyboard_bottom_padding_dp"
         private const val KEY_FLOATING_SWITCHER_ENABLED = "floating_switcher_enabled"
         private const val KEY_FLOATING_SWITCHER_ALPHA = "floating_switcher_alpha"
         private const val KEY_FLOATING_BALL_SIZE_DP = "floating_ball_size_dp"
@@ -1061,6 +1067,7 @@ class Prefs(context: Context) {
         o.put(KEY_AUTO_STOP_SILENCE_WINDOW_MS, autoStopSilenceWindowMs)
         o.put(KEY_AUTO_STOP_SILENCE_SENSITIVITY, autoStopSilenceSensitivity)
         o.put(KEY_KEYBOARD_HEIGHT_TIER, keyboardHeightTier)
+        o.put(KEY_KEYBOARD_BOTTOM_PADDING_DP, keyboardBottomPaddingDp)
         o.put(KEY_SWAP_AI_EDIT_IME_SWITCHER, swapAiEditWithImeSwitcher)
         o.put(KEY_FCITX5_RETURN_ON_SWITCHER, fcitx5ReturnOnImeSwitch)
         o.put(KEY_HIDE_RECENT_TASK_CARD, hideRecentTaskCard)
@@ -1170,6 +1177,7 @@ class Prefs(context: Context) {
             optInt(KEY_AUTO_STOP_SILENCE_WINDOW_MS)?.let { autoStopSilenceWindowMs = it }
             optInt(KEY_AUTO_STOP_SILENCE_SENSITIVITY)?.let { autoStopSilenceSensitivity = it }
             optInt(KEY_KEYBOARD_HEIGHT_TIER)?.let { keyboardHeightTier = it }
+            optInt(KEY_KEYBOARD_BOTTOM_PADDING_DP)?.let { keyboardBottomPaddingDp = it }
             optBool(KEY_SWAP_AI_EDIT_IME_SWITCHER)?.let { swapAiEditWithImeSwitcher = it }
             optBool(KEY_FCITX5_RETURN_ON_SWITCHER)?.let { fcitx5ReturnOnImeSwitch = it }
             optBool(KEY_HIDE_RECENT_TASK_CARD)?.let { hideRecentTaskCard = it }

@@ -367,6 +367,10 @@
     <string name="keyboard_height_medium">Medium</string>
     <string name="keyboard_height_large">Large</string>
 
+    <!-- Keyboard bottom padding -->
+    <string name="label_keyboard_bottom_padding">Keyboard bottom padding</string>
+    <string name="keyboard_bottom_padding_value">%d dp</string>
+
     <!-- Keyboard layout option -->
     <string name="label_swap_ai_edit_switcher">Swap positions of AI Edit and IME switcher</string>
     <string name="label_fcitx5_return_on_switcher">Fcitx5 integration: hide self on IME switch key</string>

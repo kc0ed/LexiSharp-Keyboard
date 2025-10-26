@@ -127,6 +127,44 @@
           android:layout_height="wrap_content"
           android:visibility="gone" />
 
+        <!-- 底部间距调节 -->
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="16dp"
+          android:textColor="?attr/colorOnSurface"
+          android:textStyle="bold"
+          android:text="@string/label_keyboard_bottom_padding" />
+
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:orientation="horizontal"
+          android:gravity="center_vertical">
+
+          <com.google.android.material.slider.Slider
+            android:id="@+id/sliderBottomPadding"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:valueFrom="0"
+            android:valueTo="100"
+            android:stepSize="5"
+            android:value="0" />
+
+          <TextView
+            android:id="@+id/tvBottomPaddingValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:minWidth="48dp"
+            android:textAlignment="textEnd"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:text="0 dp" />
+
+        </LinearLayout>
+
         <!-- App language selection -->
         <TextView
           android:layout_width="match_parent"
