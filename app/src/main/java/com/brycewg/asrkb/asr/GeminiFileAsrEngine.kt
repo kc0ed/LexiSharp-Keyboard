@@ -40,7 +40,7 @@ class GeminiFileAsrEngine(
 
     override fun ensureReady(): Boolean {
         if (!super.ensureReady()) return false
-        if (prefs.gemApiKey.isBlank()) {
+        if (prefs.getGeminiApiKeys().isEmpty()) {
             listener.onError(context.getString(R.string.error_missing_gemini_key))
             return false
         }
@@ -51,37 +51,74 @@ class GeminiFileAsrEngine(
         try {
             val wav = pcmToWav(pcm)
             val b64 = Base64.encodeToString(wav, Base64.NO_WRAP)
-            val apiKey = prefs.gemApiKey
+            val apiKeys = prefs.getGeminiApiKeys()
+            val apiKey = apiKeys.random()
             val model = prefs.gemModel.ifBlank { Prefs.DEFAULT_GEM_MODEL }
-            val prompt = prefs.gemPrompt.ifBlank { DEFAULT_GEM_PROMPT }
+            
+            val customWords = prefs.gemPrompt.split("\n").map { it.trim() }.filter { it.isNotBlank() }
+            val finalPrompt = if (customWords.isNotEmpty()) {
+                DEFAULT_GEM_PROMPT + " 另外，请特别注意以下自定义词汇： " + customWords.joinToString("，")
+            } else {
+                DEFAULT_GEM_PROMPT
+            }
 
-            val body = buildGeminiRequestBody(b64, prompt)
+            val body = buildGeminiRequestBody(b64, finalPrompt, model)
             val req = Request.Builder()
                 .url("${GEM_BASE}/models/${model}:generateContent?key=${apiKey}")
                 .addHeader("Content-Type", "application/json; charset=utf-8")
                 .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
                 .build()
             val t0 = System.nanoTime()
-            val resp = http.newCall(req).execute()
-            resp.use { r ->
-                val str = r.body?.string().orEmpty()
-                if (!r.isSuccessful) {
-                    val hint = extractGeminiError(str)
-                    val detail = formatHttpDetail(r.message, hint)
-                    listener.onError(
-                        context.getString(R.string.error_request_failed_http, r.code, detail)
-                    )
-                    return
-                }
-                val text = parseGeminiText(str)
-                if (text.isNotBlank()) {
-                    val dt = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
-                    try { onRequestDuration?.invoke(dt) } catch (_: Throwable) {}
-                    listener.onFinal(text)
-                } else {
-                    listener.onError(context.getString(R.string.error_asr_empty_result))
+            var lastException: Throwable? = null
+            for (i in 0..2) { // Retry up to 2 times (total 3 attempts)
+                try {
+                    val resp = http.newCall(req).execute()
+                    resp.use { r ->
+                        val str = r.body?.string().orEmpty()
+                        if (r.isSuccessful) {
+                            val text = parseGeminiText(str)
+                            if (text.isNotBlank()) {
+                                val dt = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - t0)
+                                try { onRequestDuration?.invoke(dt) } catch (_: Throwable) {}
+                                listener.onFinal(text)
+                            } else {
+                                listener.onError(context.getString(R.string.error_asr_empty_result))
+                            }
+                            return // Success, exit function
+                        }
+
+                        // Handle retryable errors
+                        if (r.code == 429 || r.code >= 500) {
+                            val hint = extractGeminiError(str)
+                            val detail = formatHttpDetail(r.message, hint)
+                            Log.w(TAG, "Request failed with code ${r.code}: $detail. Attempt ${i + 1}/3.")
+                            if (i < 2) {
+                                kotlinx.coroutines.delay(500L * (i + 1)) // Exponential backoff
+                                lastException = RuntimeException("HTTP ${r.code}: $detail")
+                                return@use // Continue to next iteration of the loop
+                            }
+                        }
+
+                        // Non-retryable error
+                        val hint = extractGeminiError(str)
+                        val detail = formatHttpDetail(r.message, hint)
+                        listener.onError(
+                            context.getString(R.string.error_request_failed_http, r.code, detail)
+                        )
+                        return
+                    }
+                } catch (t: Throwable) {
+                    lastException = t
+                    Log.w(TAG, "Recognize attempt ${i + 1} failed with exception.", t)
+                    if (i < 2) {
+                        kotlinx.coroutines.delay(500L * (i + 1))
+                    }
                 }
             }
+            // All retries failed
+            listener.onError(
+                context.getString(R.string.error_recognize_failed_with_reason, lastException?.message ?: "Unknown error after retries")
+            )
         } catch (t: Throwable) {
             listener.onError(
                 context.getString(R.string.error_recognize_failed_with_reason, t.message ?: "")
@@ -92,7 +129,7 @@ class GeminiFileAsrEngine(
     /**
      * 构建 Gemini API 请求体
      */
-    private fun buildGeminiRequestBody(base64Wav: String, prompt: String): String {
+    private fun buildGeminiRequestBody(base64Wav: String, prompt: String, model: String): String {
         val inlineAudio = JSONObject().apply {
             put("inline_data", JSONObject().apply {
                 put("mime_type", "audio/wav")
@@ -109,7 +146,20 @@ class GeminiFileAsrEngine(
         }
         return JSONObject().apply {
             put("contents", org.json.JSONArray().apply { put(user) })
-            put("generation_config", JSONObject().apply { put("temperature", 0) })
+            put("generation_config", JSONObject().apply {
+                put("temperature", 0)
+                if (prefs.geminiDisableThinking) {
+                    // 根据模型类型设置合适的 thinkingBudget
+                    val budget = when {
+                        model.contains("2.5-pro", ignoreCase = true) -> 128 // Pro 最低 128
+                        model.contains("2.5-flash", ignoreCase = true) -> 0  // Flash 可以为 0
+                        else -> 0 // 其他情况默认为 0
+                    }
+                    put("thinkingConfig", JSONObject().apply {
+                        put("thinkingBudget", budget)
+                    })
+                }
+            })
         }.toString()
     }
 
