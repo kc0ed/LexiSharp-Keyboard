@@ -242,7 +242,7 @@ class SonioxStreamAsrEngine(
     private fun buildConfigJson(): String {
         val o = JSONObject().apply {
             put("api_key", prefs.sonioxApiKey)
-            put("model", "stt-rt-preview")
+            put("model", "stt-rt-v3")
             // 原始 PCM；若改为 auto，可不传采样率/通道
             put("audio_format", "pcm_s16le")
             put("sample_rate", sampleRate)

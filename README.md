@@ -401,8 +401,8 @@
 
 **支持模式**:
 
-- 文件识别: `stt-async-preview`
-- 流式识别: `stt-rt-preview`
+- 文件识别: `stt-async-v3`
+- 流式识别: `stt-rt-v3`
 
 **配置参数**:
 

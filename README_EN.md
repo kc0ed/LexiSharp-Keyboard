@@ -403,8 +403,8 @@ The settings page supports configuration switching by vendor, showing only corre
 
 **Supported Modes**:
 
-- File Recognition: `stt-async-preview`
-- Streaming Recognition: `stt-rt-preview`
+- File Recognition: `stt-async-v3`
+- Streaming Recognition: `stt-rt-v3`
 
 **Configuration Parameters**:
 
