@@ -9,15 +9,36 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.brycewg.asrkb"
         minSdk =29
         targetSdk = 34
-        versionCode = 81
-        versionName = "3.2.6"
+        versionCode = 82
+        versionName = "3.2.6" // 基础版本号
 
         // 仅打包 arm64-v8a 以控制体积；可按需扩展
         ndk {
             abiFilters += listOf("arm64-v8a")
+        }
+    }
+
+    // 定义风味维度
+    flavorDimensions += "version"
+
+    productFlavors {
+        create("prod") {
+            dimension = "version"
+            applicationId = "com.brycewg.asrkb"
+            // 确保 prod 版本没有这个标志或为 false
+            buildConfigField("boolean", "IS_DEV_BUILD", "false")
+        }
+        create("dev") {
+            dimension = "version"
+            applicationId = "com.brycewg.asrkb.dev"
+            versionNameSuffix = ".beta5-dev" // 更新 beta 版本
+            // 为 dev 版本定义不同的应用名称和项目主页
+            resValue("string", "app_name", "言犀键盘 Dev版")
+            resValue("string", "about_project_url", "https://github.com/kc0ed/LexiSharp-Keyboard")
+            // 添加一个构建时标志，用于在代码中区分 dev 版本
+            buildConfigField("boolean", "IS_DEV_BUILD", "true")
         }
     }
 
@@ -55,12 +76,21 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     // 由于应用在运行时支持手动切换语言，禁用 App Bundle 的按语言拆分，
     bundle {
         language {
             enableSplit = false
+            // 自定义 APK 输出文件名，格式为：AppName-Version.apk
+            applicationVariants.all {
+                outputs.forEach { output ->
+                    val outputImpl = output as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+                    val appName = if (flavorName == "dev") "ASR-KB-Dev" else "ASR-Keyboard"
+                    outputImpl.outputFileName = "${appName}-${versionName}.apk"
+                }
+            }
         }
     }
     // - 排除不需要的 JNI 库：

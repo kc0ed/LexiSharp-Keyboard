@@ -10,5 +10,3 @@ build/reports/problems/problems-report.html
 .worktrees/
 dev_docs/
 .crush
-tools/
-dist/

@@ -136,6 +136,7 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                     val v = rootView
                     if (v != null) {
                         applyKeyboardHeightScale(v)
+                        applyButtonSwapAccordingToPrefs(v)
                         v.requestLayout()
                     }
                 }
@@ -186,6 +187,7 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
         setupListeners()
 
         // 应用偏好设置
+        applyButtonSwapAccordingToPrefs(view)
         applyKeyboardHeightScale(view)
         applyPunctuationLabels()
 
@@ -249,6 +251,9 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
         try {
             rootView?.post { syncSystemBarsToKeyboardBackground(rootView) }
         } catch (_: Throwable) { }
+
+        // 更新按钮位置（可能在设置中改变）
+        applyButtonSwapAccordingToPrefs(rootView)
 
         // 若正在录音，恢复中间结果为 composing
         if (asrManager.isRunning()) {
@@ -921,6 +926,60 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
                 syncClipboardManager?.stop()
             }
         } catch (_: Throwable) { }
+    }
+
+    private fun applyButtonSwapAccordingToPrefs(view: View?) {
+        if (view == null) return
+        val ai = btnAiEdit ?: return
+        val ime = btnImeSwitcher ?: return
+        val lpAi = ai.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams ?: return
+        val lpIme = ime.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams ?: return
+        val unset = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+
+        val sixPx = try {
+            val d = view.resources.displayMetrics.density
+            (6f * d + 0.5f).toInt()
+        } catch (_: Throwable) {
+            0
+        }
+
+        if (prefs.swapAiEditWithImeSwitcher) {
+            lpAi.startToStart = unset
+            lpAi.endToEnd = unset
+            lpAi.endToStart = unset
+            lpAi.startToEnd = R.id.btnSettings
+            lpAi.marginStart = sixPx
+            lpAi.marginEnd = 0
+            lpAi.horizontalBias = 0.5f
+            ai.layoutParams = lpAi
+
+            lpIme.startToStart = unset
+            lpIme.endToEnd = unset
+            lpIme.startToEnd = R.id.btnAiEdit
+            lpIme.endToStart = R.id.btnEnter
+            lpIme.marginStart = 0
+            lpIme.marginEnd = sixPx
+            lpIme.horizontalBias = 1.0f
+            ime.layoutParams = lpIme
+        } else {
+            lpIme.startToStart = unset
+            lpIme.endToEnd = unset
+            lpIme.endToStart = unset
+            lpIme.startToEnd = R.id.btnSettings
+            lpIme.marginStart = sixPx
+            lpIme.marginEnd = 0
+            lpIme.horizontalBias = 0.5f
+            ime.layoutParams = lpIme
+
+            lpAi.startToStart = unset
+            lpAi.endToEnd = unset
+            lpAi.startToEnd = R.id.btnImeSwitcher
+            lpAi.endToStart = R.id.btnEnter
+            lpAi.marginStart = 0
+            lpAi.marginEnd = sixPx
+            lpAi.horizontalBias = 1.0f
+            ai.layoutParams = lpAi
+        }
     }
 
     private fun applyKeyboardHeightScale(view: View?) {

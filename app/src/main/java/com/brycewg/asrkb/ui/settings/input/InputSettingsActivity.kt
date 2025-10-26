@@ -39,6 +39,7 @@ class InputSettingsActivity : AppCompatActivity() {
         val switchMicHaptic = findViewById<MaterialSwitch>(R.id.switchMicHaptic)
         val switchMicTapToggle = findViewById<MaterialSwitch>(R.id.switchMicTapToggle)
         val switchMicSwipeUpAutoEnter = findViewById<MaterialSwitch>(R.id.switchMicSwipeUpAutoEnter)
+        val switchSwapAiEditWithSwitcher = findViewById<MaterialSwitch>(R.id.switchSwapAiEditWithSwitcher)
         val switchFcitx5ReturnOnSwitcher = findViewById<MaterialSwitch>(R.id.switchFcitx5ReturnOnSwitcher)
         val switchReturnPrevImeOnHide = findViewById<MaterialSwitch>(R.id.switchReturnPrevImeOnHide)
         val switchHideRecentTasks = findViewById<MaterialSwitch>(R.id.switchHideRecentTasks)
@@ -54,6 +55,7 @@ class InputSettingsActivity : AppCompatActivity() {
             switchAutoSwitchPassword.isChecked = prefs.autoSwitchOnPassword
             switchMicHaptic.isChecked = prefs.micHapticEnabled
             switchMicTapToggle.isChecked = prefs.micTapToggleEnabled
+            switchSwapAiEditWithSwitcher.isChecked = prefs.swapAiEditWithImeSwitcher
             switchFcitx5ReturnOnSwitcher.isChecked = prefs.fcitx5ReturnOnImeSwitch
             switchReturnPrevImeOnHide.isChecked = prefs.returnPrevImeOnHide
             switchHideRecentTasks.isChecked = prefs.hideRecentTaskCard
@@ -114,6 +116,11 @@ class InputSettingsActivity : AppCompatActivity() {
         switchReturnPrevImeOnHide.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)
             prefs.returnPrevImeOnHide = isChecked
+        }
+        switchSwapAiEditWithSwitcher.setOnCheckedChangeListener { btn, isChecked ->
+            hapticTapIfEnabled(btn)
+            prefs.swapAiEditWithImeSwitcher = isChecked
+            sendRefreshBroadcast()
         }
         switchFcitx5ReturnOnSwitcher.setOnCheckedChangeListener { btn, isChecked ->
             hapticTapIfEnabled(btn)

@@ -11,6 +11,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import android.content.pm.PackageManager
+import com.brycewg.asrkb.BuildConfig
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.store.Prefs
@@ -36,20 +37,15 @@ class AboutActivity : AppCompatActivity() {
     val btnGithub = findViewById<Button>(R.id.btnOpenGithub)
 
     tvAppName.text = getString(R.string.about_app_name, getString(R.string.app_name))
-    val pm = packageManager
-    val pInfo = try {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        pm.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
-      } else {
-        @Suppress("DEPRECATION")
-        pm.getPackageInfo(packageName, 0)
-      }
-    } catch (_: Exception) { null }
-
-    val versionName = pInfo?.versionName ?: ""
-    val versionCodeLong = pInfo?.longVersionCode ?: 0L
-    tvVersion.text = getString(R.string.about_version, "$versionName ($versionCodeLong)")
-    tvPackage.text = getString(R.string.about_package, packageName)
+    // Use BuildConfig for reliable version info, avoiding PackageManager issues.
+    val versionName = BuildConfig.VERSION_NAME
+    val versionCode = BuildConfig.VERSION_CODE
+    var versionText = getString(R.string.about_version, "$versionName ($versionCode)")
+    if (BuildConfig.IS_DEV_BUILD) {
+        versionText += " (Dev Build)"
+    }
+    tvVersion.text = versionText
+    tvPackage.text = getString(R.string.about_package, BuildConfig.APPLICATION_ID)
 
     btnGithub.setOnClickListener {
       try {
