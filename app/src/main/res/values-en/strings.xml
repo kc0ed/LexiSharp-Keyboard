@@ -38,6 +38,20 @@
     <string name="label_mic_swipe_up_auto_enter">Swipe up on release to send</string>
     <string name="btn_retry">Connect failed, retry?</string>
 
+    <!-- Edit panel content descriptions -->
+    <string name="cd_return_main">Back to main keyboard</string>
+    <string name="cd_apply_preset_prompt">Apply preset prompt</string>
+    <string name="cd_cursor_left">Move cursor left</string>
+    <string name="cd_cursor_right">Move cursor right</string>
+    <string name="cd_numpad">Number pad</string>
+    <string name="cd_select_toggle">Toggle selection mode</string>
+    <string name="cd_select_all">Select all</string>
+    <string name="cd_copy">Copy</string>
+    <string name="cd_paste">Paste</string>
+    <string name="cd_move_home">Move to start</string>
+    <string name="cd_move_end">Move to end</string>
+    <string name="cd_undo">Undo</string>
+
     <string name="settings_instructions">First-time setup:\n1. Tap "Enable Keyboard" and enable LexiSharp Keyboard in system settings\n2. Tap "Choose Keyboard" to switch to LexiSharp Keyboard\n3. Grant microphone permission, then long‑press the mic button on the keyboard to try</string>
     <string name="btn_one_click_setup">One-click Setup</string>
     <string name="btn_show_guide">View Quick Guide</string>
@@ -372,7 +386,6 @@
     <string name="keyboard_bottom_padding_value">%d dp</string>
 
     <!-- Keyboard layout option -->
-    <string name="label_swap_ai_edit_switcher">Swap positions of AI Edit and IME switcher</string>
     <string name="label_fcitx5_return_on_switcher">Fcitx5 integration: hide self on IME switch key</string>
     <string name="label_hide_recent_task_card">Hide recent task preview</string>
 

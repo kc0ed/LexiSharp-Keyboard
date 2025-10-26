@@ -66,13 +66,6 @@
           android:text="@string/label_mic_swipe_up_auto_enter" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
-          android:id="@+id/switchSwapAiEditWithSwitcher"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
-          android:text="@string/label_swap_ai_edit_switcher" />
-
-        <com.google.android.material.materialswitch.MaterialSwitch
           android:id="@+id/switchFcitx5ReturnOnSwitcher"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"

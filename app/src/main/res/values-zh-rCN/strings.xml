@@ -360,7 +360,6 @@
     <string name="keyboard_bottom_padding_value">%d dp</string>
 
     <!-- Keyboard layout option -->
-    <string name="label_swap_ai_edit_switcher">交换 AI 编辑与输入法切换键位置</string>
     <string name="label_fcitx5_return_on_switcher">Fcitx5联动-通过输入法切换键返回</string>
     <string name="label_hide_recent_task_card">后台隐藏任务卡片</string>
 
