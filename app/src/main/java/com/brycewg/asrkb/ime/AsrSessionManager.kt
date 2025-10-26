@@ -9,6 +9,7 @@ import android.media.AudioManager
 import android.media.AudioFocusRequest
 import android.media.AudioAttributes
 import com.brycewg.asrkb.asr.*
+import com.brycewg.asrkb.asr.BluetoothRouteManager
 import com.brycewg.asrkb.store.Prefs
 import kotlinx.coroutines.CoroutineScope
 import java.util.Locale
@@ -249,6 +250,8 @@ class AsrSessionManager(
             Log.e(TAG, "Local model preload guard failed", t)
         }
         asrEngine?.start()
+        // 录音期间保持耳机路由
+        try { BluetoothRouteManager.onRecordingStarted(context) } catch (t: Throwable) { Log.w(TAG, "BluetoothRouteManager onRecordingStarted", t) }
     }
 
     /**
@@ -262,6 +265,8 @@ class AsrSessionManager(
         } catch (t: Throwable) {
             Log.w(TAG, "abandonAudioFocusIfNeeded failed on stopRecording", t)
         }
+        // 若无键盘可见，录音结束后可撤销预热
+        try { BluetoothRouteManager.onRecordingStopped(context) } catch (t: Throwable) { Log.w(TAG, "BluetoothRouteManager onRecordingStopped", t) }
     }
 
     /**

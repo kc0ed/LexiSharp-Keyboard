@@ -143,6 +143,15 @@ class InputSettingsActivity : AppCompatActivity() {
                 }
             }
             prefs.headsetMicPriorityEnabled = isChecked
+            if (!isChecked) {
+                // 若用户关闭耳机优先，立刻撤销可能存在的预热连接
+                try {
+                    com.brycewg.asrkb.asr.BluetoothRouteManager.onRecordingStopped(this)
+                    com.brycewg.asrkb.asr.BluetoothRouteManager.setImeActive(this, false)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Failed to converge route after disabling headset priority", t)
+                }
+            }
         }
 
         // 初始应用一次"从最近任务中排除"设置

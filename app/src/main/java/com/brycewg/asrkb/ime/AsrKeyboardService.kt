@@ -26,6 +26,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowInsetsControllerCompat
 import com.brycewg.asrkb.R
 import com.brycewg.asrkb.asr.AsrVendor
+import com.brycewg.asrkb.asr.BluetoothRouteManager
 import com.brycewg.asrkb.asr.LlmPostProcessor
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.SettingsActivity
@@ -263,6 +264,9 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
 
         // 启动剪贴板同步
         startClipboardSync()
+
+        // 预热耳机路由（键盘显示）
+        try { BluetoothRouteManager.setImeActive(this, true) } catch (t: Throwable) { android.util.Log.w("AsrKeyboardService", "BluetoothRouteManager setImeActive(true)", t) }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -273,6 +277,9 @@ class AsrKeyboardService : InputMethodService(), KeyboardActionHandler.UiListene
         try {
             syncClipboardManager?.stop()
         } catch (_: Throwable) { }
+
+        // 键盘收起，解除预热（若未在录音）
+        try { BluetoothRouteManager.setImeActive(this, false) } catch (t: Throwable) { android.util.Log.w("AsrKeyboardService", "BluetoothRouteManager setImeActive(false)", t) }
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {

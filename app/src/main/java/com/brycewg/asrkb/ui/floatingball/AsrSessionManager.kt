@@ -9,6 +9,7 @@ import android.media.AudioManager
 import android.media.AudioFocusRequest
 import android.media.AudioAttributes
 import com.brycewg.asrkb.asr.*
+import com.brycewg.asrkb.asr.BluetoothRouteManager
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.AsrAccessibilityService.FocusContext
 import kotlinx.coroutines.CoroutineScope
@@ -107,6 +108,7 @@ class AsrSessionManager(
         // 启动引擎
         listener.onSessionStateChanged(FloatingBallState.Recording)
         asrEngine?.start()
+        try { BluetoothRouteManager.onRecordingStarted(context) } catch (t: Throwable) { Log.w(TAG, "BluetoothRouteManager onRecordingStarted", t) }
     }
 
     /** 停止录音 */
@@ -119,6 +121,7 @@ class AsrSessionManager(
         } catch (t: Throwable) {
             Log.w(TAG, "abandonAudioFocusIfNeeded failed on stopRecording", t)
         }
+        try { BluetoothRouteManager.onRecordingStopped(context) } catch (t: Throwable) { Log.w(TAG, "BluetoothRouteManager onRecordingStopped", t) }
 
         // 进入处理阶段
         listener.onSessionStateChanged(FloatingBallState.Processing)

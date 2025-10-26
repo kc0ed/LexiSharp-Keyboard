@@ -94,6 +94,7 @@ class AudioCaptureManager(
 
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         var scoStarted = false
+        var scoWasOnBefore = false
         var audioModeChanged = false
         var previousAudioMode: Int? = null
         var commDeviceSet = false
@@ -104,13 +105,21 @@ class AudioCaptureManager(
         // 1.5. 如开启“耳机麦克风优先”，在构建 AudioRecord 之前准备音频路由
         if (prefs.headsetMicPriorityEnabled) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val res = prepareCommunicationDevice(audioManager)
-                commDeviceSet = res.commDeviceSet
-                commListener = res.listenerToken
-                preferredInputDevice = res.selectedDevice
-                routePrepared = res.routeReady
-                if (!res.routeReady) {
-                    Log.w(TAG, "Communication device set but route not confirmed within timeout")
+                // 若已有通信设备（可能由预热设置），则不重复设置，也不在 finally 清理
+                val cur = try { audioManager.getCommunicationDevice() } catch (_: Throwable) { null }
+                if (cur != null && (cur.type == AudioDeviceInfo.TYPE_BLE_HEADSET || cur.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || cur.type == AudioDeviceInfo.TYPE_WIRED_HEADSET)) {
+                    preferredInputDevice = cur
+                    routePrepared = true
+                    commDeviceSet = false
+                } else {
+                    val res = prepareCommunicationDevice(audioManager)
+                    commDeviceSet = res.commDeviceSet
+                    commListener = res.listenerToken
+                    preferredInputDevice = res.selectedDevice
+                    routePrepared = res.routeReady
+                    if (!res.routeReady) {
+                        Log.w(TAG, "Communication device set but route not confirmed within timeout")
+                    }
                 }
             }
 
@@ -128,15 +137,20 @@ class AudioCaptureManager(
                     }
 
                     if (preferredInputDevice?.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
-                        // 通话模式可改善部分设备的路由与增益
-                        previousAudioMode = audioManager.mode
-                        try {
-                            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-                            audioModeChanged = true
-                        } catch (t: Throwable) {
-                            Log.w(TAG, "Failed to set audio mode to IN_COMMUNICATION", t)
+                        // 通话模式可改善部分设备的路由与增益（仅在当前非通话模式时切换）
+                        val curMode = try { audioManager.mode } catch (_: Throwable) { AudioManager.MODE_NORMAL }
+                        if (curMode != AudioManager.MODE_IN_COMMUNICATION) {
+                            previousAudioMode = curMode
+                            try {
+                                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                                audioModeChanged = true
+                            } catch (t: Throwable) {
+                                Log.w(TAG, "Failed to set audio mode to IN_COMMUNICATION", t)
+                            }
                         }
 
+                        // 记录调用前是否已为 SCO，避免 finally 误停预热的 SCO
+                        scoWasOnBefore = try { audioManager.isBluetoothScoOn } catch (_: Throwable) { false }
                         val connected = startScoAndAwaitConnected(audioManager)
                         if (connected) {
                             scoStarted = true
@@ -274,7 +288,7 @@ class AudioCaptureManager(
             } catch (t: Throwable) {
                 Log.w(TAG, "Failed clearing communication device", t)
             }
-            if (scoStarted) {
+            if (scoStarted && !scoWasOnBefore) {
                 try {
                     audioManager.stopBluetoothSco()
                     Log.i(TAG, "Bluetooth SCO stopped")
@@ -458,6 +472,7 @@ class AudioCaptureManager(
         var listenerToken: Any? = null
         var setOk = false
         var routeReady = false
+        val t0 = try { android.os.SystemClock.elapsedRealtime() } catch (_: Throwable) { 0L }
         try {
             val candidates = try {
                 audioManager.getAvailableCommunicationDevices()
@@ -488,6 +503,8 @@ class AudioCaptureManager(
 
             val cur = try { audioManager.getCommunicationDevice() } catch (_: Throwable) { null }
             if (cur != null && selected.id == cur.id) {
+                val dt = if (t0 > 0) (android.os.SystemClock.elapsedRealtime() - t0) else -1
+                if (dt >= 0) Log.i(TAG, "Communication device ready immediately in ${dt}ms (id=${cur.id})")
                 return CommRouteResult(true, selected, null, true)
             }
 
@@ -499,6 +516,8 @@ class AudioCaptureManager(
                     }
                     val l = AudioManager.OnCommunicationDeviceChangedListener { dev ->
                         if (dev != null && selected != null && dev.id == selected.id) {
+                            val dt = if (t0 > 0) (android.os.SystemClock.elapsedRealtime() - t0) else -1
+                            if (dt >= 0) Log.i(TAG, "Communication device ready in ${dt}ms (id=${dev.id})")
                             if (cont.isActive) cont.resume(true)
                         }
                     }
@@ -551,9 +570,18 @@ class AudioCaptureManager(
                 Log.w(TAG, "Bluetooth SCO not available off call on this device")
                 return false
             }
+            try {
+                if (am.isBluetoothScoOn) {
+                    Log.i(TAG, "Bluetooth SCO already on; treat as connected")
+                    return true
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Query isBluetoothScoOn failed", t)
+            }
 
             val filter = IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED)
             var receiver: android.content.BroadcastReceiver? = null
+            val t0 = try { android.os.SystemClock.elapsedRealtime() } catch (_: Throwable) { 0L }
             val ok = withTimeoutOrNull(2500L) {
                 suspendCancellableCoroutine<Boolean> { cont ->
                     receiver = object : android.content.BroadcastReceiver() {
@@ -564,13 +592,19 @@ class AudioCaptureManager(
                                 AudioManager.SCO_AUDIO_STATE_ERROR
                             )
                             when (state) {
-                                AudioManager.SCO_AUDIO_STATE_CONNECTED -> if (cont.isActive) cont.resume(true)
+                                AudioManager.SCO_AUDIO_STATE_CONNECTED -> {
+                                    val dt = if (t0 > 0) (android.os.SystemClock.elapsedRealtime() - t0) else -1
+                                    if (dt >= 0) Log.i(TAG, "Bluetooth SCO connected in ${dt}ms")
+                                    if (cont.isActive) cont.resume(true)
+                                }
                                 AudioManager.SCO_AUDIO_STATE_ERROR -> if (cont.isActive) cont.resume(false)
                             }
                         }
                     }
                     try { context.registerReceiver(receiver, filter) } catch (t: Throwable) { Log.w(TAG, "registerReceiver failed", t) }
-                    try { am.startBluetoothSco() } catch (t: Throwable) {
+                    try {
+                        if (!am.isBluetoothScoOn) am.startBluetoothSco()
+                    } catch (t: Throwable) {
                         Log.w(TAG, "startBluetoothSco failed", t)
                         if (cont.isActive) cont.resume(false)
                     }

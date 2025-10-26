@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.brycewg.asrkb.LocaleHelper
 import com.brycewg.asrkb.R
+import com.brycewg.asrkb.asr.BluetoothRouteManager
 import com.brycewg.asrkb.asr.AsrVendor
 import com.brycewg.asrkb.store.Prefs
 import com.brycewg.asrkb.ui.floatingball.*
@@ -92,11 +93,13 @@ class FloatingAsrService : Service(),
                     imeVisible = true
                     DebugLogManager.log("float", "hint", mapOf("action" to "VISIBLE"))
                     updateVisibilityByPref("hint_visible")
+                    try { BluetoothRouteManager.setImeActive(this@FloatingAsrService, true) } catch (t: Throwable) { Log.w(TAG, "BluetoothRouteManager setImeActive(true)", t) }
                 }
                 FloatingImeHints.ACTION_HINT_IME_HIDDEN -> {
                     imeVisible = false
                     DebugLogManager.log("float", "hint", mapOf("action" to "HIDDEN"))
                     updateVisibilityByPref("hint_hidden")
+                    try { BluetoothRouteManager.setImeActive(this@FloatingAsrService, false) } catch (t: Throwable) { Log.w(TAG, "BluetoothRouteManager setImeActive(false)", t) }
                 }
             }
         }
