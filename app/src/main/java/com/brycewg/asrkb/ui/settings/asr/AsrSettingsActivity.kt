@@ -508,7 +508,17 @@ class AsrSettingsActivity : AppCompatActivity() {
         }
         findViewById<EditText>(R.id.etGeminiPrompt).apply {
             setText(prefs.gemPrompt)
-            bindString { prefs.gemPrompt = it }
+            setOnClickListener {
+                showEditGeminiPromptDialog()
+            }
+        }
+
+        findViewById<MaterialSwitch>(R.id.switchGeminiDisableThinking).apply {
+            isChecked = prefs.geminiDisableThinking
+            setOnCheckedChangeListener { btn, isChecked ->
+                hapticTapIfEnabled(btn)
+                prefs.geminiDisableThinking = isChecked
+            }
         }
 
         // Key guide link
@@ -516,6 +526,24 @@ class AsrSettingsActivity : AppCompatActivity() {
             hapticTapIfEnabled(v)
             openUrlSafely("https://aistudio.google.com/app/apikey")
         }
+    }
+
+    private fun showEditGeminiPromptDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_custom_words, null)
+        val editText = dialogView.findViewById<EditText>(R.id.etDialogCustomWords)
+        editText.setText(prefs.gemPrompt)
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.label_gemini_prompt_edit_title)
+            .setView(dialogView)
+            .setPositiveButton(android.R.string.ok) { dialog, _ ->
+                val newText = editText.text.toString()
+                prefs.gemPrompt = newText
+                findViewById<EditText>(R.id.etGeminiPrompt).setText(newText)
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
     }
 
     private fun setupSonioxSettings() {
